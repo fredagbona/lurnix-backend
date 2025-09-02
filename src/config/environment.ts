@@ -68,7 +68,7 @@ if (missingEnvVars.length > 0 && env !== 'test') {
 export const config: EnvironmentConfig = {
   // Server Configuration
   NODE_ENV: env,
-  PORT: parseInt(process.env.PORT || '5000', 10),
+  PORT: parseInt(process.env.PORT || '5050', 10),
   
   // Database Configuration
   DATABASE_URL: process.env.DATABASE_URL || '',
