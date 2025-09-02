@@ -66,7 +66,7 @@ app.get('/health', async (req: Request, res: Response) => {
 app.get('/health/quick', async (req: Request, res: Response) => {
   try {
     const quickCheck = await healthCheckService.quickHealthCheck();
-    const statusCode = quickCheck.status === 'healthy' ? 200 : 503;
+    const statusCode = quickCheck.status === 'healthy' ? 200 : 3;
     
     res.status(statusCode).json(quickCheck);
   } catch (error) {
