@@ -31,6 +31,19 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     // Verify token
     const decoded = verifyToken(token);
     
+    // Check if userId exists in token
+    if (!decoded.userId) {
+      res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Invalid user token',
+        },
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+    
     // Verify user still exists and is active
     const user = await authService.verifyUser(decoded.userId);
     
@@ -90,6 +103,13 @@ export const optionalAuthenticate = async (req: AuthRequest, res: Response, next
 
     // Verify token if provided
     const decoded = verifyToken(token);
+    
+    // Check if userId exists in token
+    if (!decoded.userId) {
+      // Continue without authentication if userId is missing
+      next();
+      return;
+    }
     
     // Verify user still exists and is active
     const user = await authService.verifyUser(decoded.userId);

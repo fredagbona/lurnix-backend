@@ -1,15 +1,18 @@
 import { Router } from 'express';
 import { adminController } from '../../controllers/adminController';
 import { emailController } from '../../controllers/emailController';
-import { authenticate } from '../../middlewares/authMiddleware';
+import { authenticateAdmin, requireManager, requireSuperAdmin } from '../../middlewares/adminAuthMiddleware';
 import { validateRequest, validateQuery, validateParams, rateLimit, rateLimitConfigs } from '../../middlewares/validation';
 import { paginationQuerySchema, userIdParamSchema } from '../../validation/routeSchemas';
 import { testEmailSchema } from '../../validation/emailSchemas';
+import adminAuthRoutes from './adminAuthRoutes';
 
 const router = Router();
 
-// Note: In a production system, you would add role-based authorization middleware here
-// For now, we're just using authentication middleware
+// Use admin auth routes
+router.use('/auth', adminAuthRoutes);
+
+// All other admin routes require admin authentication
 
 /**
  * @swagger
@@ -26,7 +29,8 @@ const router = Router();
  *         description: Authentication required
  */
 router.get('/stats',
-  authenticate,
+  authenticateAdmin,
+  requireManager,
   rateLimit(rateLimitConfigs.general),
   adminController.getUserStats
 );
@@ -59,10 +63,23 @@ router.get('/stats',
  *       401:
  *         description: Authentication required
  */
+// Original route with all middleware
+// router.get('/users',
+//   authenticateAdmin,
+//   requireManager,
+//   rateLimit(rateLimitConfigs.general),
+//   validateQuery(paginationQuerySchema),
+//   adminController.getAllUsers
+// );
+
+// Test route with minimal middleware
+router.get('/users-test',
+  adminController.getAllUsers
+);
+
+// Modified route with only authentication middleware
 router.get('/users',
-  authenticate,
-  rateLimit(rateLimitConfigs.general),
-  validateQuery(paginationQuerySchema),
+  authenticateAdmin,
   adminController.getAllUsers
 );
 
@@ -89,7 +106,8 @@ router.get('/users',
  *         description: Authentication required
  */
 router.get('/users/:userId',
-  authenticate,
+  authenticateAdmin,
+  requireManager,
   rateLimit(rateLimitConfigs.general),
   validateParams(userIdParamSchema),
   adminController.getUserById
@@ -118,7 +136,8 @@ router.get('/users/:userId',
  *         description: Authentication required
  */
 router.post('/users/:userId/restore',
-  authenticate,
+  authenticateAdmin,
+  requireManager,
   rateLimit(rateLimitConfigs.strict),
   adminController.restoreUser
 );
@@ -146,7 +165,8 @@ router.post('/users/:userId/restore',
  *         description: Authentication required
  */
 router.delete('/users/:userId/hard-delete',
-  authenticate,
+  authenticateAdmin,
+  requireManager,
   rateLimit(rateLimitConfigs.strict),
   adminController.hardDeleteUser
 );
@@ -174,7 +194,8 @@ router.delete('/users/:userId/hard-delete',
  *         description: Authentication required
  */
 router.get('/users/:userId/reset-token',
-  authenticate,
+  authenticateAdmin,
+  requireManager,
   rateLimit(rateLimitConfigs.general),
   adminController.getResetTokenInfo
 );
@@ -202,7 +223,8 @@ router.get('/users/:userId/reset-token',
  *         description: Authentication required
  */
 router.delete('/users/:userId/reset-token',
-  authenticate,
+  authenticateAdmin,
+  requireManager,
   rateLimit(rateLimitConfigs.strict),
   adminController.cancelPasswordReset
 );
@@ -222,7 +244,8 @@ router.delete('/users/:userId/reset-token',
  *         description: Authentication required
  */
 router.post('/maintenance/cleanup',
-  authenticate,
+  authenticateAdmin,
+  requireManager,
   rateLimit(rateLimitConfigs.strict),
   adminController.runCleanupTasks
 );
@@ -242,7 +265,8 @@ router.post('/maintenance/cleanup',
  *         description: Authentication required
  */
 router.post('/maintenance/cleanup-tokens',
-  authenticate,
+  authenticateAdmin,
+  requireManager,
   rateLimit(rateLimitConfigs.strict),
   adminController.cleanupExpiredTokens
 );
@@ -279,7 +303,8 @@ router.get('/health',
  *         description: Authentication required
  */
 router.get('/errors/stats',
-  authenticate,
+  authenticateAdmin,
+  requireManager,
   rateLimit(rateLimitConfigs.general),
   adminController.getErrorStats
 );
@@ -299,7 +324,8 @@ router.get('/errors/stats',
  *         description: Authentication required
  */
 router.post('/errors/reset',
-  authenticate,
+  authenticateAdmin,
+  requireManager,
   rateLimit(rateLimitConfigs.strict),
   adminController.resetErrorStats
 );
@@ -319,7 +345,8 @@ router.post('/errors/reset',
  *         description: Authentication required
  */
 router.get('/email/status',
-  authenticate,
+  authenticateAdmin,
+  requireManager,
   rateLimit(rateLimitConfigs.general),
   emailController.getEmailStatus
 );
@@ -339,7 +366,8 @@ router.get('/email/status',
  *         description: Authentication required
  */
 router.get('/email/templates',
-  authenticate,
+  authenticateAdmin,
+  requireManager,
   rateLimit(rateLimitConfigs.general),
   emailController.getEmailTemplates
 );
@@ -375,7 +403,8 @@ router.get('/email/templates',
  *         description: Authentication required
  */
 router.post('/email/test',
-  authenticate,
+  authenticateAdmin,
+  requireManager,
   rateLimit(rateLimitConfigs.strict),
   validateRequest(testEmailSchema),
   emailController.sendTestEmail
@@ -396,7 +425,8 @@ router.post('/email/test',
  *         description: Authentication required
  */
 router.get('/email/test-connectivity',
-  authenticate,
+  authenticateAdmin,
+  requireManager,
   rateLimit(rateLimitConfigs.general),
   emailController.testEmailConnectivity
 );

@@ -147,58 +147,6 @@ router.delete('/account',
   userManagementController.deleteAccount
 );
 
-/**
- * @swagger
- * /api/users/check-email:
- *   get:
- *     summary: Check email availability
- *     tags: [User Management]
- *     parameters:
- *       - in: query
- *         name: email
- *         required: true
- *         schema:
- *           type: string
- *           format: email
- *     responses:
- *       200:
- *         description: Email availability status
- *       400:
- *         description: Invalid email format
- */
-router.get('/check-email',
-  optionalAuthenticate,
-  rateLimit(rateLimitConfigs.general),
-  validateQuery(emailAvailabilityQuerySchema),
-  userManagementController.checkEmailAvailability
-);
-
-/**
- * @swagger
- * /api/users/check-username:
- *   get:
- *     summary: Check username availability
- *     tags: [User Management]
- *     parameters:
- *       - in: query
- *         name: username
- *         required: true
- *         schema:
- *           type: string
- *           minLength: 3
- *           maxLength: 30
- *     responses:
- *       200:
- *         description: Username availability status
- *       400:
- *         description: Invalid username format
- */
-router.get('/check-username',
-  optionalAuthenticate,
-  rateLimit(rateLimitConfigs.general),
-  validateQuery(usernameAvailabilityQuerySchema),
-  userManagementController.checkUsernameAvailability
-);
 
 /**
  * @swagger

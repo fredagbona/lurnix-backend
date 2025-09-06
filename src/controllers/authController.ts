@@ -1,12 +1,14 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
-import { authService, AuthServiceError } from '../services/authService.js';
+import { authService, AuthServiceError, EmailNotVerifiedError } from '../services/authService.js';
 import { passwordResetService, PasswordResetError } from '../services/passwordResetService.js';
 import { 
   RegisterRequest, 
   LoginRequest, 
   ForgotPasswordRequest, 
-  ResetPasswordRequest 
+  ResetPasswordRequest,
+  VerifyEmailRequest,
+  ResendVerificationRequest
 } from '../types/auth.js';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 
@@ -54,7 +56,19 @@ export class AuthController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      if (error instanceof AuthServiceError) {
+      if (error instanceof EmailNotVerifiedError) {
+        // Special handling for unverified email
+        res.status(error.statusCode).json({
+          success: false,
+          error: {
+            code: error.name,
+            message: error.message,
+            requiresVerification: true
+          },
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      } else if (error instanceof AuthServiceError) {
         res.status(error.statusCode).json({
           success: false,
           error: {
@@ -145,31 +159,7 @@ export class AuthController {
     }
   });
 
-  // Verify reset token
-  verifyResetToken = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { token } = req.params;
-
-    try {
-      const verification = await passwordResetService.verifyResetToken(token);
-      
-      res.status(200).json({
-        success: true,
-        data: {
-          valid: verification.valid,
-        },
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      res.status(400).json({
-        success: false,
-        error: {
-          code: 'INVALID_TOKEN',
-          message: 'Invalid or expired reset token',
-        },
-        timestamp: new Date().toISOString(),
-      });
-    }
-  });
+ 
 
   // Refresh token
   refreshToken = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
@@ -214,42 +204,17 @@ export class AuthController {
     }
   });
 
-  // Logout (optional - for token blacklisting if implemented)
-  logout = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    // For now, just return success
-    // In a more advanced implementation, you might blacklist the token
-    res.status(200).json({
-      success: true,
-      message: 'Logged out successfully',
-      timestamp: new Date().toISOString(),
-    });
-  });
-
-  // Check authentication status
-  checkAuth = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
-    const userId = req.userId; // From auth middleware
-
-    if (!userId) {
-      res.status(401).json({
-        success: false,
-        error: {
-          code: 'NOT_AUTHENTICATED',
-          message: 'User is not authenticated',
-        },
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
+  // Verify email with token
+  verifyEmail = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { token } = req.params;
 
     try {
-      const userProfile = await authService.getUserProfile(userId);
+      const result = await authService.verifyEmail(token);
       
       res.status(200).json({
         success: true,
-        message: 'User is authenticated',
-        data: {
-          user: userProfile,
-        },
+        message: 'Email verified successfully',
+        data: result,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
@@ -265,6 +230,32 @@ export class AuthController {
         return;
       }
       throw error;
+    }
+  });
+
+  // Resend verification email
+  resendVerification = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { email } = req.body;
+
+    try {
+      await authService.resendVerificationEmail(email);
+      
+      // Always return success for security (don't reveal if email exists)
+      res.status(200).json({
+        success: true,
+        message: 'If an account with that email exists, a verification email has been sent.',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      // Log error but don't expose details
+      console.error('Resend verification error:', error);
+      
+      // Always return success for security
+      res.status(200).json({
+        success: true,
+        message: 'If an account with that email exists, a verification email has been sent.',
+        timestamp: new Date().toISOString(),
+      });
     }
   });
 }

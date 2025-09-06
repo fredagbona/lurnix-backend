@@ -58,17 +58,25 @@ export class EmailController {
 
     try {
       if (template) {
-        await emailService.sendTemplateEmail(template, to, templateData || {});
+        // Create template email options
+        await emailService.sendTemplateEmail({
+          to,
+          subject: 'Test Template Email',
+          templateName: template,
+          templateData: templateData || {}
+        });
       } else {
         // Send a default test email
         await emailService.sendEmail({
           to,
           subject: 'Test Email from Lurnix',
           html: `
-            <h1>Test Email</h1>
-            <p>This is a test email sent from the Lurnix API.</p>
-            <p>Sent at: ${new Date().toISOString()}</p>
-            <p>Sent by: ${req.user?.username || 'Unknown'}</p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+              <h1>Test Email</h1>
+              <p>This is a test email from Lurnix.</p>
+              <p>If you received this email, it means the email service is working correctly.</p>
+              <p>Sent at: ${new Date().toLocaleString()}</p>
+            </div>
           `,
           text: `
             Test Email
@@ -76,8 +84,7 @@ export class EmailController {
             This is a test email sent from the Lurnix API.
             Sent at: ${new Date().toISOString()}
             Sent by: ${req.user?.username || 'Unknown'}
-          `,
-          tags: ['test'],
+          `
         });
       }
       

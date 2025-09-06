@@ -1,3 +1,11 @@
+// Subscription status enum to match Prisma schema
+export enum SubscriptionStatus {
+  FREE = 'free',
+  ACTIVE = 'active',
+  CANCELED = 'canceled',
+  EXPIRED = 'expired'
+}
+
 // User-related types
 export interface User {
   id: string;
@@ -6,11 +14,18 @@ export interface User {
   email: string;
   password_hash: string;
   isActive: boolean;
+  isVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
+  verificationToken: string | null;
+  verificationTokenExpiry: Date | null;
   resetToken: string | null;
   resetTokenExpiry: Date | null;
+  // Subscription fields
+  subscriptionId: string | null;
+  subscriptionStatus: SubscriptionStatus | string;
+  subscriptionEndDate: Date | null;
 }
 
 // User profile (response without sensitive data)
@@ -20,6 +35,7 @@ export interface UserProfile {
   fullname: string;
   email: string;
   isActive: boolean;
+  isVerified: boolean;
   createdAt: Date;
 }
 
@@ -34,7 +50,7 @@ export interface RegisterRequest {
 export interface RegisterResponse {
   success: boolean;
   user: UserProfile;
-  token: string;
+  requiresVerification?: boolean;
 }
 
 // Login DTOs
@@ -72,6 +88,15 @@ export interface ResetPasswordRequest {
   newPassword: string;
 }
 
+// Email Verification DTOs
+export interface VerifyEmailRequest {
+  token: string;
+}
+
+export interface ResendVerificationRequest {
+  email: string;
+}
+
 // Account Deletion DTOs
 export interface DeleteAccountRequest {
   password: string;
@@ -79,11 +104,73 @@ export interface DeleteAccountRequest {
 
 // JWT Payload
 export interface JWTPayload {
-  userId: string;
+  userId?: string;
+  adminId?: string;
   email: string;
-  username: string;
+  username?: string;
+  role?: AdminRole;
   iat: number;
   exp: number;
+}
+
+// Admin types
+export enum AdminRole {
+  SUPER_ADMIN = 'super_admin',
+  MANAGER = 'manager',
+  SUPPORT = 'support'
+}
+
+export interface Admin {
+  id: string;
+  name: string;
+  email: string;
+  password_hash: string;
+  role: AdminRole;
+  createdAt: Date;
+  updatedAt: Date;
+  resetToken?: string | null;
+  resetTokenExpiry?: Date | null;
+}
+
+export interface AdminProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: AdminRole;
+  createdAt: Date;
+}
+
+// Admin DTOs
+export interface AdminRegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  role: AdminRole;
+}
+
+export interface AdminLoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AdminChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface AdminForgotPasswordRequest {
+  email: string;
+}
+
+export interface AdminResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
+export interface AdminResponse {
+  success: boolean;
+  admin: AdminProfile;
+  token: string;
 }
 
 // API Response types
@@ -104,6 +191,7 @@ export interface CreateUserData {
   fullname: string;
   email: string;
   password_hash: string;
+  isVerified?: boolean;
 }
 
 export interface UpdateUserData {
@@ -111,6 +199,9 @@ export interface UpdateUserData {
   fullname?: string;
   email?: string;
   password_hash?: string;
+  isVerified?: boolean;
+  verificationToken?: string | null;
+  verificationTokenExpiry?: Date | null;
   resetToken?: string | null;
   resetTokenExpiry?: Date | null;
 }

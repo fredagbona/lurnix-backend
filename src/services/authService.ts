@@ -3,6 +3,8 @@ import { hashPassword, comparePassword, generateResetToken } from '../utils/pass
 import { emailService } from './emailService.js';
 import { generateToken, generateTokenPair } from '../utils/jwt.js';
 import { toUserProfile } from '../utils/userUtils.js';
+import { generateSecureToken } from '../utils/tokenUtils.js';
+import { config } from '../config/environment.js';
 import { 
   RegisterRequest, 
   RegisterResponse, 
@@ -77,6 +79,27 @@ export class ResetTokenExpiredError extends AuthServiceError {
   }
 }
 
+export class EmailNotVerifiedError extends AuthServiceError {
+  constructor() {
+    super('Email address has not been verified', 403);
+    this.name = 'EmailNotVerifiedError';
+  }
+}
+
+export class VerificationTokenExpiredError extends AuthServiceError {
+  constructor() {
+    super('Verification token has expired', 400);
+    this.name = 'VerificationTokenExpiredError';
+  }
+}
+
+export class InvalidVerificationTokenError extends AuthServiceError {
+  constructor() {
+    super('Invalid verification token', 400);
+    this.name = 'InvalidVerificationTokenError';
+  }
+}
+
 export class AuthService {
   // User registration
   async register(data: RegisterRequest): Promise<RegisterResponse> {
@@ -102,27 +125,29 @@ export class AuthService {
         fullname: data.fullname,
         email: data.email.toLowerCase(),
         password_hash: hashedPassword,
+        isVerified: false, // User starts as unverified
       });
 
-      // Generate JWT token
-      const token = generateToken({
-        userId: user.id,
-        email: user.email,
-        username: user.username,
-      });
+      // Generate verification token
+      const { token: verificationToken, expiresAt } = generateSecureToken(24); // 24 hours expiry
+      
+      // Save verification token to user
+      await userRepository.setVerificationToken(user.id, verificationToken, expiresAt);
 
-      // Send welcome email
+      // Send verification email
       try {
-        await emailService.sendWelcomeEmail(user.email, user.fullname, user.username);
+        const verificationUrl = `${config.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+        console.log('Verification URL:', verificationUrl);
+        await emailService.sendRegistrationEmail(user.email, user.fullname, verificationUrl);
       } catch (emailError) {
         // Log email error but don't fail registration
-        console.error('Failed to send welcome email:', emailError);
+        console.error('Failed to send verification email:', emailError);
       }
 
       return {
         success: true,
         user: toUserProfile(user),
-        token,
+        requiresVerification: true,
       };
     } catch (error) {
       if (error instanceof DuplicateUserError) {
@@ -159,6 +184,23 @@ export class AuthService {
       const isPasswordValid = await comparePassword(data.password, user.password_hash);
       if (!isPasswordValid) {
         throw new InvalidCredentialsError();
+      }
+
+      // Check if email is verified
+      if (!user.isVerified) {
+        // Generate new verification token if needed
+        const { token: verificationToken, expiresAt } = generateSecureToken(24);
+        await userRepository.setVerificationToken(user.id, verificationToken, expiresAt);
+        
+        // Send verification email
+        try {
+          const verificationUrl = `${config.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+          await emailService.sendRegistrationEmail(user.email, user.fullname, verificationUrl);
+        } catch (emailError) {
+          console.error('Failed to send verification email:', emailError);
+        }
+        
+        throw new EmailNotVerifiedError();
       }
 
       // Generate JWT token
@@ -259,7 +301,9 @@ export class AuthService {
 
       // Send password changed confirmation email
       try {
-        await emailService.sendPasswordChangedEmail(user.email, user.fullname, ipAddress || 'Unknown');
+        const changeDate = new Date().toLocaleDateString();
+        const ipAddr = ipAddress || 'Unknown';
+        await emailService.sendPasswordChangedEmail(user.email, user.fullname, changeDate, ipAddr);
       } catch (emailError) {
         // Log email error but don't fail password change
         console.error('Failed to send password changed email:', emailError);
@@ -477,13 +521,74 @@ export class AuthService {
     }
   }
 
-  // Verify reset token validity
-  async verifyResetToken(token: string): Promise<boolean> {
+
+  
+  // Verify email with token
+  async verifyEmail(token: string): Promise<{ success: boolean; userId?: string }> {
     try {
-      const user = await userRepository.findByResetToken(token);
-      return !!user;
+      // Find user by verification token
+      const user = await userRepository.findByVerificationToken(token);
+      if (!user) {
+        throw new InvalidVerificationTokenError();
+      }
+      
+      // Check if token is expired
+      if (!user.verificationTokenExpiry || new Date() > user.verificationTokenExpiry) {
+        throw new VerificationTokenExpiredError();
+      }
+      
+      // Mark email as verified and clear verification token
+      await userRepository.verifyEmail(user.id);
+      
+      // Send welcome email after verification
+      try {
+        const dashboardUrl = `${process.env.FRONTEND_URL}/dashboard`;
+        await emailService.sendWelcomeAfterVerificationEmail(user.email, user.fullname, dashboardUrl);
+      } catch (emailError) {
+        console.error('Failed to send welcome email after verification:', emailError);
+      }
+      
+      return { success: true, userId: user.id };
     } catch (error) {
-      return false;
+      if (error instanceof AuthServiceError) {
+        throw error;
+      }
+      throw new AuthServiceError('Email verification failed', 500);
+    }
+  }
+  
+  // Resend verification email
+  async resendVerificationEmail(email: string): Promise<{ success: boolean }> {
+    try {
+      // Find user by email
+      const user = await userRepository.findActiveByEmail(email);
+      if (!user) {
+        // For security, don't reveal if email exists
+        return { success: true };
+      }
+      
+      // If already verified, no need to resend
+      if (user.isVerified) {
+        return { success: true };
+      }
+      
+      // Generate new verification token
+      const { token: verificationToken, expiresAt } = generateSecureToken(24);
+      await userRepository.setVerificationToken(user.id, verificationToken, expiresAt);
+      
+      // Send verification email
+      try {
+        const verificationUrl = `${config.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+        await emailService.sendRegistrationEmail(user.email, user.fullname, verificationUrl);
+      } catch (emailError) {
+        console.error('Failed to resend verification email:', emailError);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      // Log error but don't reveal details for security
+      console.error('Resend verification email error:', error);
+      return { success: true };
     }
   }
 

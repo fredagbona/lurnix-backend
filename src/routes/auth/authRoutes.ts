@@ -6,7 +6,8 @@ import {
   registerSchema, 
   loginSchema, 
   forgotPasswordSchema, 
-  resetPasswordSchema 
+  resetPasswordSchema,
+  resendVerificationSchema
 } from '../../validation/authSchemas';
 
 const router = Router();
@@ -157,28 +158,7 @@ router.post('/reset-password',
   authController.resetPassword
 );
 
-/**
- * @swagger
- * /api/auth/verify-reset-token/{token}:
- *   get:
- *     summary: Verify password reset token
- *     tags: [Authentication]
- *     parameters:
- *       - in: path
- *         name: token
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Token verification result
- *       400:
- *         description: Invalid token format
- */
-router.get('/verify-reset-token/:token',
-  rateLimit(rateLimitConfigs.general),
-  authController.verifyResetToken
-);
+
 
 /**
  * @swagger
@@ -201,38 +181,55 @@ router.post('/refresh-token',
 
 /**
  * @swagger
- * /api/auth/logout:
- *   post:
- *     summary: Logout user
+ * /api/auth/verify-email/{token}:
+ *   get:
+ *     summary: Verify email address using token
  *     tags: [Authentication]
- *     security:
- *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
- *         description: Logged out successfully
+ *         description: Email verified successfully
+ *       400:
+ *         description: Invalid or expired verification token
  */
-router.post('/logout',
-  optionalAuthenticate,
-  authController.logout
+router.get('/verify-email/:token',
+  rateLimit(rateLimitConfigs.general),
+  authController.verifyEmail
 );
 
 /**
  * @swagger
- * /api/auth/check:
- *   get:
- *     summary: Check authentication status
+ * /api/auth/resend-verification:
+ *   post:
+ *     summary: Resend verification email
  *     tags: [Authentication]
- *     security:
- *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
  *     responses:
  *       200:
- *         description: User is authenticated
- *       401:
- *         description: User is not authenticated
+ *         description: Verification email sent (if account exists and is not verified)
+ *       429:
+ *         description: Too many verification email requests
  */
-router.get('/check',
-  authenticate,
-  authController.checkAuth
+router.post('/resend-verification',
+  rateLimit(rateLimitConfigs.passwordReset), // Reuse password reset rate limit config
+  validateRequest(resendVerificationSchema),
+  authController.resendVerification
 );
 
 export default router;

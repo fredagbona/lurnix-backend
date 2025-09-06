@@ -11,16 +11,16 @@ const swaggerOptions: swaggerJsDoc.Options = {
       title: 'Lurnix API Documentation',
       version: '1.0.0',
       description: `
-        # Lurnix Backend API
+        Lurnix Backend API
         
         This is the comprehensive API documentation for the Lurnix AI-powered learning platform backend.
         
-        ## Authentication
+        Authentication
         
         Most endpoints require authentication using JWT tokens. Include the token in the Authorization header:
         \`Authorization: Bearer <your-jwt-token>\`
         
-        ## Rate Limiting
+        Rate Limiting
         
         API endpoints are rate-limited to prevent abuse:
         - Authentication endpoints: 5 requests per 15 minutes
@@ -28,7 +28,7 @@ const swaggerOptions: swaggerJsDoc.Options = {
         - Password reset: 3 requests per hour
         - General endpoints: 100 requests per 15 minutes
         
-        ## Error Handling
+        Error Handling
         
         All API responses follow a consistent format:
         \`\`\`json
@@ -44,7 +44,7 @@ const swaggerOptions: swaggerJsDoc.Options = {
         }
         \`\`\`
         
-        ## Status Codes
+        Status Codes
         
         - \`200\` - Success
         - \`201\` - Created
@@ -58,7 +58,7 @@ const swaggerOptions: swaggerJsDoc.Options = {
       `,
       contact: {
         name: 'Lurnix API Support',
-        email: 'support@lurnix.com'
+        email: 'no-reply@lurnix.tech'
       },
       license: {
         name: 'MIT',

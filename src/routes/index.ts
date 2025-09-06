@@ -3,6 +3,10 @@ import authRoutes from "./auth/authRoutes";
 import userManagementRoutes from "./user/userManagementRoutes";
 import adminRoutes from "./admin/adminRoutes";
 import healthRoutes from "./health/healthRoutes";
+import quizRoutes from "./quizRoutes";
+import roadmapRoutes from "./roadmapRoutes";
+import quizAdminRoutes from "./quizAdminRoutes";
+import subscriptionRoutes from "./subscriptionRoutes";
 
 const router = Router();
 
@@ -14,6 +18,10 @@ router.use(`${API_VERSION}/auth`, authRoutes);
 router.use(`${API_VERSION}/users`, userManagementRoutes);
 router.use(`${API_VERSION}/admin`, adminRoutes);
 router.use("/health", healthRoutes);
+router.use(`${API_VERSION}/quiz`, quizRoutes);
+router.use(`${API_VERSION}/roadmaps`, roadmapRoutes);
+router.use(`${API_VERSION}/admin/quiz`, quizAdminRoutes);
+router.use(`${API_VERSION}/subscriptions`, subscriptionRoutes);
 
 // Health check endpoint (no auth required)
 router.get("/health", (req, res) => {

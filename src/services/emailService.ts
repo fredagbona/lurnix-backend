@@ -1,471 +1,441 @@
-import { EmailServiceError } from '../errors/AppError';
+import fs from 'fs';
+import path from 'path';
+import Handlebars from 'handlebars';
+import nodemailer from 'nodemailer';
+import { config } from '../config/environment';
 
-// Use node-fetch for Node.js compatibility
-const fetch = globalThis.fetch || require('node-fetch');
-
-// Email template types
-export interface EmailTemplate {
+interface EmailOptions {
+  to: string;
+  toName?: string;
   subject: string;
-  html: string;
-  text: string;
-}
-
-// Email sending options
-export interface EmailOptions {
-  to: string | string[];
-  subject: string;
-  html?: string;
-  text?: string;
-  template?: string;
-  templateData?: Record<string, any>;
+  templateName: string;
+  templateData: Record<string, any>;
+  cc?: string | string[];
+  bcc?: string | string[];
   attachments?: Array<{
     filename: string;
-    data: Buffer | string;
+    path: string;
     contentType?: string;
   }>;
-  tags?: string[];
-  priority?: 'high' | 'normal' | 'low';
 }
 
-// Mailzeet API interfaces
-interface MailzeetSender {
-  email: string;
-  name: string;
-}
-
-interface MailzeetRecipient {
-  email: string;
-  name?: string;
-}
-
-interface MailzeetPayload {
-  sender: MailzeetSender;
-  recipients: MailzeetRecipient[];
-  subject: string;
-  text?: string;
-  html?: string;
-  template_id?: string;
-  params?: Record<string, any>;
-}
-
-// Email service configuration
-interface EmailConfig {
-  apiKey: string;
-  apiUrl: string;
-  fromEmail: string;
-  fromName: string;
-  enabled: boolean;
+interface EmailResult {
+  success: boolean;
+  messageId?: string;
+  message?: string;
+  error?: Error;
 }
 
 export class EmailService {
-  private config: EmailConfig;
-  private templates: Map<string, EmailTemplate> = new Map();
+  private templatesDir: string;
+  private transporter: nodemailer.Transporter;
 
   constructor() {
-    this.config = {
-      apiKey: process.env.MAILZEET_API_KEY || '',
-      apiUrl: process.env.MAILZEET_API_URL || 'https://api.mailzeet.com/v1/mails',
-      fromEmail: process.env.FROM_EMAIL || 'noreply@lurnix.com',
-      fromName: process.env.FROM_NAME || 'Lurnix',
-      enabled: process.env.EMAIL_ENABLED !== 'false',
-    };
-
-    this.initializeTemplates();
-  }
-
-  // Initialize email templates
-  private initializeTemplates(): void {
-    // Welcome email template
-    this.templates.set('welcome', {
-      subject: 'Welcome to Lurnix!',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #333;">Welcome to Lurnix, {{fullname}}!</h1>
-          <p>Thank you for joining our AI-powered learning platform.</p>
-          <p>Your account has been successfully created with the username: <strong>{{username}}</strong></p>
-          <p>You can now start your learning journey by logging into your account.</p>
-          <div style="margin: 30px 0;">
-            <a href="{{loginUrl}}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
-              Get Started
-            </a>
-          </div>
-          <p>If you have any questions, feel free to contact our support team.</p>
-          <p>Best regards,<br>The Lurnix Team</p>
-        </div>
-      `,
-      text: `
-        Welcome to Lurnix, {{fullname}}!
-        
-        Thank you for joining our AI-powered learning platform.
-        Your account has been successfully created with the username: {{username}}
-        
-        You can now start your learning journey by logging into your account at: {{loginUrl}}
-        
-        If you have any questions, feel free to contact our support team.
-        
-        Best regards,
-        The Lurnix Team
-      `,
-    });
-
-    // Password reset email template
-    this.templates.set('passwordReset', {
-      subject: 'Reset Your Lurnix Password',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #333;">Password Reset Request</h1>
-          <p>Hello {{fullname}},</p>
-          <p>We received a request to reset your password for your Lurnix account.</p>
-          <p>Click the button below to reset your password. This link will expire in 1 hour.</p>
-          <div style="margin: 30px 0;">
-            <a href="{{resetUrl}}" style="background-color: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
-              Reset Password
-            </a>
-          </div>
-          <p>If you didn't request this password reset, please ignore this email. Your password will remain unchanged.</p>
-          <p>For security reasons, this link will expire in 1 hour.</p>
-          <p>Best regards,<br>The Lurnix Team</p>
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-          <p style="font-size: 12px; color: #666;">
-            If the button doesn't work, copy and paste this link into your browser:<br>
-            {{resetUrl}}
-          </p>
-        </div>
-      `,
-      text: `
-        Password Reset Request
-        
-        Hello {{fullname}},
-        
-        We received a request to reset your password for your Lurnix account.
-        
-        Please visit the following link to reset your password (expires in 1 hour):
-        {{resetUrl}}
-        
-        If you didn't request this password reset, please ignore this email. Your password will remain unchanged.
-        
-        Best regards,
-        The Lurnix Team
-      `,
-    });
-
-    // Password changed confirmation email
-    this.templates.set('passwordChanged', {
-      subject: 'Your Lurnix Password Has Been Changed',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #333;">Password Changed Successfully</h1>
-          <p>Hello {{fullname}},</p>
-          <p>This email confirms that your Lurnix account password has been successfully changed.</p>
-          <p><strong>Change Details:</strong></p>
-          <ul>
-            <li>Date: {{changeDate}}</li>
-            <li>Time: {{changeTime}}</li>
-            <li>IP Address: {{ipAddress}}</li>
-          </ul>
-          <p>If you didn't make this change, please contact our support team immediately.</p>
-          <div style="margin: 30px 0;">
-            <a href="{{supportUrl}}" style="background-color: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
-              Contact Support
-            </a>
-          </div>
-          <p>Best regards,<br>The Lurnix Team</p>
-        </div>
-      `,
-      text: `
-        Password Changed Successfully
-        
-        Hello {{fullname}},
-        
-        This email confirms that your Lurnix account password has been successfully changed.
-        
-        Change Details:
-        - Date: {{changeDate}}
-        - Time: {{changeTime}}
-        - IP Address: {{ipAddress}}
-        
-        If you didn't make this change, please contact our support team immediately at: {{supportUrl}}
-        
-        Best regards,
-        The Lurnix Team
-      `,
-    });
-
-    // Account deletion confirmation email
-    this.templates.set('accountDeleted', {
-      subject: 'Your Lurnix Account Has Been Deleted',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #333;">Account Deletion Confirmation</h1>
-          <p>Hello {{fullname}},</p>
-          <p>This email confirms that your Lurnix account has been successfully deleted.</p>
-          <p><strong>Deletion Details:</strong></p>
-          <ul>
-            <li>Username: {{username}}</li>
-            <li>Email: {{email}}</li>
-            <li>Deletion Date: {{deletionDate}}</li>
-          </ul>
-          <p>Your account data has been deactivated and will be permanently removed from our systems within 30 days.</p>
-          <p>If you deleted your account by mistake, please contact our support team within 30 days to restore it.</p>
-          <p>Thank you for being part of the Lurnix community.</p>
-          <p>Best regards,<br>The Lurnix Team</p>
-        </div>
-      `,
-      text: `
-        Account Deletion Confirmation
-        
-        Hello {{fullname}},
-        
-        This email confirms that your Lurnix account has been successfully deleted.
-        
-        Deletion Details:
-        - Username: {{username}}
-        - Email: {{email}}
-        - Deletion Date: {{deletionDate}}
-        
-        Your account data has been deactivated and will be permanently removed from our systems within 30 days.
-        
-        If you deleted your account by mistake, please contact our support team within 30 days to restore it.
-        
-        Thank you for being part of the Lurnix community.
-        
-        Best regards,
-        The Lurnix Team
-      `,
+    this.templatesDir = path.join(__dirname, 'templates');
+    
+    // Create reusable transporter object using SMTP transport
+    this.transporter = nodemailer.createTransport({
+      host: config.EMAIL_HOST,
+      port: config.EMAIL_PORT,
+      secure: config.EMAIL_PORT === 465, // Always use secure=true for port 465
+      auth: {
+        user: config.EMAIL_USER,
+        pass: config.EMAIL_PASSWORD
+      },
+      tls: {
+        // Do not fail on invalid certs
+        rejectUnauthorized: false
+      }
     });
   }
 
-  // Send email using template
-  async sendTemplateEmail(
-    templateName: string,
-    to: string,
-    templateData: Record<string, any> = {}
-  ): Promise<void> {
-    if (!this.config.enabled) {
-      console.log(`Email service disabled. Would send ${templateName} email to ${to}`);
-      return;
-    }
-
-    const template = this.templates.get(templateName);
-    if (!template) {
-      throw new EmailServiceError(`Email template '${templateName}' not found`);
-    }
-
-    // Replace template variables
-    const subject = this.replaceTemplateVariables(template.subject, templateData);
-    const html = this.replaceTemplateVariables(template.html, templateData);
-    const text = this.replaceTemplateVariables(template.text, templateData);
-
-    await this.sendEmail({
-      to,
-      subject,
-      html,
-      text,
-      tags: [templateName],
-    });
-  }
-
-  // Send custom email using Mailzeet API
-  async sendEmail(options: EmailOptions): Promise<void> {
-    if (!this.config.enabled) {
-      console.log(`Email service disabled. Would send email to ${options.to}`);
-      console.log(`Subject: ${options.subject}`);
-      return;
-    }
-
-    if (!this.config.apiKey) {
-      throw new EmailServiceError('Mailzeet API key not configured. Check MAILZEET_API_KEY environment variable.');
-    }
-
+  /**
+   * Send an email using a template
+   * @param options Email options including template name and data
+   * @returns Promise with send info
+   */
+  async sendTemplateEmail(options: EmailOptions): Promise<EmailResult> {
     try {
-      // Prepare recipients
-      const recipients: MailzeetRecipient[] = Array.isArray(options.to)
-        ? options.to.map(email => ({ email }))
-        : [{ email: options.to }];
+      if (!config.EMAIL_ENABLED) {
+        console.log('Email sending is disabled. Would have sent:', options);
+        return { success: true, message: 'Email sending is disabled' };
+      }
 
-      // Prepare Mailzeet payload
-      const payload: MailzeetPayload = {
-        sender: {
-          email: this.config.fromEmail,
-          name: this.config.fromName,
+      // Read the template file
+      const templatePath = path.join(this.templatesDir, `${options.templateName}.html`);
+      const templateSource = fs.readFileSync(templatePath, 'utf8');
+      
+      // Compile the template
+      const template = Handlebars.compile(templateSource);
+      
+      // Add common template data
+      const templateData = {
+        ...options.templateData,
+        currentYear: new Date().getFullYear(),
+        logoUrl: config.LOGO_URL || 'https://lurnix.com/logo.png',
+        unsubscribeUrl: `${config.FRONTEND_URL}/unsubscribe?email=${encodeURIComponent(options.to)}`,
+        supportEmail: 'support@lurnix.com'
+      };
+      
+      // Render the template with data
+      const html = template(templateData);
+      
+      // Prepare email options for Nodemailer
+      const mailOptions: nodemailer.SendMailOptions = {
+        from: {
+          name: config.EMAIL_FROM_NAME,
+          address: config.EMAIL_FROM_ADDRESS
         },
-        recipients,
+        to: options.toName ? `"${options.toName}" <${options.to}>` : options.to,
         subject: options.subject,
+        html: html,
+        attachments: options.attachments || []
       };
-
-      // Add content
-      if (options.html) {
-        payload.html = options.html;
+      
+      // Add CC and BCC if provided
+      if (options.cc) {
+        mailOptions.cc = options.cc;
       }
-
-      if (options.text) {
-        payload.text = options.text;
+      
+      if (options.bcc) {
+        mailOptions.bcc = options.bcc;
       }
-
-      // Add template data if using template
-      if (options.template) {
-        payload.template_id = options.template;
-        if (options.templateData) {
-          payload.params = options.templateData;
-        }
-      }
-
-      // Prepare headers
-      const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.config.apiKey}`,
-      };
-
-      // Send email via Mailzeet API
-      const response = await fetch(this.config.apiUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Mailzeet API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
-      }
-
-      const result = await response.json();
-      console.log(`Email sent successfully to ${options.to}. Response:`, result);
+      
+      // Log email sending details for debugging
+      console.log('Sending email to:', options.to);
+      console.log('Using SMTP server:', config.EMAIL_HOST);
+      console.log('SMTP credentials configured:', config.EMAIL_USER ? 'Yes' : 'No');
+      
+      // Send the email via Nodemailer
+      const info = await this.transporter.sendMail(mailOptions);
+      
+      // Log the sending result
+      console.log('Email sent successfully:', info.messageId);
+      return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error('Failed to send email:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      throw new EmailServiceError(`Failed to send email: ${errorMessage}`);
-    }
-  }
-
-  // Send welcome email
-  async sendWelcomeEmail(
-    email: string,
-    fullname: string,
-    username: string
-  ): Promise<void> {
-    const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`;
-    
-    await this.sendTemplateEmail('welcome', email, {
-      fullname,
-      username,
-      loginUrl,
-    });
-  }
-
-  // Send password reset email
-  async sendPasswordResetEmail(
-    email: string,
-    fullname: string,
-    resetToken: string
-  ): Promise<void> {
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
-    
-    await this.sendTemplateEmail('passwordReset', email, {
-      fullname,
-      resetUrl,
-    });
-  }
-
-  // Send password changed confirmation email
-  async sendPasswordChangedEmail(
-    email: string,
-    fullname: string,
-    ipAddress: string
-  ): Promise<void> {
-    const now = new Date();
-    const supportUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/support`;
-    
-    await this.sendTemplateEmail('passwordChanged', email, {
-      fullname,
-      changeDate: now.toLocaleDateString(),
-      changeTime: now.toLocaleTimeString(),
-      ipAddress,
-      supportUrl,
-    });
-  }
-
-  // Send account deletion confirmation email
-  async sendAccountDeletedEmail(
-    email: string,
-    fullname: string,
-    username: string
-  ): Promise<void> {
-    const deletionDate = new Date().toLocaleDateString();
-    
-    await this.sendTemplateEmail('accountDeleted', email, {
-      fullname,
-      username,
-      email,
-      deletionDate,
-    });
-  }
-
-  // Utility method to replace template variables
-  private replaceTemplateVariables(template: string, data: Record<string, any>): string {
-    let result = template;
-    
-    Object.keys(data).forEach(key => {
-      const regex = new RegExp(`{{${key}}}`, 'g');
-      result = result.replace(regex, data[key] || '');
-    });
-    
-    return result;
-  }
-
-  // Test email connectivity with Mailzeet
-  async testConnection(): Promise<boolean> {
-    if (!this.config.enabled) {
-      return false;
-    }
-
-    if (!this.config.apiKey) {
-      return false;
-    }
-
-    try {
-      // Test connection by making a simple API call to Mailzeet
-      const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.config.apiKey}`,
+      console.error('Error sending email:', error);
+      return { 
+        success: false, 
+        message: `Failed to send email: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error: error instanceof Error ? error : new Error('Unknown error')
       };
+    }
+  }
 
-      const response = await fetch(this.config.apiUrl.replace('/mails', '/account'), {
-        method: 'GET',
-        headers,
-      });
+  /**
+   * Send a registration confirmation email
+   * @param to Recipient email
+   * @param name Recipient name
+   * @param verificationUrl URL for email verification
+   */
+  async sendRegistrationEmail(
+    to: string, 
+    name: string, 
+    verificationUrl: string
+  ): Promise<EmailResult> {
+    return this.sendTemplateEmail({
+      to,
+      toName: name,
+      subject: 'Welcome to Lurnix - Verify Your Email',
+      templateName: 'registration',
+      templateData: {
+        name,
+        email: to,
+        verificationUrl,
+      },
+    });
+  }
 
-      return response.ok;
+  /**
+   * Send a welcome email after verification
+   * @param to Recipient email
+   * @param name Recipient name
+   * @param dashboardUrl URL to user dashboard
+   */
+  async sendWelcomeAfterVerificationEmail(
+    to: string, 
+    name: string, 
+    dashboardUrl: string
+  ): Promise<EmailResult> {
+    return this.sendTemplateEmail({
+      to,
+      toName: name,
+      subject: 'Welcome to Lurnix - Your Account is Ready!',
+      templateName: 'welcomeAfterVerification',
+      templateData: {
+        name,
+        email: to,
+        dashboardUrl,
+        course1Name: 'Getting Started with Lurnix',
+        course1Url: `${config.FRONTEND_URL}/courses/getting-started`,
+        course2Name: 'Web Development Fundamentals',
+        course2Url: `${config.FRONTEND_URL}/courses/web-dev-fundamentals`,
+        course3Name: 'Introduction to JavaScript',
+        course3Url: `${config.FRONTEND_URL}/courses/intro-javascript`,
+      },
+    });
+  }
+
+  /**
+   * Send a password reset email
+   * @param to Recipient email
+   * @param name Recipient name
+   * @param resetToken Reset token for password reset
+   */
+  async sendPasswordResetEmail(
+    to: string, 
+    name: string, 
+    resetToken: string
+  ): Promise<EmailResult> {
+    const resetUrl = `${config.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    
+    return this.sendTemplateEmail({
+      to,
+      toName: name,
+      subject: 'Reset Your Lurnix Password',
+      templateName: 'passwordReset',
+      templateData: {
+        name,
+        email: to,
+        resetUrl,
+      },
+    });
+  }
+
+  /**
+   * Send a password changed confirmation email
+   * @param to Recipient email
+   * @param name Recipient name
+   * @param changeDate Date of password change
+   * @param ipAddress IP address where change was made
+   */
+  async sendPasswordChangedEmail(
+    to: string, 
+    name: string, 
+    changeDate: string, 
+    ipAddress: string
+  ): Promise<EmailResult> {
+    return this.sendTemplateEmail({
+      to,
+      toName: name,
+      subject: 'Your Lurnix Password Has Been Changed',
+      templateName: 'passwordChanged',
+      templateData: {
+        name,
+        email: to,
+        changeDate,
+        ipAddress,
+        supportUrl: `${config.FRONTEND_URL}/support`,
+      },
+    });
+  }
+
+  /**
+   * Send an account deletion confirmation email
+   * @param to Recipient email
+   * @param name Recipient name
+   * @param username Username of deleted account
+   */
+  async sendAccountDeletedEmail(
+    to: string, 
+    name: string, 
+    username: string
+  ): Promise<EmailResult> {
+    return this.sendTemplateEmail({
+      to,
+      toName: name,
+      subject: 'Your Lurnix Account Has Been Deleted',
+      templateName: 'accountDeleted',
+      templateData: {
+        name,
+        email: to,
+        username,
+        deletionDate: new Date().toLocaleDateString(),
+        supportEmail: 'support@lurnix.com',
+      },
+    });
+  }
+  
+  /**
+   * Test email connectivity
+   * @returns Promise with connection status
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      // Test connection by verifying SMTP connection
+      await this.transporter.verify();
+      return true;
     } catch (error) {
       console.error('Email service connectivity test failed:', error);
       return false;
     }
   }
 
-  // Get email service status
+  /**
+   * Get email service status
+   * @returns Email service status
+   */
   getStatus(): {
     enabled: boolean;
     configured: boolean;
-    apiUrl: string;
+    host: string;
     fromEmail: string;
   } {
     return {
-      enabled: this.config.enabled,
-      configured: !!(this.config.apiKey && this.config.apiUrl),
-      apiUrl: this.config.apiUrl,
-      fromEmail: this.config.fromEmail,
+      enabled: config.EMAIL_ENABLED,
+      configured: !!(config.EMAIL_HOST && config.EMAIL_USER && config.EMAIL_PASSWORD),
+      host: config.EMAIL_HOST,
+      fromEmail: config.EMAIL_FROM_ADDRESS
     };
   }
-
-  // Add custom template
-  addTemplate(name: string, template: EmailTemplate): void {
-    this.templates.set(name, template);
-  }
-
-  // Get available templates
+  
+  /**
+   * Get available email templates
+   * @returns List of available template names
+   */
   getAvailableTemplates(): string[] {
-    return Array.from(this.templates.keys());
+    try {
+      const files = fs.readdirSync(this.templatesDir);
+      return files
+        .filter(file => file.endsWith('.html'))
+        .map(file => file.replace('.html', ''));
+    } catch (error) {
+      console.error('Error reading template directory:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * Send a direct email without using a template
+   * @param options Email options
+   * @returns Promise with send result
+   */
+  async sendEmail(options: {
+    to: string | string[];
+    subject: string;
+    html?: string;
+    text?: string;
+  }): Promise<EmailResult> {
+    try {
+      if (!config.EMAIL_ENABLED) {
+        console.log('Email sending is disabled. Would have sent:', options);
+        return { success: true, message: 'Email sending is disabled' };
+      }
+      
+      // Prepare email options for Nodemailer
+      const mailOptions: nodemailer.SendMailOptions = {
+        from: {
+          name: config.EMAIL_FROM_NAME,
+          address: config.EMAIL_FROM_ADDRESS
+        },
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text || (options.html ? undefined : 'No content provided')
+      };
+      
+      // Log email sending details for debugging
+      console.log('Sending direct email to:', options.to);
+      
+      // Send the email via Nodemailer
+      const info = await this.transporter.sendMail(mailOptions);
+      
+      // Log the sending result
+      console.log('Email sent successfully:', info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error('Error sending direct email:', error);
+      return { 
+        success: false, 
+        message: `Failed to send email: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error: error instanceof Error ? error : new Error('Unknown error')
+      };
+    }
+  }
+  
+  /**
+   * Send a welcome email
+   * @param email Recipient email
+   * @param fullname Recipient name
+   * @param username Username
+   */
+  async sendWelcomeEmail(
+    email: string,
+    fullname: string,
+    username: string
+  ): Promise<EmailResult> {
+    const loginUrl = `${config.FRONTEND_URL}/login`;
+    
+    return this.sendTemplateEmail({
+      to: email,
+      toName: fullname,
+      subject: 'Welcome to Lurnix!',
+      templateName: 'welcome',
+      templateData: {
+        fullname,
+        username,
+        loginUrl,
+      },
+    });
+  }
+  
+  /**
+   * Send an admin welcome email
+   * @param email Admin email
+   * @param name Admin name
+   * @param role Admin role
+   * @param createdBy Name of admin who created this account
+   */
+  async sendAdminWelcomeEmail(
+    email: string,
+    name: string,
+    role: string,
+    createdBy: string
+  ): Promise<EmailResult> {
+    const loginUrl = `${config.FRONTEND_URL}/admin/login`;
+    
+    return this.sendTemplateEmail({
+      to: email,
+      toName: name,
+      subject: 'Welcome to Lurnix Admin Panel',
+      templateName: 'adminWelcome',
+      templateData: {
+        name,
+        email,
+        role,
+        createdBy,
+        loginUrl,
+      },
+    });
+  }
+  
+  /**
+   * Send an admin password reset email
+   * @param email Admin email
+   * @param name Admin name
+   * @param resetToken Reset token
+   */
+  async sendAdminPasswordResetEmail(
+    email: string,
+    name: string,
+    resetToken: string
+  ): Promise<EmailResult> {
+    const resetUrl = `${config.FRONTEND_URL}/admin/reset-password?token=${resetToken}`;
+    
+    return this.sendTemplateEmail({
+      to: email,
+      toName: name,
+      subject: 'Admin Password Reset - Lurnix',
+      templateName: 'adminPasswordReset',
+      templateData: {
+        name,
+        email,
+        resetUrl,
+        currentYear: new Date().getFullYear(),
+      },
+    });
   }
 }
 
-// Export singleton instance
+// Export a singleton instance
 export const emailService = new EmailService();

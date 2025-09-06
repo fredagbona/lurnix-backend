@@ -5,8 +5,31 @@ import { scheduledTasksService } from '../services/scheduledTasksService.js';
 import { errorMonitoringService } from '../services/errorMonitoringService.js';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
+import { prisma } from '../prisma/client.js';
 
 export class AdminController {
+  // Simple test endpoint
+  testEndpoint = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    try {
+      res.status(200).json({
+        success: true,
+        message: 'Admin test endpoint working',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Error in test endpoint:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'TEST_ERROR',
+          message: 'Test endpoint error',
+          details: error instanceof Error ? error.message : String(error),
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+  
   // Get user statistics
   getUserStats = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     try {
@@ -29,27 +52,45 @@ export class AdminController {
 
   // Get all users (with pagination)
   getAllUsers = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
-
     try {
-      const users = await userRepository.findActiveUsers(skip, limit);
-      const totalUsers = await userRepository.getActiveUserCount();
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const skip = (page - 1) * limit;
+      
+      console.log(`[DEBUG] Admin getAllUsers - Starting with page: ${page}, limit: ${limit}, skip: ${skip}`);
+      
+      // Use direct Prisma query with explicit field selection
+      const users = await prisma.user.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          username: true,
+          fullname: true,
+          email: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      });
+      
+      console.log(`[DEBUG] Admin getAllUsers - Found ${users.length} users`);
+      
+      // Get total count
+      const totalUsers = await prisma.user.count({
+        where: { isActive: true },
+      });
+      
+      console.log(`[DEBUG] Admin getAllUsers - Total users count: ${totalUsers}`);
+      
       const totalPages = Math.ceil(totalUsers / limit);
       
       res.status(200).json({
         success: true,
         data: {
-          users: users.map(user => ({
-            id: user.id,
-            username: user.username,
-            fullname: user.fullname,
-            email: user.email,
-            isActive: user.isActive,
-            createdAt: user.createdAt,
-            updatedAt: user.updatedAt,
-          })),
+          users,
           pagination: {
             currentPage: page,
             totalPages,
@@ -61,7 +102,21 @@ export class AdminController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      throw error;
+      console.error('[ERROR] Admin getAllUsers - Caught error:', error);
+      if (error instanceof Error) {
+        console.error('[ERROR] Admin getAllUsers - Error message:', error.message);
+        console.error('[ERROR] Admin getAllUsers - Error stack:', error.stack);
+      }
+      
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'An unexpected error occurred during query validation',
+          details: error instanceof Error ? error.message : String(error),
+        },
+        timestamp: new Date().toISOString(),
+      });
     }
   });
 

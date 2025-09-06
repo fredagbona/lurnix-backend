@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscription Confirmation - Lurnix</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .header img {
+      max-height: 60px;
+    }
+    .content {
+      padding: 30px 20px;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 12px;
+      color: #666;
+      border-top: 1px solid #eee;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #4F46E5;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+    .button:hover {
+      background-color: #4338CA;
+    }
+    .subscription-details {
+      background-color: #f0f7ff;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .subscription-details h3 {
+      margin-top: 0;
+      color: #2563eb;
+    }
+    .feature-list {
+      margin: 15px 0;
+      padding-left: 20px;
+    }
+    .feature-list li {
+      margin-bottom: 8px;
+    }
+    .price {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2563eb;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    table th, table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    table th {
+      background-color: #f9fafb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="{{logoUrl}}" alt="Lurnix Logo">
+    </div>
+    <div class="content">
+      <h1>Thank You for Your Subscription!</h1>
+      <p>Hi {{name}},</p>
+      <p>Thank you for subscribing to Lurnix! Your subscription has been successfully processed, and your account has been upgraded to <strong>{{planName}}</strong>.</p>
+      
+      <div class="subscription-details">
+        <h3>Subscription Details</h3>
+        <table>
+          <tr>
+            <th>Plan</th>
+            <td>{{planName}}</td>
+          </tr>
+          <tr>
+            <th>Billing Cycle</th>
+            <td>{{billingCycle}}</td>
+          </tr>
+          <tr>
+            <th>Amount</th>
+            <td class="price">{{currency}}{{amount}}</td>
+          </tr>
+          <tr>
+            <th>Next Billing Date</th>
+            <td>{{nextBillingDate}}</td>
+          </tr>
+          <tr>
+            <th>Payment Method</th>
+            <td>{{paymentMethod}}</td>
+          </tr>
+        </table>
+        
+        <h3>Plan Features</h3>
+        <ul class="feature-list">
+          {{#each features}}
+            <li>{{this}}</li>
+          {{/each}}
+        </ul>
+      </div>
+      
+      <p>You can manage your subscription, update payment details, or cancel at any time from your account settings.</p>
+      
+      <div style="text-align: center;">
+        <a href="{{accountUrl}}" class="button">Manage Subscription</a>
+      </div>
+      
+      <p>If you have any questions about your subscription or need assistance, our support team is here to help.</p>
+      
+      <p>Happy learning!</p>
+      <p>The Lurnix Team</p>
+    </div>
+    <div class="footer">
+      <p>&copy; {{currentYear}} Lurnix. All rights reserved.</p>
+      <p>If you have any questions, please contact our support team at <a href="mailto:support@lurnix.com">support@lurnix.com</a></p>
+      <p><small>This email was sent to {{email}}. You're receiving this email because you have an active subscription with Lurnix.</small></p>
+    </div>
+  </div>
+</body>
+</html>

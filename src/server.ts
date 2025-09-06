@@ -4,9 +4,10 @@ import { setupSwagger } from './config/swagger';
 import { config, validateEnvironment, getEnvironmentInfo, logConfiguration } from './config/environment';
 import { configureMiddleware, configureErrorHandling } from './middlewares/middlewareConfig';
 import { scheduledTasksService } from './services/scheduledTasksService';
-import { emailService } from './services/emailService';
+import { emailService } from './services/emailService.js';
 import { errorMonitoringService } from './services/errorMonitoringService';
 import { healthCheckService } from './services/healthCheckService';
+import { adminSeedService } from './services/adminSeedService.js';
 import { prisma } from './prisma/client';
 
 // Validate environment configuration
@@ -100,7 +101,7 @@ scheduledTasksService.start();
 
 const PORT = config.PORT;
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log('🚀 Lurnix API Server Started');
   console.log('─'.repeat(50));
   console.log(`🌐 Server running on port ${PORT}`);
@@ -110,7 +111,15 @@ const server = app.listen(PORT, () => {
   console.log(`📊 System Info: http://localhost:${PORT}/system-info`);
   console.log(`🌍 Environment: ${config.NODE_ENV}`);
   console.log(`📧 Email Service: ${config.EMAIL_ENABLED ? 'Enabled' : 'Disabled'}`);
+  console.log(`👤 Admin Seed: ${config.ADMIN_SEED_ENABLED ? 'Enabled' : 'Disabled'}`);
   console.log('─'.repeat(50));
+  
+  // Seed default admin if enabled
+  try {
+    await adminSeedService.seedDefaultAdmin();
+  } catch (error) {
+    console.error('❌ Error seeding default admin:', error);
+  }
   
   // Perform initial health check
   healthCheckService.performHealthCheck()

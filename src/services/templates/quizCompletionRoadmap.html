@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Personalized Learning Roadmap - Lurnix</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .header img {
+      max-height: 60px;
+    }
+    .content {
+      padding: 30px 20px;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 12px;
+      color: #666;
+      border-top: 1px solid #eee;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #4F46E5;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+    .button:hover {
+      background-color: #4338CA;
+    }
+    .roadmap-preview {
+      background-color: #f0f7ff;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .roadmap-preview h3 {
+      color: #2563eb;
+      margin-top: 0;
+    }
+    .learning-style {
+      display: inline-block;
+      background-color: #e0e7ff;
+      color: #4338ca;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 14px;
+      margin-right: 5px;
+      margin-bottom: 5px;
+    }
+    .milestone {
+      border-left: 3px solid #4F46E5;
+      padding-left: 15px;
+      margin: 15px 0;
+    }
+    .milestone h4 {
+      margin-bottom: 5px;
+      color: #4F46E5;
+    }
+    .milestone p {
+      margin-top: 5px;
+      color: #4b5563;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="{{logoUrl}}" alt="Lurnix Logo">
+    </div>
+    <div class="content">
+      <h1>Your Personalized Learning Roadmap is Ready!</h1>
+      <p>Hi {{name}},</p>
+      <p>Thank you for completing the learning style quiz! Based on your responses, we've created a personalized learning roadmap tailored to your goals, experience level, and preferred learning style.</p>
+      
+      <div class="roadmap-preview">
+        <h3>Your Learning Profile</h3>
+        <p><strong>Primary Learning Style:</strong> 
+          <span class="learning-style">{{primaryLearningStyle}}</span>
+        </p>
+        <p><strong>Experience Level:</strong> {{experienceLevel}}</p>
+        <p><strong>Learning Goal:</strong> {{learningGoal}}</p>
+        <p><strong>Time Commitment:</strong> {{timeCommitment}}</p>
+        <p><strong>Target Technology Stack:</strong> {{targetStack}}</p>
+        
+        <h3>Roadmap Preview</h3>
+        <div class="milestone">
+          <h4>Milestone 1: {{milestone1Title}}</h4>
+          <p>{{milestone1Description}}</p>
+        </div>
+        <div class="milestone">
+          <h4>Milestone 2: {{milestone2Title}}</h4>
+          <p>{{milestone2Description}}</p>
+        </div>
+        <div class="milestone">
+          <h4>Milestone 3: {{milestone3Title}}</h4>
+          <p>{{milestone3Description}}</p>
+        </div>
+      </div>
+      
+      <p>Your complete roadmap includes detailed learning resources, practice projects, and assessments for each milestone.</p>
+      
+      <div style="text-align: center;">
+        <a href="{{roadmapUrl}}" class="button">View Full Roadmap</a>
+      </div>
+      
+      <p>We recommend starting with the first milestone and tracking your progress in your dashboard. As you complete each milestone, you'll build the skills and confidence needed for the next step in your learning journey.</p>
+      
+      <p>Happy learning!</p>
+      <p>The Lurnix Team</p>
+    </div>
+    <div class="footer">
+      <p>&copy; {{currentYear}} Lurnix. All rights reserved.</p>
+      <p>If you have any questions, please contact our support team at <a href="mailto:support@lurnix.com">support@lurnix.com</a></p>
+      <p><small>This email was sent to {{email}}. You're receiving this email because you recently completed the learning style quiz on Lurnix.</small></p>
+    </div>
+  </div>
+</body>
+</html>

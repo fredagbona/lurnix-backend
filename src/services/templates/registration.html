@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Lurnix!</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .header img {
+      max-height: 60px;
+    }
+    .content {
+      padding: 30px 20px;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 12px;
+      color: #666;
+      border-top: 1px solid #eee;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #4F46E5;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+    .button:hover {
+      background-color: #4338CA;
+    }
+    .verification-code {
+      font-size: 24px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      text-align: center;
+      margin: 20px 0;
+      padding: 10px;
+      background-color: #f0f7ff;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="{{logoUrl}}" alt="Lurnix Logo">
+    </div>
+    <div class="content">
+      <h1>Welcome to Lurnix!</h1>
+      <p>Hi {{name}},</p>
+      <p>Thank you for registering with Lurnix! We're excited to have you join our community of smart learners.</p>
+      
+      <p>Please verify your email address by clicking the button below:</p>
+      <div style="text-align: center;">
+        <a href="{{verificationUrl}}" class="button">Verify Email Address</a>
+      </div>
+      
+      <p>This verification link will expire in 24 hours.</p>
+      
+      <p>Here's what you can do next:</p>
+      <ul>
+        <li>Complete your profile</li>
+        <li>Take our learning style quiz</li>
+        <li>Start learning with your personnalized roadmap</li>
+      </ul>
+      
+      <p>If you have any questions or need assistance, our support team is here to help.</p>
+      
+      <p>Happy learning!</p>
+      <p>The Lurnix Team</p>
+    </div>
+    <div class="footer">
+      <p>&copy; {{currentYear}} Lurnix. All rights reserved.</p>
+      <p>If you have any questions, please contact our support team at <a href="mailto:support@lurnix.com">support@lurnix.com</a></p>
+      <p><small>This email was sent to {{email}}. If you didn't register for a Lurnix account, please ignore this email.</small></p>
+    </div>
+  </div>
+</body>
+</html>

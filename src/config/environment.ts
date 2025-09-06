@@ -28,10 +28,14 @@ export interface EnvironmentConfig {
   
   // Email Configuration
   EMAIL_ENABLED: boolean;
-  MAILZEET_API_KEY: string;
-  MAILZEET_API_URL: string;
-  FROM_EMAIL: string;
-  FROM_NAME: string;
+  EMAIL_HOST: string;
+  EMAIL_PORT: number;
+  EMAIL_SECURE: boolean;
+  EMAIL_USER: string;
+  EMAIL_PASSWORD: string;
+  EMAIL_FROM_ADDRESS: string;
+  EMAIL_FROM_NAME: string;
+  LOGO_URL: string;
   
   // Frontend Configuration
   FRONTEND_URL: string;
@@ -41,6 +45,12 @@ export interface EnvironmentConfig {
   BCRYPT_ROUNDS: number;
   RATE_LIMIT_WINDOW: number;
   RATE_LIMIT_MAX: number;
+  
+  // Admin Seed Configuration
+  ADMIN_SEED_ENABLED: boolean;
+  ADMIN_SEED_EMAIL: string;
+  ADMIN_SEED_PASSWORD: string;
+  ADMIN_SEED_NAME: string;
   
   // Monitoring Configuration
   LOG_LEVEL: string;
@@ -80,10 +90,14 @@ export const config: EnvironmentConfig = {
   
   // Email Configuration
   EMAIL_ENABLED: process.env.EMAIL_ENABLED !== 'false',
-  MAILZEET_API_KEY: process.env.MAILZEET_API_KEY || '',
-  MAILZEET_API_URL: process.env.MAILZEET_API_URL || 'https://api.mailzeet.com/v1/mails',
-  FROM_EMAIL: process.env.FROM_EMAIL || 'noreply@lurnix.com',
-  FROM_NAME: process.env.FROM_NAME || 'Lurnix',
+  EMAIL_HOST: process.env.EMAIL_HOST || 'smtp.example.com',
+  EMAIL_PORT: parseInt(process.env.EMAIL_PORT || '587', 10),
+  EMAIL_SECURE: process.env.EMAIL_SECURE === 'true',
+  EMAIL_USER: process.env.EMAIL_USER || '',
+  EMAIL_PASSWORD: process.env.EMAIL_PASSWORD || '',
+  EMAIL_FROM_ADDRESS: process.env.EMAIL_FROM_ADDRESS || 'noreply@lurnix.com',
+  EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || 'Lurnix',
+  LOGO_URL: process.env.LOGO_URL || 'https://lurnix.com/logo.png',
   
   // Frontend Configuration
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
@@ -93,6 +107,12 @@ export const config: EnvironmentConfig = {
   BCRYPT_ROUNDS: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
   RATE_LIMIT_WINDOW: parseInt(process.env.RATE_LIMIT_WINDOW || '900000', 10), // 15 minutes
   RATE_LIMIT_MAX: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+  
+  // Admin Seed Configuration
+  ADMIN_SEED_ENABLED: process.env.ADMIN_SEED_ENABLED === 'true',
+  ADMIN_SEED_EMAIL: process.env.ADMIN_SEED_EMAIL || '',
+  ADMIN_SEED_PASSWORD: process.env.ADMIN_SEED_PASSWORD || '',
+  ADMIN_SEED_NAME: process.env.ADMIN_SEED_NAME || '',
   
   // Monitoring Configuration
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
@@ -121,11 +141,30 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
   
   // Validate email configuration if enabled
   if (config.EMAIL_ENABLED) {
-    if (!config.MAILZEET_API_KEY) {
-      errors.push('MAILZEET_API_KEY is required when EMAIL_ENABLED is true');
+    if (!config.EMAIL_HOST) {
+      errors.push('EMAIL_HOST is required when EMAIL_ENABLED is true');
     }
-    if (!config.MAILZEET_API_URL) {
-      errors.push('MAILZEET_API_URL is required when EMAIL_ENABLED is true');
+    if (!config.EMAIL_PORT) {
+      errors.push('EMAIL_PORT is required when EMAIL_ENABLED is true');
+    }
+    if (!config.EMAIL_USER) {
+      errors.push('EMAIL_USER is required when EMAIL_ENABLED is true');
+    }
+    if (!config.EMAIL_PASSWORD) {
+      errors.push('EMAIL_PASSWORD is required when EMAIL_ENABLED is true');
+    }
+  }
+  
+  // Validate admin seed configuration if enabled
+  if (config.ADMIN_SEED_ENABLED) {
+    if (!config.ADMIN_SEED_EMAIL) {
+      errors.push('ADMIN_SEED_EMAIL is required when ADMIN_SEED_ENABLED is true');
+    }
+    if (!config.ADMIN_SEED_PASSWORD) {
+      errors.push('ADMIN_SEED_PASSWORD is required when ADMIN_SEED_ENABLED is true');
+    }
+    if (!config.ADMIN_SEED_NAME) {
+      errors.push('ADMIN_SEED_NAME is required when ADMIN_SEED_ENABLED is true');
     }
   }
   
@@ -154,6 +193,17 @@ export function logConfiguration(): void {
     console.log(`   DATABASE_URL: ${config.DATABASE_URL ? '✓ Configured' : '✗ Missing'}`);
     console.log(`   JWT_SECRET: ${config.JWT_SECRET ? '✓ Configured' : '✗ Missing'}`);
     console.log(`   EMAIL_ENABLED: ${config.EMAIL_ENABLED}`);
+    if (config.EMAIL_ENABLED) {
+      console.log(`   EMAIL_HOST: ${config.EMAIL_HOST ? '✓ Configured' : '✗ Missing'}`);
+      console.log(`   EMAIL_USER: ${config.EMAIL_USER ? '✓ Configured' : '✗ Missing'}`);
+      console.log(`   EMAIL_PASSWORD: ${config.EMAIL_PASSWORD ? '✓ Configured' : '✗ Missing'}`);
+    }
+    console.log(`   ADMIN_SEED_ENABLED: ${config.ADMIN_SEED_ENABLED}`);
+    if (config.ADMIN_SEED_ENABLED) {
+      console.log(`   ADMIN_SEED_EMAIL: ${config.ADMIN_SEED_EMAIL ? '✓ Configured' : '✗ Missing'}`);
+      console.log(`   ADMIN_SEED_NAME: ${config.ADMIN_SEED_NAME ? '✓ Configured' : '✗ Missing'}`);
+      console.log(`   ADMIN_SEED_PASSWORD: ${config.ADMIN_SEED_PASSWORD ? '✓ Configured' : '✗ Missing'}`);
+    }
     console.log(`   FRONTEND_URL: ${config.FRONTEND_URL}`);
     console.log(`   ALLOWED_ORIGINS: ${config.ALLOWED_ORIGINS.join(', ')}`);
   }
@@ -184,15 +234,23 @@ export const {
   JWT_EXPIRES_IN,
   JWT_REFRESH_EXPIRES_IN,
   EMAIL_ENABLED,
-  MAILZEET_API_KEY,
-  MAILZEET_API_URL,
-  FROM_EMAIL,
-  FROM_NAME,
+  EMAIL_HOST,
+  EMAIL_PORT,
+  EMAIL_SECURE,
+  EMAIL_USER,
+  EMAIL_PASSWORD,
+  EMAIL_FROM_ADDRESS,
+  EMAIL_FROM_NAME,
+  LOGO_URL,
   FRONTEND_URL,
   ALLOWED_ORIGINS,
   BCRYPT_ROUNDS,
   RATE_LIMIT_WINDOW,
   RATE_LIMIT_MAX,
+  ADMIN_SEED_ENABLED,
+  ADMIN_SEED_EMAIL,
+  ADMIN_SEED_PASSWORD,
+  ADMIN_SEED_NAME,
   LOG_LEVEL,
   ENABLE_REQUEST_LOGGING,
   ENABLE_ERROR_MONITORING

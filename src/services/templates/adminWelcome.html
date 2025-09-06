@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Lurnix Admin Panel</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background-color: #4a154b;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      border-radius: 5px 5px 0 0;
+    }
+    .content {
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-top: none;
+      border-radius: 0 0 5px 5px;
+    }
+    .footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+    }
+    .button {
+      display: inline-block;
+      background-color: #4a154b;
+      color: white;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+    .info {
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="{{logoUrl}}" alt="Lurnix Logo" style="max-height: 60px;">
+    <h1>Welcome to Lurnix Admin Panel</h1>
+  </div>
+  
+  <div class="content">
+    <p>Hello {{name}},</p>
+    
+    <p>Your admin account has been created for the Lurnix platform. You now have access to the admin panel with {{role}} privileges.</p>
+    
+    <div class="info">
+      <p><strong>Your account details:</strong></p>
+      <p>Email: {{email}}</p>
+      <p>Role: {{role}}</p>
+      <p>Created by: {{createdBy}}</p>
+    </div>
+    
+    <p>You can log in to the admin panel using the link below:</p>
+    
+    <div style="text-align: center;">
+      <a href="{{loginUrl}}" class="button">Access Admin Panel</a>
+    </div>
+    
+    <p>For security reasons, we recommend changing your password after your first login.</p>
+    
+    <p>If you have any questions or need assistance, please contact the system administrator.</p>
+    
+    <p>Best regards,<br>The Lurnix Team</p>
+  </div>
+  
+  <div class="footer">
+    <p>&copy; {{currentYear}} Lurnix. All rights reserved.</p>
+    <p>This email was sent to {{email}}. If you believe this was sent in error, please contact {{supportEmail}}.</p>
+  </div>
+</body>
+</html>

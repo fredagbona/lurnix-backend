@@ -71,6 +71,16 @@ export const resetPasswordSchema = z.object({
   newPassword: passwordSchema,
 });
 
+// Email verification validation schema
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1, 'Verification token is required'),
+});
+
+// Resend verification email validation schema
+export const resendVerificationSchema = z.object({
+  email: emailSchema,
+});
+
 // Delete account validation schema
 export const deleteAccountSchema = z.object({
   password: z.string().min(1, 'Password confirmation is required'),

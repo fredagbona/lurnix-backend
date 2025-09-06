@@ -8,6 +8,7 @@ export function toUserProfile(user: User): UserProfile {
     fullname: user.fullname,
     email: user.email,
     isActive: user.isActive,
+    isVerified: user.isVerified ?? false,
     createdAt: user.createdAt,
   };
 }
@@ -29,6 +30,15 @@ export function isResetTokenValid(user: User): boolean {
   }
   
   return new Date() < user.resetTokenExpiry;
+}
+
+// Check if verification token is valid and not expired
+export function isVerificationTokenValid(user: User): boolean {
+  if (!user.verificationToken || !user.verificationTokenExpiry) {
+    return false;
+  }
+  
+  return new Date() < user.verificationTokenExpiry;
 }
 
 // Sanitize user data for logging (removes sensitive information)

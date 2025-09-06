@@ -1,5 +1,6 @@
 import { prisma } from '../prisma/client.js';
 import { User, CreateUserData, UpdateUserData } from '../types/auth.js';
+import { mapPrismaUserToUser, mapPrismaUsersToUsers } from '../utils/prismaMappers.js';
 
 // Custom error classes for repository operations
 export class UserRepositoryError extends Error {
@@ -34,9 +35,10 @@ export class UserRepository {
           email: data.email,
           password_hash: data.password_hash,
           isActive: true,
+          isVerified: data.isVerified ?? false,
         },
       });
-      return user;
+      return mapPrismaUserToUser(user);
     } catch (error: any) {
       if (error.code === 'P2002') {
         // Unique constraint violation
@@ -54,7 +56,7 @@ export class UserRepository {
       const user = await prisma.user.findUnique({
         where: { id },
       });
-      return user;
+      return user ? mapPrismaUserToUser(user) : null;
     } catch (error: any) {
       throw new UserRepositoryError(`Failed to find user by ID: ${error.message}`);
     }
@@ -69,7 +71,7 @@ export class UserRepository {
           isActive: true,
         },
       });
-      return user;
+      return user ? mapPrismaUserToUser(user) : null;
     } catch (error: any) {
       throw new UserRepositoryError(`Failed to find active user by ID: ${error.message}`);
     }
@@ -81,7 +83,7 @@ export class UserRepository {
       const user = await prisma.user.findUnique({
         where: { email: email.toLowerCase() },
       });
-      return user;
+      return user ? mapPrismaUserToUser(user) : null;
     } catch (error: any) {
       throw new UserRepositoryError(`Failed to find user by email: ${error.message}`);
     }
@@ -96,7 +98,7 @@ export class UserRepository {
           isActive: true,
         },
       });
-      return user;
+      return user ? mapPrismaUserToUser(user) : null;
     } catch (error: any) {
       throw new UserRepositoryError(`Failed to find active user by email: ${error.message}`);
     }
@@ -108,7 +110,7 @@ export class UserRepository {
       const user = await prisma.user.findUnique({
         where: { username: username.toLowerCase() },
       });
-      return user;
+      return user ? mapPrismaUserToUser(user) : null;
     } catch (error: any) {
       throw new UserRepositoryError(`Failed to find user by username: ${error.message}`);
     }
@@ -123,7 +125,7 @@ export class UserRepository {
           isActive: true,
         },
       });
-      return user;
+      return user ? mapPrismaUserToUser(user) : null;
     } catch (error: any) {
       throw new UserRepositoryError(`Failed to find active user by username: ${error.message}`);
     }
@@ -141,7 +143,7 @@ export class UserRepository {
           },
         },
       });
-      return user;
+      return user ? mapPrismaUserToUser(user) : null;
     } catch (error: any) {
       throw new UserRepositoryError(`Failed to find user by reset token: ${error.message}`);
     }
@@ -157,7 +159,7 @@ export class UserRepository {
           updatedAt: new Date(),
         },
       });
-      return user;
+      return mapPrismaUserToUser(user);
     } catch (error: any) {
       if (error.code === 'P2025') {
         throw new UserNotFoundError(id);
@@ -216,7 +218,7 @@ export class UserRepository {
           updatedAt: new Date(),
         },
       });
-      return user;
+      return mapPrismaUserToUser(user);
     } catch (error: any) {
       if (error.code === 'P2025') {
         throw new UserNotFoundError(id);
@@ -258,11 +260,18 @@ export class UserRepository {
   // Get user count (active users only)
   async getActiveUserCount(): Promise<number> {
     try {
+      console.log('[DEBUG] UserRepository.getActiveUserCount - Starting count query');
       const count = await prisma.user.count({
         where: { isActive: true },
       });
+      console.log(`[DEBUG] UserRepository.getActiveUserCount - Count result: ${count}`);
       return count;
     } catch (error: any) {
+      console.error('[ERROR] UserRepository.getActiveUserCount - Error:', error);
+      console.error('[ERROR] UserRepository.getActiveUserCount - Error message:', error.message);
+      if (error.stack) {
+        console.error('[ERROR] UserRepository.getActiveUserCount - Stack trace:', error.stack);
+      }
       throw new UserRepositoryError(`Failed to get user count: ${error.message}`);
     }
   }
@@ -270,14 +279,31 @@ export class UserRepository {
   // Get all active users (with pagination)
   async findActiveUsers(skip: number = 0, take: number = 10): Promise<User[]> {
     try {
+      console.log(`[DEBUG] UserRepository.findActiveUsers - Starting query with skip: ${skip}, take: ${take}`);
       const users = await prisma.user.findMany({
         where: { isActive: true },
         skip,
         take,
         orderBy: { createdAt: 'desc' },
       });
-      return users;
+      console.log(`[DEBUG] UserRepository.findActiveUsers - Found ${users.length} users`);
+      
+      console.log('[DEBUG] UserRepository.findActiveUsers - About to map Prisma users to User type');
+      try {
+        const mappedUsers = mapPrismaUsersToUsers(users);
+        console.log('[DEBUG] UserRepository.findActiveUsers - Successfully mapped users');
+        return mappedUsers;
+      } catch (mapError) {
+        console.error('[ERROR] UserRepository.findActiveUsers - Error mapping users:', mapError);
+        console.error('[ERROR] UserRepository.findActiveUsers - First user data:', users.length > 0 ? JSON.stringify(users[0], null, 2) : 'No users');
+        throw mapError;
+      }
     } catch (error: any) {
+      console.error('[ERROR] UserRepository.findActiveUsers - Error:', error);
+      console.error('[ERROR] UserRepository.findActiveUsers - Error message:', error.message);
+      if (error.stack) {
+        console.error('[ERROR] UserRepository.findActiveUsers - Stack trace:', error.stack);
+      }
       throw new UserRepositoryError(`Failed to find active users: ${error.message}`);
     }
   }
@@ -335,6 +361,64 @@ export class UserRepository {
         throw new UserNotFoundError(id);
       }
       throw new UserRepositoryError(`Failed to clear reset token: ${error.message}`);
+    }
+  }
+
+  // Set verification token
+  async setVerificationToken(id: string, token: string, expiresAt: Date): Promise<void> {
+    try {
+      await prisma.user.update({
+        where: { id },
+        data: {
+          verificationToken: token,
+          verificationTokenExpiry: expiresAt,
+          updatedAt: new Date(),
+        },
+      });
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new UserNotFoundError(id);
+      }
+      throw new UserRepositoryError(`Failed to set verification token: ${error.message}`);
+    }
+  }
+
+  // Find user by verification token
+  async findByVerificationToken(token: string): Promise<User | null> {
+    try {
+      const user = await prisma.user.findFirst({
+        where: { 
+          verificationToken: token,
+          isActive: true,
+          verificationTokenExpiry: {
+            gt: new Date(), // Token must not be expired
+          },
+        },
+      });
+      return user ? mapPrismaUserToUser(user) : null;
+    } catch (error: any) {
+      throw new UserRepositoryError(`Failed to find user by verification token: ${error.message}`);
+    }
+  }
+
+  // Verify user's email
+  async verifyEmail(id: string): Promise<User> {
+    try {
+      const user = await prisma.user.update({
+        where: { id },
+        data: {
+          isVerified: true,
+          verificationToken: null,
+          verificationTokenExpiry: null,
+          updatedAt: new Date(),
+        },
+      });
+      return mapPrismaUserToUser(user);
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new UserNotFoundError(id);
+      }
+      throw new UserRepositoryError(`Failed to verify user email: ${error.message}`);
     }
   }
 }
