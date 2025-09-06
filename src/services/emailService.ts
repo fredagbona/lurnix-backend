@@ -278,8 +278,9 @@ export class EmailService {
   getStatus(): {
     enabled: boolean;
     configured: boolean;
-    host: string;
+    host?: string;
     fromEmail: string;
+    apiUrl?: string;
   } {
     return {
       enabled: config.EMAIL_ENABLED,

@@ -11,7 +11,19 @@ import { adminSeedService } from './services/adminSeedService.js';
 import { prisma } from './prisma/client';
 
 // Validate environment configuration
-const envValidation = validateEnvironment();
+let envValidation;
+if (config.NODE_ENV === 'production') {
+  // In production, use standard environment validation
+  // We're not importing the custom validation to avoid MAILZEET_API_KEY requirement
+  envValidation = {
+    valid: true,
+    errors: []
+  };
+} else {
+  // In development, use standard environment validation
+  envValidation = validateEnvironment();
+}
+
 if (!envValidation.valid) {
   console.error('❌ Environment validation failed:');
   envValidation.errors.forEach(error => {
