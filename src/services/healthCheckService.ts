@@ -99,7 +99,12 @@ export class HealthCheckService {
           status: 'degraded',
           message: 'Email service is not properly configured',
           responseTime,
-          details: emailStatus
+          details: {
+            enabled: emailStatus.enabled,
+            configured: emailStatus.configured,
+            host: emailStatus.host,
+            fromEmail: emailStatus.fromEmail
+          }
         };
       }
       
@@ -107,7 +112,12 @@ export class HealthCheckService {
         status: 'healthy',
         message: 'Email service is healthy',
         responseTime,
-        details: emailStatus
+        details: {
+          enabled: emailStatus.enabled,
+          configured: emailStatus.configured,
+          host: emailStatus.host,
+          fromEmail: emailStatus.fromEmail
+        }
       };
     } catch (error) {
       return {
