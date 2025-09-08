@@ -1,55 +1,81 @@
-- name: Remote deploy (git pull, migrate, build, reload)
-  run: |
-    ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} bash -lc '
-      set -euo pipefail
+name: Deploy lurnix-backend
 
-      PROJECT_DIR="/var/www/lurnix/lurnix-backend"
-      cd "$PROJECT_DIR"
+on:
+  push:
+    branches:
+      - prod
 
-      # Ensure .env link points to shared
-      ln -sfn "$PROJECT_DIR/shared/.env" .env
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: true
 
-      # Make sure we are on prod branch and get latest
-      if [ ! -d .git ]; then
-        echo "ERROR: $PROJECT_DIR is not a git repository."
-        exit 1
-      fi
-      git fetch --all --prune
-      git checkout prod
-      git reset --hard origin/prod
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-      # If you use nvm on the server, uncomment these 3 lines:
-      # export NVM_DIR="$HOME/.nvm"
-      # [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-      # nvm use --lts >/dev/null 2>&1 || true
+    steps:
+      - name: Checkout (for metadata only)
+        uses: actions/checkout@v4
 
-      # Install deps deterministically
-      npm ci
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # Prisma (prod-safe migrate)
-      npx prisma generate
-      npm run db:migrate || npx prisma migrate deploy
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
 
-      # Optional seed (reads from GH secret; defaults empty)
-      SEED="${SEED:-}"
-      if [ "$SEED" = "true" ]; then
-        echo "Running seed..."
-        npm run db:seed || echo "Seed failed or skipped."
-      fi
+      - name: Remote deploy (git pull, migrate, build, reload)
+        run: |
+          ssh "${{ secrets.DEPLOY_USER }}"@"${{ secrets.DEPLOY_HOST }}" SEED="${{ secrets.SEED }}" bash -lc 'set -euo pipefail
+            PROJECT_DIR="/var/www/lurnix/lurnix-backend"
+            cd "$PROJECT_DIR"
 
-      # Build (postbuild should copy templates; fallback provided)
-      npm run build
-      [ -d src/services/templates ] && cp -r src/services/templates dist/services || true
+            # Ensure .env symlink points to shared
+            ln -sfn "$PROJECT_DIR/shared/.env" .env
 
-      # PM2 start or reload
-      if pm2 describe lurnix-backend >/dev/null 2>&1; then
-        pm2 reload lurnix-backend --update-env
-      else
-        pm2 start ecosystem.config.js --env production
-      fi
+            # Git update to prod
+            if [ ! -d .git ]; then
+              echo "ERROR: $PROJECT_DIR is not a git repository."
+              exit 1
+            fi
+            git fetch --all --prune
+            git checkout prod
+            git reset --hard origin/prod
 
-      pm2 save
+            # If node is installed via nvm, make it available in non-login shell
+            if [ -s "$HOME/.nvm/nvm.sh" ]; then
+              . "$HOME/.nvm/nvm.sh"
+              nvm use --lts >/dev/null 2>&1 || true
+            fi
 
-      echo "✅ Deploy complete."
-      pm2 status | sed -n "1,20p"
-    '
+            # Install deps deterministically
+            npm ci
+
+            # Prisma (prod-safe)
+            npx prisma generate
+            npm run db:migrate || npx prisma migrate deploy
+
+            # Optional seed (set SEED repo secret to "true" to enable)
+            if [ "${SEED:-}" = "true" ]; then
+              echo "Running seed..."
+              npm run db:seed || echo "Seed failed or skipped."
+            fi
+
+            # Build (postbuild should copy templates; keep fallback)
+            npm run build
+            [ -d src/services/templates ] && cp -r src/services/templates dist/services || true
+
+            # PM2 start or reload
+            if pm2 describe lurnix-backend >/dev/null 2>&1; then
+              pm2 reload lurnix-backend --update-env
+            else
+              pm2 start ecosystem.config.js --env production
+            fi
+            pm2 save
+
+            echo "✅ Deploy complete."
+            pm2 status | sed -n "1,20p"
+          '
