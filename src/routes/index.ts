@@ -7,6 +7,9 @@ import quizRoutes from "./quizRoutes";
 import roadmapRoutes from "./roadmapRoutes";
 import quizAdminRoutes from "./quizAdminRoutes";
 import subscriptionRoutes from "./subscriptionRoutes";
+import aiRoutes from "./aiRoutes";
+import aiRoadmapRoutes from "./aiRoadmapRoutes";
+import aiProfileRoutes from "./aiProfileRoutes";
 
 const router = Router();
 
@@ -22,6 +25,9 @@ router.use(`${API_VERSION}/quiz`, quizRoutes);
 router.use(`${API_VERSION}/roadmaps`, roadmapRoutes);
 router.use(`${API_VERSION}/admin/quiz`, quizAdminRoutes);
 router.use(`${API_VERSION}/subscriptions`, subscriptionRoutes);
+router.use(`${API_VERSION}/ai`, aiRoutes);
+router.use(`${API_VERSION}/ai/roadmap`, aiRoadmapRoutes);
+router.use(`${API_VERSION}/ai/profile`, aiProfileRoutes);
 
 // Health check endpoint (no auth required)
 router.get("/health", (req, res) => {

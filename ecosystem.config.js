@@ -18,8 +18,8 @@ module.exports = {
       },
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
-      error_file: 'logs/error.log',
-      out_file: 'logs/out.log',
+      error_file: '/var/www/lurnix/lurnix-backend/shared/logs/error.log',
+      out_file: '/var/www/lurnix/lurnix-backend/shared/logs/out.log',
       time: true
     }
   ]

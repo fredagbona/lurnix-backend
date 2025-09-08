@@ -9,8 +9,8 @@ yarn-error.log*
 .env.test
 .env.local
 .env.development.local
-.env.test.local
-.env.production.local
+.env.test
+.env.production
 
 # Build outputs
 dist/
@@ -70,3 +70,4 @@ prisma/dev.db-journal
 
 # Swagger generated files
 swagger.json
+.env.production
