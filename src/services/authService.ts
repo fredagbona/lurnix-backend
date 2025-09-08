@@ -194,7 +194,7 @@ export class AuthService {
         
         // Send verification email
         try {
-          const verificationUrl = `${config.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+          const verificationUrl = `${config.FRONTEND_URL}/auth/verify-email?token=${verificationToken}`;
           await emailService.sendRegistrationEmail(user.email, user.fullname, verificationUrl);
         } catch (emailError) {
           console.error('Failed to send verification email:', emailError);

@@ -56,12 +56,17 @@ export interface EnvironmentConfig {
   LOG_LEVEL: string;
   ENABLE_REQUEST_LOGGING: boolean;
   ENABLE_ERROR_MONITORING: boolean;
+
+  // OpenAI Configuration
+  OPENAI_API_KEY: string;
+  OPENAI_MODEL: string;
 }
 
 // Validate required environment variables
 const requiredEnvVars = [
   'DATABASE_URL',
-  'JWT_SECRET'
+  'JWT_SECRET',
+  'OPENAI_API_KEY'
 ];
 
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
@@ -118,6 +123,10 @@ export const config: EnvironmentConfig = {
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
   ENABLE_REQUEST_LOGGING: process.env.ENABLE_REQUEST_LOGGING !== 'false',
   ENABLE_ERROR_MONITORING: process.env.ENABLE_ERROR_MONITORING !== 'false',
+
+  // OpenAI Configuration
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+  OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4o',
 };
 
 // Environment validation
