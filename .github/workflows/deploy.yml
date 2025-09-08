@@ -1,0 +1,82 @@
+name: Deploy lurnix-backend
+
+on:
+  push:
+    branches: [ "prod" ]
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      PROJECT_DIR: /var/www/lurnix/lurnix-backend
+      SEED: ${{ secrets.SEED }}
+
+    steps:
+      - name: Checkout (for metadata only)
+        uses: actions/checkout@v4
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Remote deploy (git pull, migrate, build, reload)
+        run: |
+          ssh $DEPLOY_USER@$DEPLOY_HOST bash -lc '
+            set -euo pipefail
+
+            cd "$PROJECT_DIR"
+
+            # Ensure .env link points to shared
+            ln -sfn "$PROJECT_DIR/shared/.env" .env
+
+            # Make sure we are on prod branch and get latest
+            if [ ! -d .git ]; then
+              echo "ERROR: $PROJECT_DIR is not a git repository."
+              exit 1
+            fi
+            git fetch --all --prune
+            git checkout prod
+            git reset --hard origin/prod
+
+            # Install deps deterministically
+            npm ci
+
+            # Prisma (prod-safe migrate)
+            npx prisma generate
+            npm run db:migrate || npx prisma migrate deploy
+
+            # Optional seed
+            if [ "${SEED:-}" = "true" ]; then
+              echo "Running seed..."
+              npm run db:seed || echo "Seed failed or skipped."
+            fi
+
+            # Build (your postbuild should copy templates; fallback provided)
+            npm run build
+            [ -d src/services/templates ] && cp -r src/services/templates dist/services || true
+
+            # PM2 start or reload
+            if pm2 describe lurnix-backend >/dev/null 2>&1; then
+              pm2 reload lurnix-backend --update-env
+            else
+              pm2 start ecosystem.config.js --env production
+            fi
+
+            pm2 save
+
+            echo "✅ Deploy complete."
+            pm2 status | sed -n "1,20p"
+          '
