@@ -70,3 +70,4 @@ prisma/dev.db-journal
 
 # Swagger generated files
 swagger.json
+.env.production
