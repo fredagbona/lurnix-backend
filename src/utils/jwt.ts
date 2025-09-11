@@ -31,7 +31,7 @@ export function generateToken(
   payload: Omit<JWTPayload, "iat" | "exp">
 ): string {
   try {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: "24h" });
   } catch (error) {
     throw new JWTError("Failed to generate token");
   }
