@@ -16,13 +16,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Package source (exclude git and node_modules)
+      # Package exactly what's in the repo at HEAD (ignores untracked files)
+      - name: Package source with git archive
         run: |
-          tar -czf repo.tar.gz \
-            --exclude='.git' \
-            --exclude='node_modules' \
-            .
+          git archive --format=tar.gz -o repo.tar.gz HEAD
 
       - name: Start SSH agent
         uses: webfactory/ssh-agent@v0.9.0
@@ -46,7 +46,7 @@ jobs:
             PROJECT_DIR="/var/www/lurnix/lurnix-backend"
             cd "$PROJECT_DIR"
 
-            # Extract new code over the working tree
+            # Extract new code
             tar -xzf repo.tar.gz
             rm -f repo.tar.gz
 
