@@ -19,7 +19,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Package exactly what's in the repo at HEAD (ignores untracked files)
+      # Package exactly the repo content at HEAD (no .git, no node_modules)
       - name: Package source with git archive
         run: |
           git archive --format=tar.gz -o repo.tar.gz HEAD
@@ -36,17 +36,16 @@ jobs:
 
       - name: Upload & deploy on server (extract, install, migrate, build, reload)
         run: |
-          # Upload the packaged source to the server
           scp repo.tar.gz "${{ secrets.DEPLOY_USER }}"@"${{ secrets.DEPLOY_HOST }}":/var/www/lurnix/lurnix-backend/
 
-          # Run deployment commands on the server
           ssh "${{ secrets.DEPLOY_USER }}"@"${{ secrets.DEPLOY_HOST }}" \
             SHA="${{ github.sha }}" SEED="${{ secrets.SEED }}" bash -lc '
             set -euo pipefail
+
             PROJECT_DIR="/var/www/lurnix/lurnix-backend"
             cd "$PROJECT_DIR"
 
-            # Extract new code
+            # Extract new code and tidy
             tar -xzf repo.tar.gz
             rm -f repo.tar.gz
 
@@ -54,39 +53,39 @@ jobs:
             ln -sfn "$PROJECT_DIR/shared/.env" .env
             mkdir -p "$PROJECT_DIR/shared/logs"
 
-            # If node is managed by nvm, load it for this non-login shell
+            # If node comes from nvm, expose it in this non-login shell
             if [ -s "$HOME/.nvm/nvm.sh" ]; then
               . "$HOME/.nvm/nvm.sh"
               nvm use --lts >/dev/null 2>&1 || true
             fi
 
-            # Install dependencies deterministically
+            # Install deps deterministically
             npm ci
 
-            # Prisma: generate client + prod-safe migrations
+            # Prisma: client + prod-safe migrations
             npx prisma generate
             npm run db:migrate || npx prisma migrate deploy
 
-            # Optional seed (set SEED secret to "true" to enable)
+            # Optional seed
             if [ "${SEED:-}" = "true" ]; then
               echo "Running seed..."
               npm run db:seed || echo "Seed failed or skipped."
             fi
 
-            # Build (regenerates swagger; postbuild copies templates)
-            npm run build
+            # Build with increased Node heap (fixes OOM)
+            NODE_OPTIONS="--max-old-space-size=3072" npm run build
 
-            # Safety fallback copy for email templates (in case postbuild is missing)
+            # Safety fallback to ensure templates present
             [ -d src/services/templates ] && cp -r src/services/templates dist/services || true
 
-            # Assert critical build artifacts exist (fail fast if missing)
+            # Assert critical artifacts
             test -d dist/services/templates || { echo "❌ Missing dist/services/templates"; exit 1; }
             test -s swagger.json || { echo "❌ swagger.json missing after build"; exit 1; }
 
-            # Record deployed version for debugging
+            # Write deployed version
             echo "${SHA:-unknown} $(date -Iseconds)" > VERSION
 
-            # Start or reload with PM2
+            # PM2 start/reload
             if pm2 describe lurnix-backend >/dev/null 2>&1; then
               pm2 reload lurnix-backend --update-env
             else
@@ -95,6 +94,5 @@ jobs:
             pm2 save
 
             echo "✅ Deploy complete."
-            echo "Deployed version:"
             head -n1 VERSION || true
           '
