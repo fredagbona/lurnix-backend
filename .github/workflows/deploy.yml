@@ -31,20 +31,18 @@ jobs:
         env:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          SEED_SECRET: ${{ secrets.SEED }}   # optional; can be empty
+          SEED_SECRET: ${{ secrets.SEED }}   # optional; may be empty
         run: |
           set -euo pipefail
 
-          # Build ssh command, include SEED only if provided
-          if [ -n "${SEED_SECRET:-}" ]; then
-            SSH_CMD=(ssh "${DEPLOY_USER}@${DEPLOY_HOST}" SEED="${SEED_SECRET}")
-          else
-            SSH_CMD=(ssh "${DEPLOY_USER}@${DEPLOY_HOST}")
-          fi
+          # Always pass one arg to remote script (empty string if not set)
+          SEED_ARG="${SEED_SECRET:-}"
 
-          # Run the remote script via a single-quoted heredoc (prevents local expansion)
-          "${SSH_CMD[@]}" -T <<'REMOTE'
+          ssh "${DEPLOY_USER}@${DEPLOY_HOST}" bash -s -- "$SEED_ARG" <<'REMOTE'
           set -euo pipefail
+
+          # Read optional SEED as first positional argument
+          SEED="${1:-}"
 
           PROJECT_DIR="/var/www/lurnix/lurnix-backend"
           cd "$PROJECT_DIR"
@@ -60,7 +58,7 @@ jobs:
           git reset --hard origin/prod
           CURRENT_SHA=$(git rev-parse --short HEAD)
 
-          # If Node is via nvm, expose it in this non-login shell
+          # If Node comes via nvm, expose it for this non-login shell
           if [ -s "$HOME/.nvm/nvm.sh" ]; then
             . "$HOME/.nvm/nvm.sh"
             nvm use --lts >/dev/null 2>&1 || true
@@ -73,8 +71,8 @@ jobs:
           npx prisma generate
           npx prisma migrate deploy
 
-          # Optional seed (only if SEED was injected by CI)
-          if [ "${SEED:-}" = "true" ]; then
+          # Optional seed (only when SEED == "true")
+          if [ "$SEED" = "true" ]; then
             echo "Running seed..."
             npm run db:seed || echo "Seed failed or skipped."
           fi
