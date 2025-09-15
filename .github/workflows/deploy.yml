@@ -14,8 +14,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout (for metadata only)
+      - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Package source (exclude git and node_modules)
+        run: |
+          tar -czf repo.tar.gz \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            .
 
       - name: Start SSH agent
         uses: webfactory/ssh-agent@v0.9.0
@@ -27,48 +34,59 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Remote deploy (git pull, migrate, build, reload)
+      - name: Upload & deploy on server (extract, install, migrate, build, reload)
         run: |
-          ssh "${{ secrets.DEPLOY_USER }}"@"${{ secrets.DEPLOY_HOST }}" SEED="${{ secrets.SEED }}" bash -lc 'set -euo pipefail
+          # Upload the packaged source to the server
+          scp repo.tar.gz "${{ secrets.DEPLOY_USER }}"@"${{ secrets.DEPLOY_HOST }}":/var/www/lurnix/lurnix-backend/
+
+          # Run deployment commands on the server
+          ssh "${{ secrets.DEPLOY_USER }}"@"${{ secrets.DEPLOY_HOST }}" \
+            SHA="${{ github.sha }}" SEED="${{ secrets.SEED }}" bash -lc '
+            set -euo pipefail
             PROJECT_DIR="/var/www/lurnix/lurnix-backend"
             cd "$PROJECT_DIR"
 
-            # Ensure .env symlink points to shared
+            # Extract new code over the working tree
+            tar -xzf repo.tar.gz
+            rm -f repo.tar.gz
+
+            # Ensure env & logs
             ln -sfn "$PROJECT_DIR/shared/.env" .env
+            mkdir -p "$PROJECT_DIR/shared/logs"
 
-            # Git update to prod
-            if [ ! -d .git ]; then
-              echo "ERROR: $PROJECT_DIR is not a git repository."
-              exit 1
-            fi
-            git fetch --all --prune
-            git checkout prod
-            git reset --hard origin/prod
-
-            # If node is installed via nvm, make it available in non-login shell
+            # If node is managed by nvm, load it for this non-login shell
             if [ -s "$HOME/.nvm/nvm.sh" ]; then
               . "$HOME/.nvm/nvm.sh"
               nvm use --lts >/dev/null 2>&1 || true
             fi
 
-            # Install deps deterministically
+            # Install dependencies deterministically
             npm ci
 
-            # Prisma (prod-safe)
+            # Prisma: generate client + prod-safe migrations
             npx prisma generate
             npm run db:migrate || npx prisma migrate deploy
 
-            # Optional seed (set SEED repo secret to "true" to enable)
+            # Optional seed (set SEED secret to "true" to enable)
             if [ "${SEED:-}" = "true" ]; then
               echo "Running seed..."
               npm run db:seed || echo "Seed failed or skipped."
             fi
 
-            # Build (postbuild should copy templates; keep fallback)
+            # Build (regenerates swagger; postbuild copies templates)
             npm run build
+
+            # Safety fallback copy for email templates (in case postbuild is missing)
             [ -d src/services/templates ] && cp -r src/services/templates dist/services || true
 
-            # PM2 start or reload
+            # Assert critical build artifacts exist (fail fast if missing)
+            test -d dist/services/templates || { echo "❌ Missing dist/services/templates"; exit 1; }
+            test -s swagger.json || { echo "❌ swagger.json missing after build"; exit 1; }
+
+            # Record deployed version for debugging
+            echo "${SHA:-unknown} $(date -Iseconds)" > VERSION
+
+            # Start or reload with PM2
             if pm2 describe lurnix-backend >/dev/null 2>&1; then
               pm2 reload lurnix-backend --update-env
             else
@@ -77,5 +95,6 @@ jobs:
             pm2 save
 
             echo "✅ Deploy complete."
-            pm2 status | sed -n "1,20p"
+            echo "Deployed version:"
+            head -n1 VERSION || true
           '
