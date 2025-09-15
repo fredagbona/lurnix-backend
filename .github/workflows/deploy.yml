@@ -28,54 +28,66 @@ jobs:
           ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Remote deploy (git fetch/reset, install, migrate, build, reload)
+        env:
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          SEED_SECRET: ${{ secrets.SEED }}   # may be empty; we'll handle it
         run: |
-          ssh "${{ secrets.DEPLOY_USER }}"@"${{ secrets.DEPLOY_HOST }}" SEED="${{ secrets.SEED }}" bash -lc '
-            set -euo pipefail
-            PROJECT_DIR="/var/www/lurnix/lurnix-backend"
-            cd "$PROJECT_DIR"
+          set -euo pipefail
+
+          # Build the optional SEED prefix only if the secret is non-empty.
+          if [ -n "${SEED_SECRET:-}" ]; then
+            REMOTE_PREFIX="SEED=${SEED_SECRET} "
+          else
+            REMOTE_PREFIX=""
+          fi
+
+          ssh "${DEPLOY_USER}"@"${DEPLOY_HOST}" "${REMOTE_PREFIX}bash -lc 'set -euo pipefail
+            PROJECT_DIR=\"/var/www/lurnix/lurnix-backend\"
+            cd \"$PROJECT_DIR\"
 
             # Ensure .env symlink + logs
-            ln -sfn "$PROJECT_DIR/shared/.env" .env
-            mkdir -p "$PROJECT_DIR/shared/logs"
+            ln -sfn \"$PROJECT_DIR/shared/.env\" .env
+            mkdir -p \"$PROJECT_DIR/shared/logs\"
 
-            # Update to latest prod using deploy key in ~/.ssh/config
+            # Update to latest prod using the server deploy key (~/.ssh/config)
             git remote -v
             git fetch --all --prune
             git checkout prod
             git reset --hard origin/prod
-            CURRENT_SHA=$(git rev-parse --short HEAD)
+            CURRENT_SHA=\$(git rev-parse --short HEAD)
 
-            # If Node is via nvm, expose it
-            if [ -s "$HOME/.nvm/nvm.sh" ]; then
-              . "$HOME/.nvm/nvm.sh"
+            # If Node is via nvm, expose it in this non-login shell
+            if [ -s \"\$HOME/.nvm/nvm.sh\" ]; then
+              . \"\$HOME/.nvm/nvm.sh\"
               nvm use --lts >/dev/null 2>&1 || true
             fi
 
-            # Install deps
+            # Install runtime deterministically
             npm ci
 
-            # Prisma
+            # Prisma (prod-safe)
             npx prisma generate
             npx prisma migrate deploy
 
-            # Optional seed
-            if [ "${SEED:-}" = "true" ]; then
-              echo "Running seed..."
-              npm run db:seed || echo "Seed failed or skipped."
+            # Optional seed (only if SEED was injected)
+            if [ \"\${SEED:-}\" = \"true\" ]; then
+              echo \"Running seed...\"
+              npm run db:seed || echo \"Seed failed or skipped.\"
             fi
 
-            # Build with more heap to avoid OOM
-            NODE_OPTIONS="--max-old-space-size=3072" npm run build
+            # Build with larger heap to avoid OOM (exit 137)
+            NODE_OPTIONS=\"--max-old-space-size=4096\" npm run build
 
-            # Fallback to ensure templates are copied
+            # Fallback to ensure templates are present
             [ -d src/services/templates ] && cp -r src/services/templates dist/services || true
 
             # Assert critical artifacts
-            test -d dist/services/templates || { echo "❌ Missing dist/services/templates"; exit 1; }
-            test -s swagger.json || { echo "❌ swagger.json missing after build"; exit 1; }
+            test -d dist/services/templates || { echo \"❌ Missing dist/services/templates\"; exit 1; }
+            test -s swagger.json || { echo \"❌ swagger.json missing after build\"; exit 1; }
 
-            # Write running version
-            echo "${CURRENT_SHA} $(date -Iseconds)" > VERSION
+            # Record running version
+            echo \"\${CURRENT_SHA} \$(date -Iseconds)\" > VERSION
 
             # Start or reload pm2
             if pm2 describe lurnix-backend >/dev/null 2>&1; then
@@ -85,6 +97,6 @@ jobs:
             fi
             pm2 save
 
-            echo "✅ Deploy complete. Version:"
+            echo \"✅ Deploy complete. Version:\"
             cat VERSION
-          '
+          '"
