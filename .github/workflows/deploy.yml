@@ -31,72 +31,75 @@ jobs:
         env:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          SEED_SECRET: ${{ secrets.SEED }}   # may be empty; we'll handle it
+          SEED_SECRET: ${{ secrets.SEED }}   # optional; can be empty
         run: |
           set -euo pipefail
 
-          # Build the optional SEED prefix only if the secret is non-empty.
+          # Build ssh command, include SEED only if provided
           if [ -n "${SEED_SECRET:-}" ]; then
-            REMOTE_PREFIX="SEED=${SEED_SECRET} "
+            SSH_CMD=(ssh "${DEPLOY_USER}@${DEPLOY_HOST}" SEED="${SEED_SECRET}")
           else
-            REMOTE_PREFIX=""
+            SSH_CMD=(ssh "${DEPLOY_USER}@${DEPLOY_HOST}")
           fi
 
-          ssh "${DEPLOY_USER}"@"${DEPLOY_HOST}" "${REMOTE_PREFIX}bash -lc 'set -euo pipefail
-            PROJECT_DIR=\"/var/www/lurnix/lurnix-backend\"
-            cd \"$PROJECT_DIR\"
+          # Run the remote script via a single-quoted heredoc (prevents local expansion)
+          "${SSH_CMD[@]}" -T <<'REMOTE'
+          set -euo pipefail
 
-            # Ensure .env symlink + logs
-            ln -sfn \"$PROJECT_DIR/shared/.env\" .env
-            mkdir -p \"$PROJECT_DIR/shared/logs\"
+          PROJECT_DIR="/var/www/lurnix/lurnix-backend"
+          cd "$PROJECT_DIR"
 
-            # Update to latest prod using the server deploy key (~/.ssh/config)
-            git remote -v
-            git fetch --all --prune
-            git checkout prod
-            git reset --hard origin/prod
-            CURRENT_SHA=\$(git rev-parse --short HEAD)
+          # Ensure env + logs
+          ln -sfn "$PROJECT_DIR/shared/.env" .env
+          mkdir -p "$PROJECT_DIR/shared/logs"
 
-            # If Node is via nvm, expose it in this non-login shell
-            if [ -s \"\$HOME/.nvm/nvm.sh\" ]; then
-              . \"\$HOME/.nvm/nvm.sh\"
-              nvm use --lts >/dev/null 2>&1 || true
-            fi
+          # Update to latest prod (server has deploy key in ~/.ssh/config)
+          git remote -v
+          git fetch --all --prune
+          git checkout prod
+          git reset --hard origin/prod
+          CURRENT_SHA=$(git rev-parse --short HEAD)
 
-            # Install runtime deterministically
-            npm ci
+          # If Node is via nvm, expose it in this non-login shell
+          if [ -s "$HOME/.nvm/nvm.sh" ]; then
+            . "$HOME/.nvm/nvm.sh"
+            nvm use --lts >/dev/null 2>&1 || true
+          fi
 
-            # Prisma (prod-safe)
-            npx prisma generate
-            npx prisma migrate deploy
+          # Install deps deterministically
+          npm ci
 
-            # Optional seed (only if SEED was injected)
-            if [ \"\${SEED:-}\" = \"true\" ]; then
-              echo \"Running seed...\"
-              npm run db:seed || echo \"Seed failed or skipped.\"
-            fi
+          # Prisma (prod-safe)
+          npx prisma generate
+          npx prisma migrate deploy
 
-            # Build with larger heap to avoid OOM (exit 137)
-            NODE_OPTIONS=\"--max-old-space-size=4096\" npm run build
+          # Optional seed (only if SEED was injected by CI)
+          if [ "${SEED:-}" = "true" ]; then
+            echo "Running seed..."
+            npm run db:seed || echo "Seed failed or skipped."
+          fi
 
-            # Fallback to ensure templates are present
-            [ -d src/services/templates ] && cp -r src/services/templates dist/services || true
+          # Build with larger heap to avoid OOM 137
+          NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
-            # Assert critical artifacts
-            test -d dist/services/templates || { echo \"❌ Missing dist/services/templates\"; exit 1; }
-            test -s swagger.json || { echo \"❌ swagger.json missing after build\"; exit 1; }
+          # Safety fallback for email templates
+          [ -d src/services/templates ] && cp -r src/services/templates dist/services || true
 
-            # Record running version
-            echo \"\${CURRENT_SHA} \$(date -Iseconds)\" > VERSION
+          # Assert critical artifacts
+          test -d dist/services/templates || { echo "❌ Missing dist/services/templates"; exit 1; }
+          test -s swagger.json || { echo "❌ swagger.json missing after build"; exit 1; }
 
-            # Start or reload pm2
-            if pm2 describe lurnix-backend >/dev/null 2>&1; then
-              pm2 reload lurnix-backend --update-env
-            else
-              pm2 start ecosystem.config.js --env production
-            fi
-            pm2 save
+          # Record running version
+          echo "${CURRENT_SHA} $(date -Iseconds)" > VERSION
 
-            echo \"✅ Deploy complete. Version:\"
-            cat VERSION
-          '"
+          # Start or reload PM2
+          if pm2 describe lurnix-backend >/dev/null 2>&1; then
+            pm2 reload lurnix-backend --update-env
+          else
+            pm2 start ecosystem.config.js --env production
+          fi
+          pm2 save
+
+          echo "✅ Deploy complete. Version:"
+          cat VERSION
+          REMOTE
