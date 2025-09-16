@@ -75,11 +75,11 @@ export class AIProfileController {
         preferredStack: z.array(z.string())
       });
 
-      // Generate profile using AI
-      const { object: computedProfile } = await generateObject({
+      // Generate profile using AI (cast to any to avoid deep type instantiation issues)
+      const { object: computedProfile } = await (generateObject as any)({
         model: openai(this.model),
         prompt,
-        schema: profileSchema,
+        schema: profileSchema as any,
         temperature: 0.5,
       });
 

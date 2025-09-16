@@ -104,10 +104,10 @@ class AIService {
         }
       };
 
-      // Use generateObject instead of streamText for structured JSON output
-      const result = await generateObject({
+      // Use generateObject (cast to any) to avoid deep type instantiation issues in TS
+      const result = await (generateObject as any)({
         model: openai(this.model), 
-        schema: roadmapSchema,
+        schema: roadmapSchema as any,
         system: 'You are an expert learning path creator for software development and technology skills.',
         prompt: `Generate a personalized learning roadmap for a user with the following details:
         
@@ -191,10 +191,10 @@ class AIService {
         }
       };
 
-      // Use generateObject for structured output
-      const result = await generateObject({
+      // Use generateObject (cast to any) for structured output while avoiding TS deep type instantiation
+      const result = await (generateObject as any)({
         model: openai(this.model),
-        schema: profileSchema,
+        schema: profileSchema as any,
         system: 'You are an expert learning profile creator for software development and technology skills.',
         prompt: `Based on the following quiz answers, determine the most suitable learner profile type for this user.
         

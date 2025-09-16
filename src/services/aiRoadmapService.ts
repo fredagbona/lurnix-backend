@@ -115,10 +115,10 @@ class AIRoadmapService {
 
       console.log('Generating 7-day roadmap with profile:', userProfile);
 
-      // Use generateObject instead of streamText
-      const result = await generateObject({
+      // Use generateObject (cast to any) to avoid TS deep type instantiation issues
+      const result = await (generateObject as any)({
         model: openai(this.model), // Ensure this is 'gpt-3.5-turbo' or 'gpt-4o'
-        schema: roadmapResponseSchema,
+        schema: roadmapResponseSchema as any,
         system: baseRoadmapSystemPrompt,
         prompt: sevenDayRoadmapPrompt(userProfile),
         temperature: 0.5,
@@ -199,10 +199,10 @@ class AIRoadmapService {
 
       console.log('Generating 30-day roadmap with profile:', userProfile);
 
-      // Use generateObject instead of streamText
-      const result = await generateObject({
+      // Use generateObject (cast to any) to avoid TS deep type instantiation issues
+      const result = await (generateObject as any)({
         model: openai(this.model),
-        schema: roadmapResponseSchema,
+        schema: roadmapResponseSchema as any,
         system: baseRoadmapSystemPrompt,
         prompt: thirtyDayRoadmapPrompt(userProfile),
         temperature: 0.5,
