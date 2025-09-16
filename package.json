@@ -5,7 +5,7 @@
   "main": "server.ts",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc && node dist/utils/generate-swagger.js",
+    "build": "tsc",
     "postbuild": "mkdir -p dist/services && cp -r src/services/templates dist/services || true",
     "start": "node dist/server.js",
     "db:migrate:dev": "npx prisma migrate dev",
