@@ -79,11 +79,15 @@ export const config: EnvironmentConfig = {
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   
   // Email Configuration
-  EMAIL_ENABLED: process.env.EMAIL_ENABLED !== 'false',
-  MAILZEET_API_KEY: process.env.MAILZEET_API_KEY || '',
-  MAILZEET_API_URL: process.env.MAILZEET_API_URL || 'https://api.mailzeet.com/v1/mails',
-  FROM_EMAIL: process.env.FROM_EMAIL || 'noreply@lurnix.com',
-  FROM_NAME: process.env.FROM_NAME || 'Lurnix',
+    EMAIL_ENABLED: process.env.EMAIL_ENABLED === 'true',
+
+    // SMTP config au lieu de Mailzeet
+    SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
+    SMTP_PORT: Number(process.env.SMTP_PORT) || 465,
+    FROM_EMAIL: process.env.FROM_EMAIL || 'noreply@lurnix.com',
+    FROM_NAME: process.env.FROM_NAME || 'Lurnix',
+    EMAIL_PASSWORD: process.env.EMAIL_PASSWORD || '',
+  
   
   // Frontend Configuration
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
@@ -119,15 +123,22 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
     errors.push('DATABASE_URL must be a valid PostgreSQL connection string');
   }
   
-  // Validate email configuration if enabled
-  if (config.EMAIL_ENABLED) {
-    if (!config.MAILZEET_API_KEY) {
-      errors.push('MAILZEET_API_KEY is required when EMAIL_ENABLED is true');
-    }
-    if (!config.MAILZEET_API_URL) {
-      errors.push('MAILZEET_API_URL is required when EMAIL_ENABLED is true');
-    }
+// Validate email configuration if enabled
+if (config.EMAIL_ENABLED) {
+  if (!config.FROM_EMAIL) {
+    errors.push('FROM_EMAIL is required when EMAIL_ENABLED is true');
   }
+  if (!config.EMAIL_PASSWORD) {
+    errors.push('EMAIL_PASSWORD is required when EMAIL_ENABLED is true');
+  }
+  if (!config.SMTP_HOST) {
+    errors.push('SMTP_HOST is required when EMAIL_ENABLED is true');
+  }
+  if (!config.SMTP_PORT) {
+    errors.push('SMTP_PORT is required when EMAIL_ENABLED is true');
+  }
+}
+
   
   // Validate port range
   if (config.PORT < 1 || config.PORT > 65535) {

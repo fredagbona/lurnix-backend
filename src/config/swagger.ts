@@ -67,7 +67,7 @@ const swaggerOptions: swaggerJsDoc.Options = {
     },
     servers: [
       {
-        url: process.env.API_URL || 'http://localhost:5050',
+        url: process.env.API_URL || 'http://localhost:5000',
         description: process.env.NODE_ENV === 'production' ? 'Production Server' : 'Development Server'
       },
     ],
