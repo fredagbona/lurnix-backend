@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { adminAuthController } from '../../controllers/adminAuthController.js';
 import { authenticateAdmin, requireSuperAdmin } from '../../middlewares/adminAuthMiddleware.js';
 import { validateRequest, rateLimit, rateLimitConfigs } from '../../middlewares/validation.js';
-import { adminLoginSchema, adminRegisterSchema, changePasswordSchema } from '../../validation/adminSchemas.js';
+import { adminLanguageSchema, adminLoginSchema, adminRegisterSchema, changePasswordSchema } from '../../validation/adminSchemas.js';
 import adminPasswordResetRoutes from './adminPasswordResetRoutes.js';
 
 const router = Router();
@@ -149,6 +149,42 @@ router.post('/change-password',
   rateLimit(rateLimitConfigs.strict),
   validateRequest(changePasswordSchema),
   adminAuthController.changePassword
+);
+
+/**
+ * @swagger
+ * /api/admin/auth/language:
+ *   patch:
+ *     summary: Update admin language preference
+ *     tags: [Admin Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - language
+ *             properties:
+ *               language:
+ *                 type: string
+ *                 enum: [en, fr]
+ *                 description: Preferred language code
+ *     responses:
+ *       200:
+ *         description: Language updated successfully
+ *       400:
+ *         description: Invalid language
+ *       401:
+ *         description: Authentication required
+ */
+router.patch('/language',
+  authenticateAdmin,
+  rateLimit(rateLimitConfigs.general),
+  validateRequest(adminLanguageSchema),
+  adminAuthController.updateLanguage
 );
 
 export default router;

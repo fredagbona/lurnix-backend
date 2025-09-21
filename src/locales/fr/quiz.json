@@ -1,0 +1,267 @@
+{
+  "quiz": {
+    "sections": {
+      "learningStyle": {
+        "title": "🧠 Ton style d'apprentissage naturel",
+        "description": "Découvrons comment tu apprends de la façon la plus naturelle."
+      },
+      "motivations": {
+        "title": "🎯 Tes motivations profondes",
+        "description": "Qu'est-ce qui te pousse vraiment à continuer ?"
+      },
+      "techPassions": {
+        "title": "🔥 Tes passions tech",
+        "description": "Quels univers tech te font vibrer ?"
+      },
+      "challenges": {
+        "title": "💪 Ta relation aux défis",
+        "description": "Comment réagis-tu quand ça devient difficile ?"
+      }
+    },
+    "questions": {
+      "new_framework_scenario": {
+        "title": "🚀 Ton équipe adopte un nouveau framework (ex : Vue.js). Quelle est ta première action ?",
+        "description": "Décris ton réel réflexe quand une nouvelle techno débarque.",
+        "options": {
+          "visual_first": "📺 Je regarde des tutos YouTube pour le voir en action",
+          "documentation_first": "📖 Je parcours la doc officielle pour bien comprendre",
+          "hands_on_first": "⚡ Je clone un projet d'exemple et je bidouille directement",
+          "social_first": "🗣️ Je demande à un collègue de me poser les bases"
+        }
+      },
+      "bug_hunting_preference": {
+        "title": "🐛 Un bug mystérieux casse ton app. Quelle est ta réaction ?",
+        "description": "Choisis l'instinct qui te ressemble le plus quand tout part en vrille.",
+        "options": {
+          "analytical_debug": "🔬 J'analyse méthodiquement les logs et stack traces",
+          "experimental_debug": "🎯 J'essaie plusieurs pistes jusqu'à trouver",
+          "community_debug": "📱 Je demande de l'aide (Discord, Stack Overflow…)",
+          "reflective_debug": "🚶 Je fais une vraie pause pour laisser l'idée venir"
+        }
+      },
+      "learning_retention": {
+        "title": "🧠 Une semaine après avoir vu un concept, tu t'en souviens mieux si...",
+        "description": "Qu'est-ce qui t'aide vraiment à retenir sur la durée ?",
+        "options": {
+          "visual_memory": "👁️ J'ai vu des schémas ou visuels marquants",
+          "practical_memory": "⚡ J'ai codé quelque chose avec",
+          "social_memory": "💭 J'en ai parlé ou je l'ai expliqué à quelqu'un",
+          "analytical_memory": "📝 J'ai pris des notes détaillées"
+        }
+      },
+      "project_approach": {
+        "title": "🏗️ Nouveau projet perso : une to-do app. Tu commences par quoi ?",
+        "description": "Quelle étape tu attaques instinctivement en premier ?",
+        "options": {
+          "ui_first": "🎨 Je dessine ou maquette l'interface",
+          "architecture_first": "🏛️ Je définis l'architecture et la base de données",
+          "mvp_first": "⚡ Je code rapidement une version minimale",
+          "research_first": "📊 Je regarde ce qui existe déjà pour m'inspirer"
+        }
+      },
+      "coding_dream": {
+        "title": "✨ Dans tes rêves les plus fous, le code te permet de...",
+        "description": "Laisse parler ton imagination !",
+        "options": {
+          "impact_global": "🌍 Créer quelque chose qui aide des millions de personnes",
+          "freedom_lifestyle": "💰 Obtenir la liberté de travailler d'où je veux",
+          "intellectual_challenge": "🧠 Résoudre des problèmes techniques fascinants",
+          "creative_expression": "🎨 Exprimer ma créativité et imaginer du beau",
+          "team_growth": "🏢 Rejoindre une équipe inspirante et apprendre des meilleurs"
+        }
+      },
+      "frustration_trigger": {
+        "title": "😤 Qu'est-ce qui te frustre le PLUS quand tu apprends ?",
+        "description": "On veut éviter ça dans ton parcours !",
+        "options": {
+          "impatient_practical": "🐌 Les explications qui traînent, je veux pratiquer",
+          "need_theory": "📖 Quand on saute le “pourquoi”, j'ai besoin de comprendre",
+          "need_examples": "😵 Les concepts abstraits sans exemples concrets",
+          "need_time": "🏃 Quand ça va trop vite, j'ai besoin de temps",
+          "need_community": "🏝️ Apprendre seul trop longtemps, j'ai besoin d'échanges"
+        }
+      },
+      "success_feeling": {
+        "title": "🎉 Tu te sens le plus fier quand...",
+        "description": "Dis-nous quel type de victoire te booste le plus.",
+        "options": {
+          "clean_execution": "⚡ Ton code marche du premier coup",
+          "completion_focus": "🚀 Tu termines un projet de A à Z, même imparfait",
+          "teaching_satisfaction": "🤝 Tu aides quelqu'un d'autre à comprendre",
+          "problem_solving_satisfaction": "🔧 Tu exploses un bug vraiment coriace",
+          "innovation_satisfaction": "💡 Tu as une idée créative qui fonctionne"
+        }
+      },
+      "time_availability": {
+        "title": "⏰ Côté temps, tu es plutôt sur quel rythme ?",
+        "description": "On adapte le tempo à ta réalité.",
+        "options": {
+          "intensive_time": "🔥 J'ai beaucoup de temps et je veux foncer (15h+/semaine)",
+          "balanced_time": "⚖️ J'équilibre avec le reste (5–10h/semaine)",
+          "constrained_time": "🏃 Planning serré mais motivé (2–5h/semaine)",
+          "irregular_time": "🌊 Ça dépend des semaines, c'est irrégulier"
+        }
+      },
+      "demo_excitement": {
+        "title": "🤩 Quelle démo te ferait le plus kiffer ?",
+        "description": "Imagine qu'on te la montre en 5 minutes.",
+        "options": {
+          "ui_excitement": "🎨 Une interface magnifique avec des animations fluides",
+          "ai_excitement": "🤖 Une IA qui génère du code ou répond instantanément",
+          "data_excitement": "📊 Des données transformées en insights interactifs",
+          "backend_excitement": "⚡ Une API qui encaisse des milliers de requêtes/seconde",
+          "interactive_excitement": "🎮 Une expérience interactive ou un jeu immersif",
+          "security_excitement": "🔐 Un système de sécurité qui bloque des attaques en temps réel"
+        }
+      },
+      "first_project_dream": {
+        "title": "🏗️ Ton premier “vrai” projet, tu rêves que ce soit...",
+        "description": "Imagine le projet dont tu serais super fier de parler.",
+        "options": {
+          "mobile_app_dream": "📱 Une app mobile que tes amis utilisent vraiment",
+          "website_cause_dream": "🌐 Un site pour une cause qui te tient à cœur",
+          "automation_dream": "🔧 Un outil qui automatise une corvée du quotidien",
+          "game_dream": "🎮 Un petit jeu ou une expérience interactive fun",
+          "dashboard_dream": "📈 Un dashboard qui suit un sujet qui te passionne",
+          "opensource_dream": "🚀 Contribuer à un projet open source que tu adores"
+        }
+      },
+      "tech_personality": {
+        "title": "🧬 Niveau personnalité tech, tu te reconnais où ?",
+        "description": "Quel archétype reflète le mieux ta vibe tech ?",
+        "options": {
+          "designer_dev": "🎨 Le Designer-Dev : UI & UX avant tout",
+          "speed_runner": "⚡ Le Speed-Runner : livrer vite et itérer",
+          "architect": "🔬 L'Architecte : structure et bonnes pratiques",
+          "innovator": "🌟 L'Innovateur : tester les nouvelles technos",
+          "problem_solver": "🎯 Le Problem-Solver : donne-moi un défi technique",
+          "team_player": "🤝 Le Team Player : collaboration et partage"
+        }
+      },
+      "stuck_reaction": {
+        "title": "😰 Tu es bloqué depuis 2h sur un problème. Tu fais quoi ?",
+        "description": "Pas de jugement, sois honnête !",
+        "options": {
+          "persistent_fighter": "😤 Je m'acharne jusqu'à ce que ça passe",
+          "strategic_pauser": "🔄 Je fais une vraie pause pour revenir frais",
+          "help_seeker": "🆘 Je demande de l'aide assez vite",
+          "knowledge_builder": "📚 Je retourne à la doc ou aux bases",
+          "pragmatic_workaround": "🔀 Je contourne le problème et j'y reviens plus tard"
+        }
+      },
+      "failure_recovery": {
+        "title": "💥 Ton code plante en prod (ou ta démo foire). Ta réaction ?",
+        "description": "Comment tu rebondis quand tout explose ?",
+        "options": {
+          "stress_reactive": "🔥 Stress maximum, je panique",
+          "tunnel_fixer": "🎯 Mode tunnel : je corrige coûte que coûte",
+          "growth_mindset": "😅 Oups ! J'en tire une leçon et j'avance",
+          "collaborative_learner": "🤝 Je demande des conseils pour éviter que ça se reproduise",
+          "analytical_post_mortem": "🧠 J'analyse en détail ce qui a déconné"
+        }
+      },
+      "learning_plateau": {
+        "title": "📈 Après quelques mois tu stagnes. Tu rebondis comment ?",
+        "description": "Quel est ton réflexe quand ta progression ralentit ?",
+        "options": {
+          "challenge_escalator": "🚀 Je me lance un défi plus ambitieux",
+          "foundation_strengthener": "📖 Je consolide les fondamentaux",
+          "technology_explorer": "🌟 J'explore une nouvelle techno pour me relancer",
+          "community_joiner": "👥 Je rejoins une communauté pour apprendre des autres",
+          "strategic_breaker": "🔄 Je prends une pause stratégique pour revenir frais"
+        }
+      }
+    },
+    "profiles": {
+      "VISUAL_LEARNER": {
+        "name": "Apprenant visuel",
+        "summary": "Tu captes les idées via les visuels, les patterns et une bonne structure. Les projets design & UI te gardent en flow."
+      },
+      "PRACTICAL_BUILDER": {
+        "name": "Bâtisseur pratique",
+        "summary": "Tu apprends en construisant vite et en itérant. Les prototypes concrets et la valeur livrée te motivent."
+      },
+      "ANALYTICAL_THINKER": {
+        "name": "Esprit analytique",
+        "summary": "Tu adores creuser les problèmes et garder une architecture propre. Les fondamentaux solides et la résolution complexe te stimulent."
+      },
+      "SOCIAL_COLLABORATOR": {
+        "name": "Collaborateur social",
+        "summary": "Tu t'épanouis dans l'échange, le pair programming et le partage de connaissances. Le feedback collectif te booste."
+      },
+      "CREATIVE_EXPLORER": {
+        "name": "Explorateur créatif",
+        "summary": "Tu poursuis la nouveauté et l'expression créative. Les projets expérimentaux, l'animation et le storytelling te font vibrer."
+      },
+      "STRUCTURED_PLANNER": {
+        "name": "Planificateur structuré",
+        "summary": "Tu aimes l'ordre, les systèmes et la pratique réfléchie. Des roadmaps claires avec les bonnes pratiques te font exceller."
+      },
+      "INDEPENDENT_RESEARCHER": {
+        "name": "Chercheur indépendant",
+        "summary": "Tu explores en profondeur à ton rythme et relies les idées entre elles. Les investigations autonomes te passionnent."
+      },
+      "GOAL_ORIENTED_ACHIEVER": {
+        "name": "Performer orienté objectifs",
+        "summary": "Tu es focalisé sur l'impact et les résultats. Des jalons ambitieux, des victoires mesurables et des routines efficaces te font avancer."
+      }
+    },
+    "success": {
+      "created": "Quiz créé avec succès",
+      "updated": "Quiz mis à jour avec succès",
+      "deleted": "Quiz supprimé avec succès",
+      "retrieved": "Quiz récupéré avec succès",
+      "submitted": "Quiz soumis avec succès",
+      "sectionAdded": "Section de quiz ajoutée avec succès",
+      "sectionUpdated": "Section de quiz mise à jour avec succès",
+      "sectionDeleted": "Section de quiz supprimée avec succès"
+    },
+    "error": {
+      "notFound": "Quiz introuvable",
+      "sectionNotFound": "Section de quiz introuvable",
+      "alreadySubmitted": "Le quiz a déjà été soumis",
+      "invalidAnswer": "Format de réponse invalide",
+      "invalidSection": "Section de quiz invalide",
+      "accessDenied": "Accès à ce quiz refusé",
+      "submissionFailed": "Échec de la soumission du quiz",
+      "creationFailed": "Échec de la création du quiz",
+      "updateFailed": "Échec de la mise à jour du quiz",
+      "deleteFailed": "Échec de la suppression du quiz"
+    },
+    "validation": {
+      "title": {
+        "required": "Le titre du quiz est requis",
+        "tooShort": "Le titre du quiz est trop court",
+        "tooLong": "Le titre du quiz est trop long"
+      },
+      "description": {
+        "required": "La description du quiz est requise",
+        "tooShort": "La description du quiz est trop courte",
+        "tooLong": "La description du quiz est trop longue"
+      },
+      "questions": {
+        "required": "Le quiz doit contenir au moins une question",
+        "tooMany": "Trop de questions dans le quiz",
+        "invalidFormat": "Format de question invalide"
+      },
+      "answers": {
+        "required": "La réponse est requise",
+        "invalidFormat": "Format de réponse invalide",
+        "incomplete": "Toutes les questions doivent être répondues"
+      },
+      "section": {
+        "required": "Le titre de la section est requis",
+        "invalidOrder": "Ordre de section invalide",
+        "duplicate": "Titre de section en double"
+      }
+    },
+    "status": {
+      "draft": "Brouillon",
+      "published": "Publié",
+      "archived": "Archivé",
+      "inProgress": "En cours",
+      "completed": "Terminé",
+      "graded": "Noté"
+    }
+  }
+}

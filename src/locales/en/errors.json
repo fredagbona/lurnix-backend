@@ -1,0 +1,45 @@
+{
+  "auth": {
+    "authenticationRequired": "Authentication required",
+    "accessDenied": "Access denied",
+    "tokenExpired": "Token has expired",
+    "invalidToken": "Invalid token",
+    "insufficientPermissions": "Insufficient permissions to {{action}}"
+  },
+  "validation": {
+    "failed": "Validation failed",
+    "invalidInput": "Invalid input provided"
+  },
+  "resource": {
+    "notFound": "{{resource}} not found",
+    "conflict": "Resource conflict",
+    "duplicate": "{{resource}}{{field, exists() ? ' with this ' + field : ''}} already exists"
+  },
+  "rateLimit": {
+    "tooManyRequests": "Too many requests"
+  },
+  "database": {
+    "operationFailed": "Database operation failed",
+    "connectionFailed": "Database connection failed"
+  },
+  "external": {
+    "serviceFailed": "{{service}}: External service error"
+  },
+  "email": {
+    "serviceFailed": "Email service error"
+  },
+  "system": {
+    "error": "System error occurred",
+    "configuration": "Configuration error",
+    "timeout": "{{operation}} timed out",
+    "maintenance": "Service is under maintenance"
+  },
+  "request": {
+    "badRequest": "Bad request",
+    "payloadTooLarge": "Request payload too large",
+    "unsupportedMediaType": "Unsupported media type"
+  },
+  "feature": {
+    "disabled": "Feature '{{feature}}' is currently disabled"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "auth": {
+    "authenticationRequired": "Authentification requise",
+    "accessDenied": "Accès refusé",
+    "tokenExpired": "Le token a expiré",
+    "invalidToken": "Token invalide",
+    "insufficientPermissions": "Permissions insuffisantes pour {{action}}"
+  },
+  "validation": {
+    "failed": "La validation a échoué",
+    "invalidInput": "Données invalides fournies"
+  },
+  "resource": {
+    "notFound": "{{resource}} introuvable",
+    "conflict": "Conflit de ressource",
+    "duplicate": "{{resource}}{{field, exists() ? ' avec ce ' + field : ''}} existe déjà"
+  },
+  "rateLimit": {
+    "tooManyRequests": "Trop de requêtes"
+  },
+  "database": {
+    "operationFailed": "L'opération de base de données a échoué",
+    "connectionFailed": "La connexion à la base de données a échoué"
+  },
+  "external": {
+    "serviceFailed": "{{service}}: Erreur du service externe"
+  },
+  "email": {
+    "serviceFailed": "Erreur du service de messagerie"
+  },
+  "system": {
+    "error": "Une erreur système est survenue",
+    "configuration": "Erreur de configuration",
+    "timeout": "{{operation}} a expiré",
+    "maintenance": "Service en maintenance"
+  },
+  "request": {
+    "badRequest": "Requête invalide",
+    "payloadTooLarge": "Données de requête trop volumineuses",
+    "unsupportedMediaType": "Type de média non supporté"
+  },
+  "feature": {
+    "disabled": "La fonctionnalité '{{feature}}' est actuellement désactivée"
+  }
+}

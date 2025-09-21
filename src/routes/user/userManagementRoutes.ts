@@ -167,4 +167,39 @@ router.get('/account-status',
   userManagementController.getAccountStatus
 );
 
+/**
+ * @swagger
+ * /api/users/language:
+ *   patch:
+ *     summary: Update user language preference
+ *     tags: [User Management]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - language
+ *             properties:
+ *               language:
+ *                 type: string
+ *                 enum: [en, fr]
+ *                 description: User's preferred language
+ *     responses:
+ *       200:
+ *         description: Language preference updated successfully
+ *       400:
+ *         description: Invalid language value
+ *       401:
+ *         description: Authentication required
+ */
+router.patch('/language',
+  authenticate,
+  rateLimit(rateLimitConfigs.general),
+  userManagementController.updateLanguage
+);
+
 export default router;

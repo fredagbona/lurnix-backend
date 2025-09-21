@@ -2,21 +2,23 @@ import { Request, Response } from 'express';
 import { emailService } from '../services/emailService.js';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
+import { sendTranslatedResponse } from '../utils/translationUtils.js';
+import { AppError } from '../errors/AppError.js';
+import { I18nRequest } from '../config/i18n/types.js';
 
 export class EmailController {
   // Get email service status
-  getEmailStatus = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  getEmailStatus = asyncHandler(async (req: I18nRequest, res: Response): Promise<void> => {
     try {
       const status = emailService.getStatus();
       const connectivity = await emailService.testConnection();
       
-      res.status(200).json({
-        success: true,
+      sendTranslatedResponse(res, 'email.status.success', {
+        statusCode: 200,
         data: {
           ...status,
           connectivity,
-        },
-        timestamp: new Date().toISOString(),
+        }
       });
     } catch (error) {
       throw error;
@@ -24,16 +26,13 @@ export class EmailController {
   });
 
   // Get available email templates
-  getEmailTemplates = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  getEmailTemplates = asyncHandler(async (req: I18nRequest, res: Response): Promise<void> => {
     try {
       const templates = emailService.getAvailableTemplates();
       
-      res.status(200).json({
-        success: true,
-        data: {
-          templates,
-        },
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, 'email.templates.success', {
+        statusCode: 200,
+        data: { templates }
       });
     } catch (error) {
       throw error;
@@ -41,19 +40,12 @@ export class EmailController {
   });
 
   // Send test email
-  sendTestEmail = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  sendTestEmail = asyncHandler(async (req: AuthRequest & I18nRequest, res: Response): Promise<void> => {
     const { to, template, templateData } = req.body;
+    const language = (req.language || 'en') as 'en' | 'fr';
 
     if (!to) {
-      res.status(400).json({
-        success: false,
-        error: {
-          code: 'MISSING_RECIPIENT',
-          message: 'Email recipient is required',
-        },
-        timestamp: new Date().toISOString(),
-      });
-      return;
+      throw new AppError('email.errors.missingRecipient', 400, 'MISSING_RECIPIENT');
     }
 
     try {
@@ -61,37 +53,71 @@ export class EmailController {
         // Create template email options
         await emailService.sendTemplateEmail({
           to,
+          toName: req.body.fullname || 'User',
           subject: 'Test Template Email',
           templateName: template,
-          templateData: templateData || {}
+          templateData: templateData || {},
+          language
         });
       } else {
         // Send a default test email
+        const subjects = {
+          en: 'Test Email from Lurnix',
+          fr: 'Email de test de Lurnix'
+        } as const;
+        
+        type EmailContent = {
+          title: string;
+          description: string;
+          confirmation: string;
+          sentBy: string;
+        }
+        
+        const content: Record<'en' | 'fr', EmailContent> = {
+          en: {
+            title: 'Test Email',
+            description: 'This is a test email from Lurnix.',
+            confirmation: 'If you received this email, it means the email service is working correctly.',
+            sentBy: `Sent by: ${req.user?.username || 'Unknown'}`
+          },
+          fr: {
+            title: 'Email de test',
+            description: 'Ceci est un email de test de Lurnix.',
+            confirmation: 'Si vous avez reçu cet email, cela signifie que le service email fonctionne correctement.',
+            sentBy: `Envoyé par : ${req.user?.username || 'Inconnu'}`
+          }
+        };
+
+        const dateFormatter = new Intl.DateTimeFormat(language === 'fr' ? 'fr-FR' : 'en-US', {
+          dateStyle: 'full',
+          timeStyle: 'long'
+        });
+
         await emailService.sendEmail({
           to,
-          subject: 'Test Email from Lurnix',
+          subject: subjects[language],
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-              <h1>Test Email</h1>
-              <p>This is a test email from Lurnix.</p>
-              <p>If you received this email, it means the email service is working correctly.</p>
-              <p>Sent at: ${new Date().toLocaleString()}</p>
+              <h1>${content[language].title}</h1>
+              <p>${content[language].description}</p>
+              <p>${content[language].confirmation}</p>
+              <p>${dateFormatter.format(new Date())}</p>
             </div>
           `,
           text: `
-            Test Email
+            ${content[language].title}
             
-            This is a test email sent from the Lurnix API.
-            Sent at: ${new Date().toISOString()}
-            Sent by: ${req.user?.username || 'Unknown'}
+            ${content[language].description}
+            ${content[language].confirmation}
+            ${dateFormatter.format(new Date())}
+            ${content[language].sentBy}
           `
         });
       }
       
-      res.status(200).json({
-        success: true,
-        message: 'Test email sent successfully',
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, 'email.test.success', {
+        statusCode: 200,
+        data: { sent: true }
       });
     } catch (error) {
       throw error;
@@ -99,28 +125,20 @@ export class EmailController {
   });
 
   // Send welcome email (for testing)
-  sendWelcomeEmail = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  sendWelcomeEmail = asyncHandler(async (req: I18nRequest, res: Response): Promise<void> => {
     const { email, fullname, username } = req.body;
+    const language = (req.language || 'en') as 'en' | 'fr';
 
     if (!email || !fullname || !username) {
-      res.status(400).json({
-        success: false,
-        error: {
-          code: 'MISSING_PARAMETERS',
-          message: 'Email, fullname, and username are required',
-        },
-        timestamp: new Date().toISOString(),
-      });
-      return;
+      throw new AppError('email.welcome.missingParameters', 400, 'MISSING_PARAMETERS');
     }
 
     try {
-      await emailService.sendWelcomeEmail(email, fullname, username);
+      await emailService.sendWelcomeEmail(email, fullname, username, language);
       
-      res.status(200).json({
-        success: true,
-        message: 'Welcome email sent successfully',
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, 'email.welcome.success', {
+        statusCode: 200,
+        data: { sent: true }
       });
     } catch (error) {
       throw error;
@@ -128,28 +146,20 @@ export class EmailController {
   });
 
   // Send password reset email (for testing)
-  sendPasswordResetEmail = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  sendPasswordResetEmail = asyncHandler(async (req: I18nRequest, res: Response): Promise<void> => {
     const { email, fullname, resetToken } = req.body;
+    const language = (req.language || 'en') as 'en' | 'fr';
 
     if (!email || !fullname || !resetToken) {
-      res.status(400).json({
-        success: false,
-        error: {
-          code: 'MISSING_PARAMETERS',
-          message: 'Email, fullname, and resetToken are required',
-        },
-        timestamp: new Date().toISOString(),
-      });
-      return;
+      throw new AppError('email.reset.missingParameters', 400, 'MISSING_PARAMETERS');
     }
 
     try {
-      await emailService.sendPasswordResetEmail(email, fullname, resetToken);
+      await emailService.sendPasswordResetEmail(email, fullname, resetToken, language);
       
-      res.status(200).json({
-        success: true,
-        message: 'Password reset email sent successfully',
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, 'email.reset.success', {
+        statusCode: 200,
+        data: { sent: true }
       });
     } catch (error) {
       throw error;
@@ -157,17 +167,13 @@ export class EmailController {
   });
 
   // Test email connectivity
-  testEmailConnectivity = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  testEmailConnectivity = asyncHandler(async (req: I18nRequest, res: Response): Promise<void> => {
     try {
       const isConnected = await emailService.testConnection();
       
-      res.status(200).json({
-        success: true,
-        data: {
-          connected: isConnected,
-          message: isConnected ? 'Email service is connected' : 'Email service connection failed',
-        },
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, isConnected ? 'email.connectivity.success' : 'email.connectivity.failed', {
+        statusCode: 200,
+        data: { connected: isConnected }
       });
     } catch (error) {
       throw error;

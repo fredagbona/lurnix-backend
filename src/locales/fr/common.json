@@ -1,0 +1,13 @@
+{
+  "success": "Succès",
+  "error": "Erreur",
+  "notFound": "Non trouvé",
+  "unauthorized": "Non autorisé",
+  "forbidden": "Interdit",
+  "validation": {
+    "required": "Ce champ est obligatoire",
+    "invalid": "Valeur invalide",
+    "tooShort": "Valeur trop courte",
+    "tooLong": "Valeur trop longue"
+  }
+}

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Subscription Cancellation Confirmation - Lurnix</title>
+  <title>Subscription Confirmation - Lurnix</title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -43,7 +43,7 @@
       display: inline-block;
       padding: 12px 24px;
       background-color: #4F46E5;
-      color: white;
+      color: white !important;
       text-decoration: none;
       border-radius: 4px;
       font-weight: bold;
@@ -51,27 +51,42 @@
     }
     .button:hover {
       background-color: #4338CA;
+      color: #fff !important;
     }
-    .info-box {
+    .subscription-details {
       background-color: #f0f7ff;
       border-radius: 8px;
       padding: 20px;
       margin: 20px 0;
     }
-    .subscription-details {
-      margin: 20px 0;
-      padding: 15px;
-      background-color: #f9fafb;
-      border-radius: 8px;
+    .subscription-details h3 {
+      margin-top: 0;
+      color: #2563eb;
+    }
+    .feature-list {
+      margin: 15px 0;
+      padding-left: 20px;
+    }
+    .feature-list li {
+      margin-bottom: 8px;
+    }
+    .price {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2563eb;
     }
     table {
       width: 100%;
       border-collapse: collapse;
+      margin: 20px 0;
     }
     table th, table td {
-      padding: 10px;
+      padding: 12px;
       text-align: left;
       border-bottom: 1px solid #eee;
+    }
+    table th {
+      background-color: #f9fafb;
     }
   </style>
 </head>
@@ -81,9 +96,9 @@
       <img src="{{logoUrl}}" alt="Lurnix Logo">
     </div>
     <div class="content">
-      <h1>Subscription Cancellation Confirmation</h1>
+      <h1>Thank You for Your Subscription!</h1>
       <p>Hi {{name}},</p>
-      <p>We're sorry to see you go. Your subscription cancellation request has been processed successfully.</p>
+      <p>Thank you for subscribing to Lurnix! Your subscription has been successfully processed, and your account has been upgraded to <strong>{{planName}}</strong>.</p>
       
       <div class="subscription-details">
         <h3>Subscription Details</h3>
@@ -93,41 +108,46 @@
             <td>{{planName}}</td>
           </tr>
           <tr>
-            <th>Cancellation Date</th>
-            <td>{{cancellationDate}}</td>
+            <th>Billing Cycle</th>
+            <td>{{billingCycle}}</td>
           </tr>
           <tr>
-            <th>Access Until</th>
-            <td><strong>{{accessUntilDate}}</strong></td>
+            <th>Amount</th>
+            <td class="price">{{currency}}{{amount}}</td>
+          </tr>
+          <tr>
+            <th>Next Billing Date</th>
+            <td>{{nextBillingDate}}</td>
+          </tr>
+          <tr>
+            <th>Payment Method</th>
+            <td>{{paymentMethod}}</td>
           </tr>
         </table>
+        
+        <h3>Plan Features</h3>
+        <ul class="feature-list">
+          {{#each features}}
+            <li>{{this}}</li>
+          {{/each}}
+        </ul>
       </div>
       
-      <p>You will continue to have access to your premium features until <strong>{{accessUntilDate}}</strong>, after which your account will revert to the free tier.</p>
-      
-      <div class="info-box">
-        <h3>We Value Your Feedback</h3>
-        <p>We're constantly working to improve our service. Could you take a moment to let us know why you decided to cancel?</p>
-        <div style="text-align: center;">
-          <a href="{{feedbackUrl}}" class="button">Share Feedback</a>
-        </div>
-      </div>
-      
-      <p>If you change your mind, you can reactivate your subscription at any time before <strong>{{accessUntilDate}}</strong> to avoid any interruption to your premium access.</p>
+      <p>You can manage your subscription, update payment details, or cancel at any time from your account settings.</p>
       
       <div style="text-align: center;">
-        <a href="{{reactivateUrl}}" class="button" style="background-color: #10B981;">Reactivate Subscription</a>
+        <a href="{{accountUrl}}" class="button">Manage Subscription</a>
       </div>
       
-      <p>We hope to welcome you back soon. In the meantime, you can still access our free content and community features.</p>
+      <p>If you have any questions about your subscription or need assistance, our support team is here to help.</p>
       
-      <p>Best regards,</p>
+      <p>Happy learning!</p>
       <p>The Lurnix Team</p>
     </div>
     <div class="footer">
       <p>&copy; {{currentYear}} Lurnix. All rights reserved.</p>
       <p>If you have any questions, please contact our support team at <a href="mailto:support@lurnix.com">support@lurnix.com</a></p>
-      <p><small>This email was sent to {{email}}. You're receiving this email because you recently cancelled your Lurnix subscription.</small></p>
+      <p><small>This email was sent to {{email}}. You're receiving this email because you have an active subscription with Lurnix.</small></p>
     </div>
   </div>
 </body>

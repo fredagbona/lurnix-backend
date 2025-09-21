@@ -9,6 +9,7 @@ export function toUserProfile(user: User): UserProfile {
     email: user.email,
     isActive: user.isActive,
     isVerified: user.isVerified ?? false,
+    language: user.language,
     createdAt: user.createdAt,
   };
 }

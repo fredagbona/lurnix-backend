@@ -7,6 +7,11 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum Language {
+  en
+  fr
+}
+
 model User {
   id            String       @id @default(uuid())
   username      String       @unique
@@ -15,6 +20,7 @@ model User {
   password_hash String
   isActive      Boolean      @default(true)
   isVerified    Boolean      @default(false)
+  language      Language     @default(en)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   deletedAt     DateTime?
@@ -45,6 +51,7 @@ model Admin {
   email         String    @unique
   password_hash String
   role          AdminRole @default(manager)
+  language      Language  @default(en)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   

@@ -1,4 +1,4 @@
-import { Admin, AdminRole } from '../types/auth';
+import { Admin, AdminRole, Language } from '../types/auth';
 import { adminRepository, CreateAdminData } from '../repositories/adminRepository.js';
 import { hashPassword, comparePassword } from '../utils/passwordUtils.js';
 import { generateToken } from '../utils/jwt.js';
@@ -15,6 +15,7 @@ export interface AdminRegisterRequest {
   email: string;
   password: string;
   role?: AdminRole;
+  language?: Language;
   createdBy?: string; // Name of the admin who created this account
 }
 
@@ -23,6 +24,7 @@ export interface AdminProfile {
   name: string;
   email: string;
   role: AdminRole;
+  language: Language;
   createdAt: Date;
 }
 
@@ -48,14 +50,16 @@ export class AdminAuthService {
       name: data.name,
       email: data.email,
       password_hash,
-      role: data.role || AdminRole.MANAGER // Default to manager if not specified
+      role: data.role || AdminRole.MANAGER, // Default to manager if not specified
+      language: data.language || 'en'
     });
 
     // Generate JWT token
     const token = generateToken({
       adminId: admin.id,
       email: admin.email,
-      role: admin.role
+      role: admin.role,
+      language: admin.language || 'en'
     });
     
     // Send welcome email to the new admin
@@ -97,7 +101,8 @@ export class AdminAuthService {
     const token = generateToken({
       adminId: admin.id,
       email: admin.email,
-      role: admin.role
+      role: admin.role,
+      language: admin.language || 'en'
     });
 
     // Return admin profile and token
@@ -134,6 +139,17 @@ export class AdminAuthService {
     await adminRepository.update(adminId, { password_hash });
   }
 
+  async updateLanguage(adminId: string, language: Language): Promise<AdminProfile> {
+    const admin = await this.verifyAdmin(adminId);
+
+    if (admin.language === language) {
+      return this.toAdminProfile(admin);
+    }
+
+    const updatedAdmin = await adminRepository.update(adminId, { language });
+    return this.toAdminProfile(updatedAdmin);
+  }
+
   // Convert Admin to AdminProfile (remove sensitive data)
   private toAdminProfile(admin: Admin): AdminProfile {
     return {
@@ -141,6 +157,7 @@ export class AdminAuthService {
       name: admin.name,
       email: admin.email,
       role: admin.role,
+      language: admin.language || 'en',
       createdAt: admin.createdAt
     };
   }

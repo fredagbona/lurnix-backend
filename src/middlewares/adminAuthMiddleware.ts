@@ -10,6 +10,7 @@ export interface AdminAuthRequest extends Request {
     email: string;
     role: AdminRole;
     name: string;
+    language?: string;
   };
   adminId?: string;
 }
@@ -66,7 +67,8 @@ export const authenticateAdmin = async (req: AdminAuthRequest, res: Response, ne
       id: admin.id,
       email: admin.email,
       role: admin.role,
-      name: admin.name
+      name: admin.name,
+      language: admin.language || 'en'
     };
     req.adminId = admin.id;
     

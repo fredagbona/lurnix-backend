@@ -362,6 +362,33 @@ router.get('/profile', authMiddleware, async (req: any, res, next) => {
     const computedProfile = latestResult.computedProfile || {};
     
     // Map quiz answers to roadmap input format
+    const learningStyleSecondary =
+      answers.new_framework_scenario ||
+      answers.learning_retention ||
+      answers.learning_instinct ||
+      'visual';
+
+    const priorityRank = Array.isArray(answers.priorities)
+      ? answers.priorities
+      : (computedProfile.motivations?.map((item: any) => item.trait) || ['impact_driven', 'creatively_expressive']);
+
+    const techRanked = computedProfile.techAffinity?.map((item: any) => item.trait) ||
+      (Array.isArray(answers.tech_areas) ? answers.tech_areas : ['frontend']);
+
+    const timeHorizon = answers.timeline || answers.time_availability || 'balanced_time';
+
+    const debugStyle =
+      answers.bug_hunting_preference ||
+      answers.debugging_approach ||
+      answers.stuck_reaction ||
+      'experimental_debug';
+
+    const collaborationStyle =
+      answers.need_community ||
+      answers.community_engagement ||
+      answers.help_seeker ||
+      'balanced';
+
     const roadmapProfile = {
       id: latestResult.id,
       userId: latestResult.userId,
@@ -372,20 +399,20 @@ router.get('/profile', authMiddleware, async (req: any, res, next) => {
       roadmapInput: {
         learningStyle: {
           primary: computedProfile.style || 'balanced',
-          secondary: answers.learning_instinct || answers.remember_concepts || 'visual'
+          secondary: learningStyleSecondary
         },
         objectives: {
           topGoal: computedProfile.goal || 'general',
-          priorityRank: Array.isArray(answers.priorities) ? answers.priorities : ['job_readiness', 'projects', 'enjoyment', 'certifications'],
-          timeHorizon: answers.timeline || 'weeks'
+          priorityRank,
+          timeHorizon
         },
         passions: {
-          ranked: Array.isArray(answers.tech_areas) ? answers.tech_areas : ['web'],
-          notes: answers.learning_goal || ''
+          ranked: techRanked,
+          notes: answers.coding_dream || answers.learning_goal || ''
         },
         problemSolving: {
-          debugStyle: answers.debugging_approach || answers.bug_first_action || 'experiment',
-          collaboration: answers.community_engagement || 'sometimes'
+          debugStyle,
+          collaboration: collaborationStyle
         },
         timeCommitmentMinsPerDay: computedProfile.timePerDay || 60,
         priorExperience: answers.specific_stack ? `Experience with ${answers.specific_stack}` : 'Beginner'

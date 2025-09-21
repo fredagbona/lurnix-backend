@@ -48,31 +48,22 @@ router.get('/', quizController.getQuiz);
  *           schema:
  *             $ref: '#/components/schemas/QuizSubmission'
  *           example:
- *             version: 1
+ *             version: 2
  *             answers: {
- *               "learning_instinct": "visual",
- *               "remember_concepts": "hands_on",
- *               "complex_problem": "sequential",
- *               "code_samples": "hands_on",
- *               "lecture_preference": "active",
- *               "debugging_approach": "experimental",
- *               "learning_sequence": "sequential",
- *               "learning_reason": "career_switch",
- *               "important_outcome": "fundamentals",
- *               "priorities": ["job_readiness", "projects", "enjoyment", "certifications"],
- *               "timeline": "months",
- *               "learning_depth": "deep",
- *               "tech_areas": ["web", "mobile", "data"],
- *               "project_motivation": "visual",
- *               "self_description": "builder",
- *               "preferred_stack": "frontend",
- *               "specific_stack": "React",
- *               "job_title": "student",
- *               "learning_goal": "Get a job as a frontend developer",
- *               "bug_first_action": "research",
- *               "challenge_approach": "research_first",
- *               "project_preference": "checklist",
- *               "community_engagement": "sometimes"
+ *               "new_framework_scenario": "hands_on_first",
+ *               "bug_hunting_preference": "experimental_debug",
+ *               "learning_retention": "practical_memory",
+ *               "project_approach": "mvp_first",
+ *               "coding_dream": "freedom_lifestyle",
+ *               "frustration_trigger": "need_examples",
+ *               "success_feeling": "problem_solving_satisfaction",
+ *               "time_availability": "balanced_time",
+ *               "demo_excitement": "ui_excitement",
+ *               "first_project_dream": "mobile_app_dream",
+ *               "tech_personality": "speed_runner",
+ *               "stuck_reaction": "help_seeker",
+ *               "failure_recovery": "growth_mindset",
+ *               "learning_plateau": "technology_explorer"
  *             }
  *     responses:
  *       200:

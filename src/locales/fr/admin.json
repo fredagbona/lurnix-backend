@@ -1,0 +1,63 @@
+{
+  "auth": {
+    "registerSuccess": "Administrateur enregistré avec succès",
+    "loginSuccess": "Connexion administrateur réussie",
+    "unauthorized": "Authentification requise",
+    "profileRetrieved": "Profil administrateur récupéré avec succès",
+    "passwordChanged": "Mot de passe modifié avec succès",
+    "languageUpdated": "Préférence linguistique mise à jour avec succès",
+    "errors": {
+      "invalidCredentials": "Email ou mot de passe invalide",
+      "accountDisabled": "Le compte administrateur est désactivé",
+      "invalidToken": "Jeton invalide ou expiré",
+      "insufficientPermissions": "Permissions insuffisantes pour cette action"
+    }
+  },
+  "system": {
+    "testSuccess": "Point de terminaison administrateur fonctionnel",
+    "testError": "Erreur du point de terminaison de test",
+    "cleanupSuccess": "Tâches de nettoyage terminées avec succès",
+    "tokensCleanedUp": "Jetons expirés nettoyés avec succès",
+    "errorStatsReset": "Statistiques d'erreur réinitialisées avec succès"
+  },
+  "users": {
+    "notFound": "Utilisateur non trouvé",
+    "restored": "Utilisateur restauré avec succès",
+    "deleted": "Utilisateur supprimé définitivement",
+    "resetCancelled": "Réinitialisation du mot de passe annulée avec succès",
+    "stats": {
+      "retrieved": "Statistiques utilisateurs récupérées avec succès"
+    },
+    "list": {
+      "retrieved": "Liste des utilisateurs récupérée avec succès"
+    },
+    "detail": {
+      "retrieved": "Détails de l'utilisateur récupérés avec succès"
+    },
+    "reset": {
+      "tokenInfo": "Informations du jeton de réinitialisation du mot de passe récupérées"
+    }
+  },
+  "health": {
+    "status": {
+      "healthy": "Le système est en bon état",
+      "unhealthy": "Le système est en mauvais état",
+      "critical": "Le système est dans un état critique"
+    },
+    "checks": {
+      "database": "Connexion à la base de données",
+      "errorMonitoring": "Système de surveillance des erreurs"
+    },
+    "checkFailed": "La vérification de l'état du système a échoué",
+    "errorStats": {
+      "retrieved": "Statistiques d'erreurs récupérées avec succès",
+      "reset": "Statistiques d'erreurs réinitialisées avec succès"
+    }
+  },
+  "errors": {
+    "internal": "Une erreur inattendue s'est produite",
+    "validation": "Une erreur de validation s'est produite",
+    "notFound": "Ressource non trouvée",
+    "unauthorized": "Accès non autorisé"
+  }
+}
