@@ -20,7 +20,8 @@ export class AppError extends Error {
   ) {
     // If the message looks like a translation key (contains dots), store it as messageKey
     const isTranslationKey = messageOrKey.includes('.');
-    const message = isTranslationKey ? i18next.t(messageOrKey, messageParams) : messageOrKey;
+    const translationKey = isTranslationKey ? AppError.normalizeKey(messageOrKey) : messageOrKey;
+    const message = isTranslationKey ? i18next.t(translationKey, messageParams) : messageOrKey;
     
     super(message);
     
@@ -44,7 +45,8 @@ export class AppError extends Error {
     if (!this.messageKey) return this.message;
     
     const currentLanguage = language || i18next.language;
-    return i18next.t(this.messageKey, { 
+    const translationKey = AppError.normalizeKey(this.messageKey);
+    return i18next.t(translationKey, { 
       ...this.messageParams,
       lng: currentLanguage 
     });
@@ -76,6 +78,19 @@ export class AppError extends Error {
       },
       timestamp: this.timestamp,
     };
+  }
+
+  private static normalizeKey(key: string): string {
+    if (!key || !key.includes('.')) {
+      return key;
+    }
+
+    const [namespace, ...rest] = key.split('.');
+    if (!namespace || rest.length === 0) {
+      return key;
+    }
+
+    return `${namespace}:${rest.join('.')}`;
   }
 }
 
