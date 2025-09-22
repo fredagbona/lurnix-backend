@@ -1,0 +1,113 @@
+{
+  "common": {
+    "greeting": "Hi {{name}},",
+    "closing": "Happy learning!",
+    "signature": "The Lurnix Team",
+    "manageSubscriptionCta": "Manage subscription",
+    "support": "If you have any questions, our support team is here to help.",
+    "supportCta": "Contact support",
+    "supportFooter": "Need help? Contact our support team at <a href=\"mailto:support@lurnix.com\">support@lurnix.com</a>",
+    "footerLegal": "This email was sent to {{email}} because you have an active relationship with Lurnix."
+  },
+  "registration": {
+    "subject": "Welcome to Lurnix - Verify your email",
+    "headline": "Confirm your email to get started",
+    "intro": "Click the button below to verify your email address and unlock your personalized roadmap.",
+    "cta": "Verify email",
+    "stepsTitle": "Here's what you can do next:",
+    "steps": [
+      "Complete your profile to personalise recommendations",
+      "Take the learning style quiz",
+      "Start with your first roadmap"
+    ],
+    "expirationNote": "This verification link will expire in 24 hours."
+  },
+  "welcome": {
+    "subject": "Welcome to Lurnix - Your account is ready!",
+    "headline": "You're all set!",
+    "intro": "Here are a few resources to help you dive into your learning journey.",
+    "course1Name": "Getting Started with Lurnix",
+    "course2Name": "Web Development Fundamentals",
+    "course3Name": "Introduction to JavaScript",
+    "courseIntro": "Our top picks to explore first:",
+    "stepTitle": "Next steps",
+    "steps": [
+      "Complete your learning profile",
+      "Activate your first roadmap",
+      "Introduce yourself in the community"
+    ],
+    "cta": "Go to my dashboard"
+  },
+  "passwordReset": {
+    "subject": "Reset your Lurnix password",
+    "headline": "We received a password reset request",
+    "intro": "Use the button below to choose a new password.",
+    "cta": "Reset password",
+    "ignore": "If you did not request this change, you can safely ignore this email."
+  },
+  "passwordChanged": {
+    "subject": "Your Lurnix password has been changed",
+    "headline": "We wanted to let you know",
+    "intro": "Your password was updated successfully on {{changeDate}} from {{ipAddress}}.",
+    "changeDateLabel": "Change date",
+    "ipAddressLabel": "IP address"
+  },
+  "accountDeleted": {
+    "subject": "Your Lurnix account has been deleted",
+    "headline": "We're sorry to see you go",
+    "intro": "The account <strong>{{username}}</strong> has been deleted. If this was not you, please contact support immediately.",
+    "cta": "Contact support"
+  },
+  "subscription": {
+    "confirmation": {
+      "subject": "Your Lurnix subscription is active",
+      "headline": "Thank you for subscribing!",
+      "intro": "Thank you for subscribing to Lurnix. Your account has been upgraded to <strong>{{planName}}</strong>.",
+      "detailsTitle": "Subscription details",
+      "planLabel": "Plan",
+      "billingCycleLabel": "Billing cycle",
+      "amountLabel": "Amount",
+      "nextBillingDateLabel": "Next billing date",
+      "paymentMethodLabel": "Payment method",
+      "plan": "Plan",
+      "billingCycle": "Billing cycle",
+      "amount": "Amount",
+      "nextBillingDate": "Next billing date",
+      "paymentMethod": "Payment method",
+      "featuresTitle": "Plan features",
+      "manageCta": "Manage subscription",
+      "supportText": "If you have any questions about your subscription, our support team is here to help.",
+      "footerNote": "You can manage your subscription, update payment details or cancel at any time from your account settings."
+    },
+    "cancellation": {
+      "subject": "Your Lurnix subscription has been cancelled",
+      "headline": "Subscription cancelled",
+      "intro": "Your subscription to the <strong>{{planName}}</strong> plan has been cancelled. You will retain access until <strong>{{effectiveDate}}</strong>.",
+      "detailsTitle": "Cancellation summary",
+      "plan": "Plan",
+      "effectiveDate": "Ends on",
+      "reason": "Reason provided",
+      "cancellationDateLabel": "Cancellation date",
+      "accessUntilLabel": "Access until",
+      "reasonLabel": "Reason provided",
+      "accessNote": "You will keep premium access until the date shown above, after which your account will move back to the free tier.",
+      "feedbackTitle": "We value your feedback",
+      "feedbackText": "We are always improving Lurnix. Could you take a moment to let us know why you decided to cancel?",
+      "feedbackCta": "Share feedback",
+      "reactivationNote": "If this was a mistake or you change your mind, you can reactivate before the end date to keep uninterrupted access.",
+      "reactivateCta": "Reactivate subscription",
+      "footerNote": "If this was a mistake or you change your mind, you can reactivate at any time from your account dashboard."
+    }
+  },
+  "billing": {
+    "invoice": {
+      "subject": "Payment received for Lurnix",
+      "headline": "Payment confirmed",
+      "intro": "We have received your payment of <strong>{{amount}}</strong> for the <strong>{{planName}}</strong> plan.",
+      "detailsTitle": "Invoice summary",
+      "invoiceNumber": "Invoice number",
+      "period": "Billing period",
+      "download": "Download invoice"
+    }
+  }
+}

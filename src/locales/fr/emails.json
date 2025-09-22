@@ -1,0 +1,113 @@
+{
+  "common": {
+    "greeting": "Bonjour {{name}},",
+    "closing": "Bon apprentissage !",
+    "signature": "L'équipe Lurnix",
+    "manageSubscriptionCta": "Gérer l'abonnement",
+    "support": "Si vous avez la moindre question, notre équipe support est là pour vous aider.",
+    "supportCta": "Contacter le support",
+    "supportFooter": "Besoin d'aide ? Contactez notre équipe à <a href=\"mailto:support@lurnix.com\">support@lurnix.com</a>",
+    "footerLegal": "Cet e-mail a été envoyé à {{email}} car vous avez une relation active avec Lurnix."
+  },
+  "registration": {
+    "subject": "Bienvenue sur Lurnix - Vérifiez votre e-mail",
+    "headline": "Confirmez votre e-mail pour commencer",
+    "intro": "Cliquez sur le bouton ci-dessous pour vérifier votre adresse et débloquer votre feuille de route personnalisée.",
+    "cta": "Vérifier mon e-mail",
+    "stepsTitle": "Et maintenant ?",
+    "steps": [
+      "Complétez votre profil pour personnaliser vos recommandations",
+      "Réalisez le quiz de style d'apprentissage",
+      "Lancez votre première feuille de route"
+    ],
+    "expirationNote": "Ce lien de vérification expire dans 24 heures."
+  },
+  "welcome": {
+    "subject": "Bienvenue sur Lurnix - Votre compte est prêt !",
+    "headline": "Tout est en place !",
+    "intro": "Voici quelques ressources pour vous lancer rapidement dans votre parcours.",
+    "course1Name": "Bien démarrer avec Lurnix",
+    "course2Name": "Fondamentaux du développement web",
+    "course3Name": "Introduction à JavaScript",
+    "courseIntro": "Nos recommandations pour commencer :",
+    "stepTitle": "Étapes suivantes",
+    "steps": [
+      "Complétez votre profil d'apprentissage",
+      "Activez votre première feuille de route",
+      "Présentez-vous dans la communauté"
+    ],
+    "cta": "Accéder à mon tableau de bord"
+  },
+  "passwordReset": {
+    "subject": "Réinitialisez votre mot de passe Lurnix",
+    "headline": "Nous avons reçu une demande de réinitialisation",
+    "intro": "Utilisez le bouton ci-dessous pour choisir un nouveau mot de passe.",
+    "cta": "Réinitialiser le mot de passe",
+    "ignore": "Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail."
+  },
+  "passwordChanged": {
+    "subject": "Votre mot de passe Lurnix a été modifié",
+    "headline": "Nous souhaitions vous prévenir",
+    "intro": "Votre mot de passe a été mis à jour le {{changeDate}} depuis l'adresse IP {{ipAddress}}.",
+    "changeDateLabel": "Date de modification",
+    "ipAddressLabel": "Adresse IP"
+  },
+  "accountDeleted": {
+    "subject": "Votre compte Lurnix a été supprimé",
+    "headline": "Nous sommes désolés de vous voir partir",
+    "intro": "Le compte <strong>{{username}}</strong> a été supprimé. Si ce n'était pas vous, contactez immédiatement le support.",
+    "cta": "Contacter le support"
+  },
+  "subscription": {
+    "confirmation": {
+      "subject": "Votre abonnement Lurnix est actif",
+      "headline": "Merci pour votre abonnement !",
+      "intro": "Merci de votre confiance. Votre compte est maintenant passé sur le plan <strong>{{planName}}</strong>.",
+      "detailsTitle": "Détails de l'abonnement",
+      "planLabel": "Plan",
+      "billingCycleLabel": "Cycle de facturation",
+      "amountLabel": "Montant",
+      "nextBillingDateLabel": "Prochaine facturation",
+      "paymentMethodLabel": "Moyen de paiement",
+      "plan": "Plan",
+      "billingCycle": "Cycle de facturation",
+      "amount": "Montant",
+      "nextBillingDate": "Prochaine facturation",
+      "paymentMethod": "Moyen de paiement",
+      "featuresTitle": "Fonctionnalités incluses",
+      "manageCta": "Gérer l'abonnement",
+      "supportText": "Si vous avez des questions concernant votre abonnement, notre équipe support est à votre disposition.",
+      "footerNote": "Vous pouvez gérer votre abonnement, mettre à jour votre paiement ou annuler à tout moment depuis votre espace compte."
+    },
+    "cancellation": {
+      "subject": "Votre abonnement Lurnix a été annulé",
+      "headline": "Abonnement annulé",
+      "intro": "Votre abonnement au plan <strong>{{planName}}</strong> a été annulé. Vous conservez l'accès jusqu'au <strong>{{effectiveDate}}</strong>.",
+      "detailsTitle": "Résumé de l'annulation",
+      "plan": "Plan",
+      "effectiveDate": "Fin au",
+      "reason": "Motif indiqué",
+      "cancellationDateLabel": "Date d'annulation",
+      "accessUntilLabel": "Accès jusqu'au",
+      "reasonLabel": "Motif indiqué",
+      "accessNote": "Vous conservez vos accès premium jusqu'à la date indiquée. Au-delà, votre compte repassera sur le plan gratuit.",
+      "feedbackTitle": "Votre avis compte",
+      "feedbackText": "Nous améliorons Lurnix en continu. Pourriez-vous nous indiquer la raison de votre départ ?",
+      "feedbackCta": "Donner mon avis",
+      "reactivationNote": "Si vous changez d'avis, vous pouvez réactiver votre abonnement avant la date de fin pour éviter toute interruption.",
+      "reactivateCta": "Réactiver l'abonnement",
+      "footerNote": "Si vous avez changé d'avis, vous pouvez réactiver votre abonnement à tout moment depuis votre tableau de bord."
+    }
+  },
+  "billing": {
+    "invoice": {
+      "subject": "Paiement reçu pour Lurnix",
+      "headline": "Paiement confirmé",
+      "intro": "Nous avons bien reçu votre paiement de <strong>{{amount}}</strong> pour le plan <strong>{{planName}}</strong>.",
+      "detailsTitle": "Résumé de la facture",
+      "invoiceNumber": "Numéro de facture",
+      "period": "Période de facturation",
+      "download": "Télécharger la facture"
+    }
+  }
+}

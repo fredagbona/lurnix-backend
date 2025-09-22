@@ -1,0 +1,19 @@
+{
+  "messages": {
+    "applied": "Code promotionnel appliqué avec succès.",
+    "removed": "Code promotionnel retiré de l'abonnement.",
+    "invalid": "Ce code ne peut pas être utilisé avec le plan sélectionné.",
+    "expired": "Ce code promotionnel est expiré.",
+    "limitReached": "Ce code a atteint sa limite d'utilisation.",
+    "perUserLimitReached": "Vous avez déjà utilisé ce code le nombre maximum de fois.",
+    "firstTimeOnly": "Ce code est réservé aux nouveaux abonnés.",
+    "commitmentRequired": "Ce code nécessite un engagement plus long.",
+    "notStarted": "Ce code promotionnel n'est pas encore actif.",
+    "inactive": "Ce code promotionnel n'est pas actif actuellement."
+  },
+  "labels": {
+    "code": "Code promotionnel",
+    "discount": "Réduction",
+    "finalPrice": "Montant final"
+  }
+}

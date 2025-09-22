@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Subscription Cancellation Confirmation - Lurnix</title>
+  <title>{{headline}}</title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -49,10 +49,6 @@
       font-weight: bold;
       margin: 20px 0;
     }
-    .button:hover {
-      background-color: #4338CA;
-      color: #fff !important;
-    }
     .info-box {
       background-color: #f0f7ff;
       border-radius: 8px;
@@ -82,53 +78,59 @@
       <img src="{{logoUrl}}" alt="Lurnix Logo">
     </div>
     <div class="content">
-      <h1>Subscription Cancellation Confirmation</h1>
-      <p>Hi {{name}},</p>
-      <p>We're sorry to see you go. Your subscription cancellation request has been processed successfully.</p>
+      <h1>{{headline}}</h1>
+      <p>{{{greeting}}}</p>
+      <p>{{{introHtml}}}</p>
       
       <div class="subscription-details">
-        <h3>Subscription Details</h3>
+        <h3>{{detailsTitle}}</h3>
         <table>
           <tr>
-            <th>Plan</th>
+            <th>{{planLabel}}</th>
             <td>{{planName}}</td>
           </tr>
           <tr>
-            <th>Cancellation Date</th>
+            <th>{{cancellationDateLabel}}</th>
             <td>{{cancellationDate}}</td>
           </tr>
           <tr>
-            <th>Access Until</th>
+            <th>{{accessUntilLabel}}</th>
             <td><strong>{{accessUntilDate}}</strong></td>
           </tr>
+          {{#if reason}}
+          <tr>
+            <th>{{reasonLabel}}</th>
+            <td>{{reason}}</td>
+          </tr>
+          {{/if}}
         </table>
       </div>
       
-      <p>You will continue to have access to your premium features until <strong>{{accessUntilDate}}</strong>, after which your account will revert to the free tier.</p>
+      <p>{{accessNote}}</p>
       
       <div class="info-box">
-        <h3>We Value Your Feedback</h3>
-        <p>We're constantly working to improve our service. Could you take a moment to let us know why you decided to cancel?</p>
+        <h3>{{feedbackTitle}}</h3>
+        <p>{{feedbackText}}</p>
         <div style="text-align: center;">
-          <a href="{{feedbackUrl}}" class="button">Share Feedback</a>
+          <a href="{{feedbackUrl}}" class="button">{{feedbackCta}}</a>
         </div>
       </div>
       
-      <p>If you change your mind, you can reactivate your subscription at any time before <strong>{{accessUntilDate}}</strong> to avoid any interruption to your premium access.</p>
+      <p>{{reactivationNote}}</p>
       
       <div style="text-align: center;">
-        <a href="{{reactivateUrl}}" class="button" style="background-color: #10B981;">Reactivate Subscription</a>
+        <a href="{{reactivateUrl}}" class="button" style="background-color: #10B981;">{{reactivateCta}}</a>
       </div>
       
-      <p>We hope to welcome you back soon. In the meantime, you can still access our free content and community features.</p>
+      <p>{{supportText}}</p>
       
-      <p>Best regards,</p>
-      <p>The Lurnix Team</p>
+      <p>{{closing}}</p>
+      <p>{{signature}}</p>
     </div>
     <div class="footer">
       <p>&copy; {{currentYear}} Lurnix. All rights reserved.</p>
-      <p>If you have any questions, please contact our support team at <a href="mailto:support@lurnix.com">support@lurnix.com</a></p>
-      <p><small>This email was sent to {{email}}. You're receiving this email because you recently cancelled your Lurnix subscription.</small></p>
+      <p>{{supportFooter}}</p>
+      <p><small>{{footerLegal}}</small></p>
     </div>
   </div>
 </body>

@@ -1,392 +1,498 @@
+import { randomUUID } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma/typedClient';
 import { AppError } from '../errors/AppError';
-import { randomUUID } from 'crypto';
-import { Request } from 'express';
-import { RegionService } from './regionService';
+import type { BillingCycle, PlanType, UserSubscriptionStatus } from '../prisma/prismaTypes';
+import { couponService } from './couponService';
+import { paddleService } from './paddleService';
 
-interface SubscriptionPlanInput {
-  code: string;
-  name: string;
-  description?: string;
-  price: number;
-  currency: string;
-  regionCode: string;
-  interval: 'monthly' | 'yearly';
-  features: string[];
-  isActive?: boolean;
-}
+const BILLING_CYCLE_MONTHS: Record<BillingCycle, number> = {
+  monthly: 1,
+  six_months: 6,
+  twelve_months: 12,
+};
 
-interface SubscriptionQueryParams {
-  page: number;
-  limit: number;
-  regionCode?: string;
-  isActive?: boolean;
-}
+type TransactionClient = Prisma.TransactionClient;
 
-interface SubscriptionUpdateInput {
-  name?: string;
-  description?: string;
-  price?: number;
-  currency?: string;
-  regionCode?: string;
-  interval?: 'monthly' | 'yearly';
-  features?: string[];
-  isActive?: boolean;
-}
+const ACTIVE_SUBSCRIPTION_STATUSES: UserSubscriptionStatus[] = ['pending', 'active', 'paused'];
 
-interface UserSubscriptionInput {
+const SUBSCRIPTION_RELATIONS = {
+  plan: true,
+  couponRedemptions: {
+    include: {
+      coupon: true,
+    },
+  },
+  invoices: true,
+} as const;
+
+type SubscriptionWithRelations = Prisma.UserSubscriptionGetPayload<{ include: typeof SUBSCRIPTION_RELATIONS }>;
+
+const resolveCheckoutUrls = () => {
+  const baseUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+  const successPath = process.env.PADDLE_CHECKOUT_SUCCESS_PATH ?? '/checkout/success';
+  const cancelPath = process.env.PADDLE_CHECKOUT_CANCEL_PATH ?? '/checkout/cancel';
+
+  const resolveUrl = (path: string) => {
+    try {
+      return new URL(path, baseUrl).toString();
+    } catch {
+      return `${baseUrl.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`;
+    }
+  };
+
+  return {
+    success: resolveUrl(successPath),
+    cancel: resolveUrl(cancelPath),
+  };
+};
+
+interface CreateSubscriptionInput {
   userId: string;
-  subscriptionId: string;
-  endDate: Date;
+  planId: string;
+  autoRenewal?: boolean;
+  startDate?: Date;
+  couponCode?: string;
 }
+
+interface ChangePlanInput {
+  subscriptionId: string;
+  newPlanId: string;
+  couponCode?: string;
+}
+
+interface CancelSubscriptionInput {
+  subscriptionId: string;
+  cancelImmediately?: boolean;
+  reason?: string;
+}
+
+interface ReactivateSubscriptionInput {
+  subscriptionId: string;
+  billingCycle?: BillingCycle;
+}
+
+const addMonths = (date: Date, months: number): Date => {
+  const result = new Date(date);
+  const targetMonth = result.getMonth() + months;
+  result.setMonth(targetMonth);
+
+  // Handle cases where adding months moves us beyond the end of month
+  if (result.getMonth() !== ((targetMonth % 12) + 12) % 12) {
+    result.setDate(0);
+  }
+
+  return result;
+};
+
+const calculatePeriods = (start: Date, billingCycle: BillingCycle, commitmentMonths: number) => {
+  const currentPeriodStart = start;
+  const currentPeriodEnd = addMonths(start, BILLING_CYCLE_MONTHS[billingCycle]);
+  const commitmentEndDate = commitmentMonths > 0 ? addMonths(start, commitmentMonths) : null;
+
+  return { currentPeriodStart, currentPeriodEnd, commitmentEndDate };
+};
 
 export class SubscriptionService {
-  // Create a new subscription plan
-  async createSubscriptionPlan(data: SubscriptionPlanInput) {
-    try {
-      // Check if plan with the same code already exists
-      const existingPlan = await prisma.subscriptionPlan.findUnique({
-        where: { code: data.code },
-      });
+  private async ensureUserExists(userId: string, tx?: TransactionClient) {
+    const client = tx ?? prisma;
+    const user = await client.user.findUnique({ where: { id: userId } });
 
-      if (existingPlan) {
-        throw new AppError(`Subscription plan with code ${data.code} already exists`, 400);
-      }
-
-      // Create the subscription plan
-      const subscriptionPlan = await prisma.subscriptionPlan.create({
-        data: {
-          id: randomUUID(),
-          ...data,
-          features: data.features as any, // Convert string[] to Json
-        },
-      });
-
-      return subscriptionPlan;
-    } catch (error) {
-      if (error instanceof AppError) {
-        throw error;
-      }
-      throw new AppError(`Failed to create subscription plan: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
+    if (!user) {
+      throw new AppError(`User with ID ${userId} not found`, 404);
     }
   }
 
-  // Get all subscription plans with pagination and filters
-  async getSubscriptionPlans(params: SubscriptionQueryParams) {
-    try {
-      const { page, limit, regionCode, isActive } = params;
-      const skip = (page - 1) * limit;
+  private async getPlanOrThrow(planId: string, tx?: TransactionClient) {
+    const client = tx ?? prisma;
+    const plan = await client.subscriptionPlan.findUnique({ where: { id: planId } });
 
-      // Build where clause based on filters
-      const where: any = {};
-      if (regionCode) {
-        where.regionCode = regionCode;
-      }
-      if (isActive !== undefined) {
-        where.isActive = isActive;
-      }
+    if (!plan || !plan.isActive) {
+      throw new AppError('Requested plan is not available', 404);
+    }
 
-      // Get plans with count
-      const [plans, total] = await Promise.all([
-        prisma.subscriptionPlan.findMany({
-          where,
-          skip,
-          take: limit,
-          orderBy: {
-            price: 'asc',
+    return plan;
+  }
+
+  private async getSubscriptionOrThrow(subscriptionId: string, tx?: TransactionClient) {
+    const client = tx ?? prisma;
+    const subscription = await client.userSubscription.findUnique({
+      where: { id: subscriptionId },
+      include: SUBSCRIPTION_RELATIONS,
+    });
+
+    if (!subscription) {
+      throw new AppError(`Subscription with ID ${subscriptionId} not found`, 404);
+    }
+
+    return subscription;
+  }
+
+  private async ensureNoActiveSubscription(userId: string, tx?: TransactionClient) {
+    const activeStatuses: UserSubscriptionStatus[] = ['active', 'paused', 'pending'];
+    const client = tx ?? prisma;
+    const existing = await client.userSubscription.findFirst({
+      where: {
+        userId,
+        status: {
+          in: activeStatuses,
+        },
+      },
+    });
+
+    if (existing) {
+      throw new AppError('User already has an active subscription', 400);
+    }
+  }
+
+  async createSubscription(input: CreateSubscriptionInput) {
+    const {
+      userId,
+      planId,
+      autoRenewal = true,
+      startDate = new Date(),
+      couponCode,
+    } = input;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new AppError(`User with ID ${userId} not found`, 404);
+    }
+
+    await this.ensureNoActiveSubscription(userId);
+
+    const plan = await this.getPlanOrThrow(planId);
+
+    if (!plan.paddlePriceId) {
+      throw new AppError('Plan is missing Paddle price mapping', 500);
+    }
+
+    const periods = calculatePeriods(startDate, plan.billingCycle, plan.commitmentMonths);
+
+    let couponSummary: {
+      code: string;
+      discountAmount: number;
+    } | null = null;
+    let overrideAmount: number | undefined;
+
+    if (couponCode) {
+      const validation = await couponService.validateCouponForPlan({
+        code: couponCode,
+        plan,
+        userId,
+      });
+
+      couponSummary = {
+        code: validation.coupon.code,
+        discountAmount: Number(validation.discountAmount),
+      };
+
+      overrideAmount = Math.max(
+        plan.billingAmount.sub(validation.discountAmount).toNumber(),
+        0,
+      );
+    }
+
+    const paddleCustomerId = await paddleService.createOrRetrieveCustomer({
+      customerId: user.paddleCustomerId,
+      email: user.email,
+      name: user.fullname,
+    });
+
+    if (!user.paddleCustomerId) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          paddleCustomerId,
+        },
+      });
+    }
+
+    const { success, cancel } = resolveCheckoutUrls();
+
+    const checkout = await paddleService.createCheckoutSession({
+      customerId: paddleCustomerId,
+      priceId: plan.paddlePriceId,
+      allowPriceOverride: overrideAmount !== undefined,
+      overridePrice: overrideAmount,
+      successUrl: success,
+      cancelUrl: cancel,
+      metadata: {
+        userId,
+        planId,
+      },
+    });
+
+    const subscription = await prisma.userSubscription.create({
+      data: {
+        id: randomUUID(),
+        userId,
+        planId: plan.id,
+        status: 'pending',
+        currentPeriodStart: periods.currentPeriodStart,
+        currentPeriodEnd: periods.currentPeriodEnd,
+        commitmentEndDate: periods.commitmentEndDate,
+        autoRenewal,
+        stripeSubscriptionId: null,
+        paddleSubscriptionId: null,
+        paddleCheckoutId: checkout.id,
+      },
+      include: {
+        plan: true,
+      },
+    });
+
+      return {
+        subscription,
+        message: 'Checkout session created successfully',
+        coupon: couponSummary,
+        checkout,
+      };
+  }
+
+  private async switchPlan(
+    subscriptionId: string,
+    newPlanId: string,
+    intent: 'upgrade' | 'downgrade',
+  ) {
+    const subscription = await this.getSubscriptionOrThrow(subscriptionId);
+    const newPlan = await this.getPlanOrThrow(newPlanId);
+
+    if (!['active', 'paused'].includes(subscription.status)) {
+      throw new AppError('Only active subscriptions can change plans', 400);
+    }
+
+    if (subscription.planId === newPlan.id) {
+      throw new AppError('Subscription is already on the requested plan', 400);
+    }
+
+    if (!subscription.paddleSubscriptionId) {
+      throw new AppError('Subscription is not linked to Paddle yet', 400);
+    }
+
+    if (!newPlan.paddlePriceId) {
+      throw new AppError('Target plan is missing Paddle price mapping', 500);
+    }
+
+    await paddleService.updateSubscription({
+      paddleSubscriptionId: subscription.paddleSubscriptionId,
+      priceId: newPlan.paddlePriceId,
+    });
+
+    const now = new Date();
+    const periods = calculatePeriods(now, newPlan.billingCycle, newPlan.commitmentMonths);
+
+    const updated = await prisma.userSubscription.update({
+      where: { id: subscription.id },
+      data: {
+        planId: newPlan.id,
+        status: 'active',
+        autoRenewal: true,
+        currentPeriodStart: periods.currentPeriodStart,
+        currentPeriodEnd: periods.currentPeriodEnd,
+        commitmentEndDate: periods.commitmentEndDate,
+        cancelledAt: null,
+      },
+      include: {
+        plan: true,
+      },
+    });
+
+    return {
+      subscription: updated,
+      message: `Subscription ${intent} processed successfully`,
+      previousPlan: subscription.plan,
+    };
+  }
+
+  async upgradeSubscription(input: ChangePlanInput) {
+    return this.switchPlan(input.subscriptionId, input.newPlanId, 'upgrade');
+  }
+
+  async downgradeSubscription(input: ChangePlanInput) {
+    return this.switchPlan(input.subscriptionId, input.newPlanId, 'downgrade');
+  }
+
+  async cancelSubscription(input: CancelSubscriptionInput) {
+    const { subscriptionId, cancelImmediately = false, reason } = input;
+    const subscription = await this.getSubscriptionOrThrow(subscriptionId);
+
+    if (subscription.status === 'cancelled') {
+      throw new AppError('Subscription is already cancelled', 400);
+    }
+
+    if (subscription.paddleSubscriptionId) {
+      await paddleService.cancelSubscription({
+        paddleSubscriptionId: subscription.paddleSubscriptionId,
+        effectiveFrom: cancelImmediately ? 'immediately' : 'next_billing_period',
+      });
+    }
+
+    const effectiveCancellationDate = cancelImmediately
+      ? new Date()
+      : subscription.currentPeriodEnd;
+
+    const updated = await prisma.userSubscription.update({
+      where: { id: subscription.id },
+      data: {
+        status: cancelImmediately ? 'cancelled' : subscription.status,
+        autoRenewal: false,
+        cancelledAt: new Date(),
+        currentPeriodEnd: effectiveCancellationDate,
+      },
+      include: {
+        plan: true,
+      },
+    });
+
+    return {
+      subscription: updated,
+      message: cancelImmediately
+        ? 'Subscription cancelled immediately'
+        : 'Subscription will end at the conclusion of the current period',
+      reason,
+      effectiveDate: effectiveCancellationDate,
+    };
+  }
+
+  async reactivateSubscription(input: ReactivateSubscriptionInput) {
+    const { subscriptionId, billingCycle } = input;
+    const subscription = await this.getSubscriptionOrThrow(subscriptionId);
+
+    const planId = billingCycle
+      ? await this.resolvePlanForBillingCycle(subscription.plan.planType, billingCycle)
+      : subscription.planId;
+
+    const plan = await this.getPlanOrThrow(planId);
+
+    if (!plan.paddlePriceId) {
+      throw new AppError('Plan is missing Paddle price mapping', 500);
+    }
+
+    if (!subscription.paddleSubscriptionId) {
+      throw new AppError('Subscription is not linked to Paddle yet', 400);
+    }
+
+    await paddleService.updateSubscription({
+      paddleSubscriptionId: subscription.paddleSubscriptionId,
+      priceId: plan.paddlePriceId,
+      resume: true,
+    });
+
+    const now = new Date();
+    const periods = calculatePeriods(now, plan.billingCycle, plan.commitmentMonths);
+
+    const updated = await prisma.userSubscription.update({
+      where: { id: subscription.id },
+      data: {
+        planId: plan.id,
+        status: 'active',
+        autoRenewal: true,
+        currentPeriodStart: periods.currentPeriodStart,
+        currentPeriodEnd: periods.currentPeriodEnd,
+        commitmentEndDate: periods.commitmentEndDate,
+        cancelledAt: null,
+      },
+      include: {
+        plan: true,
+      },
+    });
+
+    return {
+      subscription: updated,
+      message: 'Subscription reactivated successfully',
+    };
+  }
+
+  async getCurrentSubscription(userId: string) {
+    await this.ensureUserExists(userId);
+
+    const activeStatuses: UserSubscriptionStatus[] = ['pending', 'active', 'paused'];
+    const subscription = await prisma.userSubscription.findFirst({
+      where: {
+        userId,
+        status: {
+          in: activeStatuses,
+        },
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+      include: {
+        plan: true,
+        couponRedemptions: {
+          include: {
+            coupon: true,
           },
-        }),
-        prisma.subscriptionPlan.count({ where }),
-      ]);
-
-      return {
-        data: plans,
-        pagination: {
-          total,
-          page,
-          limit,
-          pages: Math.ceil(total / limit),
+          orderBy: {
+            redeemedAt: 'desc',
+          },
         },
-      };
-    } catch (error) {
-      throw new AppError(`Failed to get subscription plans: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
+      },
+    });
+
+    if (!subscription) {
+      return null;
     }
+
+    return subscription;
   }
 
-  // Get subscription plan by ID
-  async getSubscriptionPlanById(id: string) {
-    try {
-      const plan = await prisma.subscriptionPlan.findUnique({
-        where: { id },
-      });
+  async getFreePlanSnapshot(userId: string) {
+    const freePlan = await prisma.subscriptionPlan.findUnique({
+      where: {
+        planType_billingCycle: {
+          planType: 'free',
+          billingCycle: 'monthly',
+        },
+      },
+    });
 
-      if (!plan) {
-        throw new AppError(`Subscription plan with ID ${id} not found`, 404);
-      }
-
-      return plan;
-    } catch (error) {
-      if (error instanceof AppError) {
-        throw error;
-      }
-      throw new AppError(`Failed to get subscription plan: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
+    if (!freePlan) {
+      return null;
     }
+
+    const now = new Date();
+    const end = new Date(now);
+    end.setMonth(end.getMonth() + 1);
+
+    return {
+      id: `free-${userId}`,
+      userId,
+      planId: freePlan.id,
+      status: 'active' as UserSubscriptionStatus,
+      currentPeriodStart: now,
+      currentPeriodEnd: end,
+      commitmentEndDate: null,
+      autoRenewal: true,
+      stripeSubscriptionId: null,
+      paddleSubscriptionId: null,
+      paddleCheckoutId: null,
+      createdAt: now,
+      updatedAt: now,
+      cancelledAt: null,
+      plan: freePlan,
+      couponRedemptions: [],
+      invoices: [],
+    } as Awaited<ReturnType<SubscriptionService['getCurrentSubscription']>>;
   }
 
-  // Get subscription plans by region code
-  async getSubscriptionPlansByRegion(regionCode: string) {
-    try {
-      const plans = await prisma.subscriptionPlan.findMany({
-        where: {
-          regionCode,
-          isActive: true,
+  private async resolvePlanForBillingCycle(planType: PlanType, billingCycle: BillingCycle) {
+    const plan = await prisma.subscriptionPlan.findUnique({
+      where: {
+        planType_billingCycle: {
+          planType,
+          billingCycle,
         },
-        orderBy: {
-          price: 'asc',
-        },
-      });
+      },
+    });
 
-      return plans;
-    } catch (error) {
-      throw new AppError(`Failed to get subscription plans for region ${regionCode}: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
+    if (!plan || !plan.isActive) {
+      throw new AppError('Requested billing cycle is not available for this plan', 400);
     }
-  }
-  
-  /**
-   * Get subscription plans based on the user's region determined from their request
-   * @param req Express request object
-   * @returns Subscription plans for the user's region
-   */
-  async getSubscriptionPlansForUser(req: Request) {
-    try {
-      // Determine the user's region from their request
-      const regionCode = RegionService.getRegionFromRequest(req);
-      
-      // Get plans for that region
-      const plans = await this.getSubscriptionPlansByRegion(regionCode);
-      
-      return {
-        data: plans,
-        region: regionCode,
-      };
-    } catch (error) {
-      throw new AppError(`Failed to get subscription plans for user: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
-    }
-  }
-  
-  /**
-   * Get all available regions with at least one active subscription plan
-   * @returns List of region codes with active subscription plans
-   */
-  async getAvailableRegions() {
-    try {
-      // Get distinct region codes from active subscription plans
-      const regions = await prisma.subscriptionPlan.findMany({
-        where: {
-          isActive: true,
-        },
-        select: {
-          regionCode: true,
-          currency: true,
-        },
-        distinct: ['regionCode'],
-      });
-      
-      return regions.map((r: { regionCode: string; currency: string }) => ({
-        code: r.regionCode,
-        currency: r.currency,
-      }));
-    } catch (error) {
-      throw new AppError(`Failed to get available regions: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
-    }
-  }
 
-  // Update a subscription plan
-  async updateSubscriptionPlan(id: string, data: SubscriptionUpdateInput) {
-    try {
-      // Check if plan exists
-      const existingPlan = await prisma.subscriptionPlan.findUnique({
-        where: { id },
-      });
-
-      if (!existingPlan) {
-        throw new AppError(`Subscription plan with ID ${id} not found`, 404);
-      }
-
-      // Update the plan
-      const updatedPlan = await prisma.subscriptionPlan.update({
-        where: { id },
-        data: {
-          ...data,
-          features: data.features ? (data.features as any) : undefined,
-        },
-      });
-
-      return updatedPlan;
-    } catch (error) {
-      if (error instanceof AppError) {
-        throw error;
-      }
-      throw new AppError(`Failed to update subscription plan: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
-    }
-  }
-
-  // Delete a subscription plan
-  async deleteSubscriptionPlan(id: string) {
-    try {
-      // Check if plan exists
-      const existingPlan = await prisma.subscriptionPlan.findUnique({
-        where: { id },
-      });
-
-      if (!existingPlan) {
-        throw new AppError(`Subscription plan with ID ${id} not found`, 404);
-      }
-
-      // Check if any users are using this plan
-      const usersWithPlan = await prisma.user.count({
-        where: {
-          subscriptionId: id,
-        },
-      });
-
-      if (usersWithPlan > 0) {
-        throw new AppError(`Cannot delete subscription plan: ${usersWithPlan} users are currently subscribed to this plan`, 400);
-      }
-
-      // Delete the plan
-      await prisma.subscriptionPlan.delete({
-        where: { id },
-      });
-
-      return { success: true, message: 'Subscription plan deleted successfully' };
-    } catch (error) {
-      if (error instanceof AppError) {
-        throw error;
-      }
-      throw new AppError(`Failed to delete subscription plan: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
-    }
-  }
-
-  // Subscribe a user to a plan
-  async subscribeUser(data: UserSubscriptionInput) {
-    try {
-      const { userId, subscriptionId, endDate } = data;
-
-      // Check if user exists
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-      });
-
-      if (!user) {
-        throw new AppError(`User with ID ${userId} not found`, 404);
-      }
-
-      // Check if subscription plan exists
-      const plan = await prisma.subscriptionPlan.findUnique({
-        where: { id: subscriptionId },
-      });
-
-      if (!plan) {
-        throw new AppError(`Subscription plan with ID ${subscriptionId} not found`, 404);
-      }
-
-      // Update user's subscription
-      const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: {
-          subscriptionId,
-          subscriptionStatus: 'active',
-          subscriptionEndDate: endDate,
-        },
-      });
-
-      return {
-        success: true,
-        message: `User subscribed to ${plan.name} plan successfully`,
-        data: {
-          userId: updatedUser.id,
-          subscriptionId: updatedUser.subscriptionId,
-          subscriptionStatus: updatedUser.subscriptionStatus,
-          subscriptionEndDate: updatedUser.subscriptionEndDate,
-        },
-      };
-    } catch (error) {
-      if (error instanceof AppError) {
-        throw error;
-      }
-      throw new AppError(`Failed to subscribe user: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
-    }
-  }
-
-  // Cancel a user's subscription
-  async cancelSubscription(userId: string) {
-    try {
-      // Check if user exists and has an active subscription
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-      });
-
-      if (!user) {
-        throw new AppError(`User with ID ${userId} not found`, 404);
-      }
-
-      if (!user.subscriptionId || user.subscriptionStatus !== 'active') {
-        throw new AppError(`User does not have an active subscription`, 400);
-      }
-
-      // Update user's subscription status
-      const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: {
-          subscriptionStatus: 'canceled',
-        },
-      });
-
-      return {
-        success: true,
-        message: 'Subscription canceled successfully',
-        data: {
-          userId: updatedUser.id,
-          subscriptionStatus: updatedUser.subscriptionStatus,
-          subscriptionEndDate: updatedUser.subscriptionEndDate,
-        },
-      };
-    } catch (error) {
-      if (error instanceof AppError) {
-        throw error;
-      }
-      throw new AppError(`Failed to cancel subscription: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
-    }
-  }
-
-  // Get a user's subscription details
-  async getUserSubscription(userId: string) {
-    try {
-      // Get user with subscription details
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: {
-          subscription: true,
-        },
-      });
-
-      if (!user) {
-        throw new AppError(`User with ID ${userId} not found`, 404);
-      }
-
-      return {
-        userId: user.id,
-        subscriptionStatus: user.subscriptionStatus,
-        subscriptionEndDate: user.subscriptionEndDate,
-        plan: user.subscription,
-      };
-    } catch (error) {
-      if (error instanceof AppError) {
-        throw error;
-      }
-      throw new AppError(`Failed to get user subscription: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
-    }
+    return plan.id;
   }
 }
 

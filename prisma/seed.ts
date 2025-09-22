@@ -1,5 +1,6 @@
 import { db } from '../src/prisma/prismaWrapper';
 import { seedSubscriptionPlans } from './seeds/subscriptionSeed';
+import { seedCoupons } from './seeds/couponSeed';
 import { seedQuizData } from './seeds/quizSeed';
 
 async function main() {
@@ -10,7 +11,11 @@ async function main() {
   await db.quizQuestion.deleteMany({});
   await db.quizSection.deleteMany({});
   
-  // Clear existing subscription plans
+  // Clear existing subscription data (respecting FK order)
+  await db.billingInvoice.deleteMany({});
+  await db.couponRedemption.deleteMany({});
+  await db.coupon.deleteMany({});
+  await db.userSubscription.deleteMany({});
   await db.subscriptionPlan.deleteMany({});
   
   // Seed quiz data using the new structured approach
@@ -18,6 +23,9 @@ async function main() {
   
   // Seed subscription plans
   await seedSubscriptionPlans();
+
+  // Seed coupons
+  await seedCoupons();
   
   console.log('Seeding completed successfully!');
 }

@@ -1,0 +1,19 @@
+{
+  "messages": {
+    "applied": "Coupon applied successfully.",
+    "removed": "Coupon removed from subscription.",
+    "invalid": "This coupon cannot be used with the selected plan.",
+    "expired": "This coupon has expired.",
+    "limitReached": "This coupon has reached its redemption limit.",
+    "perUserLimitReached": "You have already used this coupon the maximum number of times.",
+    "firstTimeOnly": "This coupon is reserved for first-time subscribers.",
+    "commitmentRequired": "This coupon requires a longer commitment period.",
+    "notStarted": "This coupon is not yet active.",
+    "inactive": "This coupon is not currently active."
+  },
+  "labels": {
+    "code": "Coupon code",
+    "discount": "Discount",
+    "finalPrice": "Final price"
+  }
+}
