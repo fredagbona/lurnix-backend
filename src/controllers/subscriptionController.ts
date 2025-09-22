@@ -1,5 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { subscriptionService } from '../services/subscriptionService';
+import { planService } from '../services/planService';
 import type { AuthRequest } from '../middlewares/authMiddleware';
 import {
   createSubscriptionSchema,
@@ -138,10 +139,30 @@ export class SubscriptionController {
       }
 
       const subscription = await subscriptionService.getCurrentSubscription(req.userId);
+      if (subscription) {
+        res.status(200).json({
+          success: true,
+          data: subscription,
+        });
+        return;
+      }
+
+      const fallback = await subscriptionService.getFreePlanSnapshot(req.userId);
+
+      if (!fallback) {
+        res.status(200).json({ success: true, data: null });
+        return;
+      }
+
+      const planMeta = await planService.getPlanPricing('free', 'monthly');
 
       res.status(200).json({
         success: true,
-        data: subscription,
+        data: {
+          ...fallback,
+          isDefaultFreePlan: true,
+          planMetadata: planMeta,
+        },
       });
     } catch (error) {
       next(error);

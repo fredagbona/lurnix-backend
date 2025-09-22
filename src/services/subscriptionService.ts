@@ -14,6 +14,20 @@ const BILLING_CYCLE_MONTHS: Record<BillingCycle, number> = {
 
 type TransactionClient = Prisma.TransactionClient;
 
+const ACTIVE_SUBSCRIPTION_STATUSES: UserSubscriptionStatus[] = ['pending', 'active', 'paused'];
+
+const SUBSCRIPTION_RELATIONS = {
+  plan: true,
+  couponRedemptions: {
+    include: {
+      coupon: true,
+    },
+  },
+  invoices: true,
+} as const;
+
+type SubscriptionWithRelations = Prisma.UserSubscriptionGetPayload<{ include: typeof SUBSCRIPTION_RELATIONS }>;
+
 const resolveCheckoutUrls = () => {
   const baseUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
   const successPath = process.env.PADDLE_CHECKOUT_SUCCESS_PATH ?? '/checkout/success';
@@ -104,9 +118,7 @@ export class SubscriptionService {
     const client = tx ?? prisma;
     const subscription = await client.userSubscription.findUnique({
       where: { id: subscriptionId },
-      include: {
-        plan: true,
-      },
+      include: SUBSCRIPTION_RELATIONS,
     });
 
     if (!subscription) {
@@ -425,6 +437,45 @@ export class SubscriptionService {
     }
 
     return subscription;
+  }
+
+  async getFreePlanSnapshot(userId: string) {
+    const freePlan = await prisma.subscriptionPlan.findUnique({
+      where: {
+        planType_billingCycle: {
+          planType: 'free',
+          billingCycle: 'monthly',
+        },
+      },
+    });
+
+    if (!freePlan) {
+      return null;
+    }
+
+    const now = new Date();
+    const end = new Date(now);
+    end.setMonth(end.getMonth() + 1);
+
+    return {
+      id: `free-${userId}`,
+      userId,
+      planId: freePlan.id,
+      status: 'active' as UserSubscriptionStatus,
+      currentPeriodStart: now,
+      currentPeriodEnd: end,
+      commitmentEndDate: null,
+      autoRenewal: true,
+      stripeSubscriptionId: null,
+      paddleSubscriptionId: null,
+      paddleCheckoutId: null,
+      createdAt: now,
+      updatedAt: now,
+      cancelledAt: null,
+      plan: freePlan,
+      couponRedemptions: [],
+      invoices: [],
+    } as Awaited<ReturnType<SubscriptionService['getCurrentSubscription']>>;
   }
 
   private async resolvePlanForBillingCycle(planType: PlanType, billingCycle: BillingCycle) {

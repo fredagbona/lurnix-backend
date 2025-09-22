@@ -3,7 +3,26 @@ import path from 'path';
 import Handlebars from 'handlebars';
 import nodemailer from 'nodemailer';
 import { config } from '../config/environment';
+import i18next from 'i18next';
 import { getTranslation } from '../config/i18n/index.js';
+
+const EMAIL_NAMESPACE = 'emails';
+
+async function ensureEmailNamespaceLoaded(lang: string) {
+  const namespacesToLoad: string[] = [];
+
+  if (!i18next.hasLoadedNamespace(EMAIL_NAMESPACE)) {
+    namespacesToLoad.push(EMAIL_NAMESPACE);
+  }
+
+  if (!i18next.hasResourceBundle(lang, EMAIL_NAMESPACE)) {
+    namespacesToLoad.push(EMAIL_NAMESPACE);
+  }
+
+  if (namespacesToLoad.length > 0) {
+    await i18next.loadNamespaces(Array.from(new Set(namespacesToLoad)));
+  }
+}
 
 interface EmailOptions {
   to: string;
@@ -140,31 +159,32 @@ export class EmailService {
     language?: 'en' | 'fr'
   ): Promise<EmailResult> {
     const lang = language || 'en';
+    await ensureEmailNamespaceLoaded(lang);
     const t = (key: string, params?: Record<string, unknown>) => getTranslation(key, lang, params ?? {});
-    const steps = getTranslation('emails.registration.steps', lang, { returnObjects: true }) as unknown as string[];
+    const steps = getTranslation('emails:registration.steps', lang, { returnObjects: true }) as unknown as string[];
 
     return this.sendTemplateEmail({
       to,
       toName: name,
-      subject: t('emails.registration.subject'),
+      subject: t('emails:registration.subject'),
       templateName: 'registration',
       language,
       templateData: {
         name,
         email: to,
         verificationUrl,
-        headline: t('emails.registration.headline'),
-        greeting: t('emails.common.greeting', { name }),
-        intro: t('emails.registration.intro'),
-        ctaLabel: t('emails.registration.cta'),
-        stepsTitle: t('emails.registration.stepsTitle'),
+        headline: t('emails:registration.headline'),
+        greeting: t('emails:common.greeting', { name }),
+        intro: t('emails:registration.intro'),
+        ctaLabel: t('emails:registration.cta'),
+        stepsTitle: t('emails:registration.stepsTitle'),
         steps,
-        expirationNote: t('emails.registration.expirationNote'),
-        supportText: t('emails.common.support'),
-        closing: t('emails.common.closing'),
-        signature: t('emails.common.signature'),
-        supportFooter: t('emails.common.supportFooter', { email: to }),
-        footerLegal: t('emails.common.footerLegal', { email: to }),
+        expirationNote: t('emails:registration.expirationNote'),
+        supportText: t('emails:common.support'),
+        closing: t('emails:common.closing'),
+        signature: t('emails:common.signature'),
+        supportFooter: t('emails:common.supportFooter', { email: to }),
+        footerLegal: t('emails:common.footerLegal', { email: to }),
       },
     });
   }
@@ -182,37 +202,38 @@ export class EmailService {
     language?: 'en' | 'fr'
   ): Promise<EmailResult> {
     const lang = language || 'en';
+    await ensureEmailNamespaceLoaded(lang);
     const t = (key: string, params?: Record<string, unknown>) => getTranslation(key, lang, params ?? {});
-    const steps = getTranslation('emails.welcome.steps', lang, { returnObjects: true }) as unknown as string[];
+    const steps = getTranslation('emails:welcome.steps', lang, { returnObjects: true }) as unknown as string[];
     const courses = [
-      { name: t('emails.welcome.course1Name'), url: `${config.FRONTEND_URL}/courses/getting-started` },
-      { name: t('emails.welcome.course2Name'), url: `${config.FRONTEND_URL}/courses/web-dev-fundamentals` },
-      { name: t('emails.welcome.course3Name'), url: `${config.FRONTEND_URL}/courses/intro-javascript` },
+      { name: t('emails:welcome.course1Name'), url: `${config.FRONTEND_URL}/courses/getting-started` },
+      { name: t('emails:welcome.course2Name'), url: `${config.FRONTEND_URL}/courses/web-dev-fundamentals` },
+      { name: t('emails:welcome.course3Name'), url: `${config.FRONTEND_URL}/courses/intro-javascript` },
     ];
 
     return this.sendTemplateEmail({
       to,
       toName: name,
-      subject: t('emails.welcome.subject', { name }),
+      subject: t('emails:welcome.subject', { name }),
       templateName: 'welcomeAfterVerification',
       language,
       templateData: {
         name,
         email: to,
         dashboardUrl,
-        headline: t('emails.welcome.headline'),
-        greeting: t('emails.common.greeting', { name }),
-        intro: t('emails.welcome.intro'),
-        courseIntro: t('emails.welcome.courseIntro'),
+        headline: t('emails:welcome.headline'),
+        greeting: t('emails:common.greeting', { name }),
+        intro: t('emails:welcome.intro'),
+        courseIntro: t('emails:welcome.courseIntro'),
         courses,
-        stepTitle: t('emails.welcome.stepTitle'),
+        stepTitle: t('emails:welcome.stepTitle'),
         steps,
-        cta: t('emails.welcome.cta'),
-        supportText: t('emails.common.support'),
-        closing: t('emails.common.closing'),
-        signature: t('emails.common.signature'),
-        supportFooter: t('emails.common.supportFooter', { email: to }),
-        footerLegal: t('emails.common.footerLegal', { email: to }),
+        cta: t('emails:welcome.cta'),
+        supportText: t('emails:common.support'),
+        closing: t('emails:common.closing'),
+        signature: t('emails:common.signature'),
+        supportFooter: t('emails:common.supportFooter', { email: to }),
+        footerLegal: t('emails:common.footerLegal', { email: to }),
       },
     });
   }
@@ -231,28 +252,29 @@ export class EmailService {
   ): Promise<EmailResult> {
     const resetUrl = `${config.FRONTEND_URL}/reset-password?token=${resetToken}`;
     const lang = language || 'en';
+    await ensureEmailNamespaceLoaded(lang);
     const t = (key: string, params?: Record<string, unknown>) => getTranslation(key, lang, params ?? {});
     
     return this.sendTemplateEmail({
       to,
       toName: name,
-      subject: t('emails.passwordReset.subject'),
+      subject: t('emails:passwordReset.subject'),
       templateName: 'passwordReset',
       language,
       templateData: {
         name,
         email: to,
         resetUrl,
-        headline: t('emails.passwordReset.headline'),
-        greeting: t('emails.common.greeting', { name }),
-        intro: t('emails.passwordReset.intro'),
-        ctaLabel: t('emails.passwordReset.cta'),
-        ignoreNote: t('emails.passwordReset.ignore'),
-        supportText: t('emails.common.support'),
-        closing: t('emails.common.closing'),
-        signature: t('emails.common.signature'),
-        supportFooter: t('emails.common.supportFooter', { email: to }),
-        footerLegal: t('emails.common.footerLegal', { email: to }),
+        headline: t('emails:passwordReset.headline'),
+        greeting: t('emails:common.greeting', { name }),
+        intro: t('emails:passwordReset.intro'),
+        ctaLabel: t('emails:passwordReset.cta'),
+        ignoreNote: t('emails:passwordReset.ignore'),
+        supportText: t('emails:common.support'),
+        closing: t('emails:common.closing'),
+        signature: t('emails:common.signature'),
+        supportFooter: t('emails:common.supportFooter', { email: to }),
+        footerLegal: t('emails:common.footerLegal', { email: to }),
       },
     });
   }
@@ -272,30 +294,31 @@ export class EmailService {
     language?: 'en' | 'fr'
   ): Promise<EmailResult> {
     const lang = language || 'en';
+    await ensureEmailNamespaceLoaded(lang);
     const t = (key: string, params?: Record<string, unknown>) => getTranslation(key, lang, params ?? {});
 
     return this.sendTemplateEmail({
       to,
       toName: name,
-      subject: t('emails.passwordChanged.subject'),
+      subject: t('emails:passwordChanged.subject'),
       templateName: 'passwordChanged',
       language,
       templateData: {
         name,
         email: to,
-        headline: t('emails.passwordChanged.headline'),
-        greeting: t('emails.common.greeting', { name }),
-        intro: t('emails.passwordChanged.intro', { changeDate, ipAddress }),
+        headline: t('emails:passwordChanged.headline'),
+        greeting: t('emails:common.greeting', { name }),
+        intro: t('emails:passwordChanged.intro', { changeDate, ipAddress }),
         changeDate,
         ipAddress,
-        changeDateLabel: t('emails.passwordChanged.changeDateLabel'),
-        ipAddressLabel: t('emails.passwordChanged.ipAddressLabel'),
+        changeDateLabel: t('emails:passwordChanged.changeDateLabel'),
+        ipAddressLabel: t('emails:passwordChanged.ipAddressLabel'),
         supportUrl: `${config.FRONTEND_URL}/support`,
-        supportText: t('emails.common.support'),
-        closing: t('emails.common.closing'),
-        signature: t('emails.common.signature'),
-        supportFooter: t('emails.common.supportFooter', { email: to }),
-        footerLegal: t('emails.common.footerLegal', { email: to }),
+        supportText: t('emails:common.support'),
+        closing: t('emails:common.closing'),
+        signature: t('emails:common.signature'),
+        supportFooter: t('emails:common.supportFooter', { email: to }),
+        footerLegal: t('emails:common.footerLegal', { email: to }),
       },
     });
   }
@@ -313,12 +336,13 @@ export class EmailService {
     language?: 'en' | 'fr'
   ): Promise<EmailResult> {
     const lang = language || 'en';
+    await ensureEmailNamespaceLoaded(lang);
     const t = (key: string, params?: Record<string, unknown>) => getTranslation(key, lang, params ?? {});
 
     return this.sendTemplateEmail({
       to,
       toName: name,
-      subject: t('emails.accountDeleted.subject'),
+      subject: t('emails:accountDeleted.subject'),
       templateName: 'accountDeleted',
       language,
       templateData: {
@@ -327,16 +351,16 @@ export class EmailService {
         username,
         deletionDate: new Date().toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US'),
         supportEmail: 'support@lurnix.com',
-        headline: t('emails.accountDeleted.headline'),
-        greeting: t('emails.common.greeting', { name }),
-        intro: t('emails.accountDeleted.intro', { username }),
-        ctaLabel: t('emails.accountDeleted.cta'),
+        headline: t('emails:accountDeleted.headline'),
+        greeting: t('emails:common.greeting', { name }),
+        intro: t('emails:accountDeleted.intro', { username }),
+        ctaLabel: t('emails:accountDeleted.cta'),
         supportUrl: `${config.FRONTEND_URL}/support`,
-        supportText: t('emails.common.support'),
-        closing: t('emails.common.closing'),
-        signature: t('emails.common.signature'),
-        supportFooter: t('emails.common.supportFooter', { email: to }),
-        footerLegal: t('emails.common.footerLegal', { email: to }),
+        supportText: t('emails:common.support'),
+        closing: t('emails:common.closing'),
+        signature: t('emails:common.signature'),
+        supportFooter: t('emails:common.supportFooter', { email: to }),
+        footerLegal: t('emails:common.footerLegal', { email: to }),
       },
     });
   }
@@ -356,12 +380,13 @@ export class EmailService {
     language?: 'en' | 'fr';
   }): Promise<EmailResult> {
     const lang = options.language || 'en';
+    await ensureEmailNamespaceLoaded(lang);
     const t = (key: string, params?: Record<string, unknown>) => getTranslation(key, lang, params ?? {});
 
     return this.sendTemplateEmail({
       to: options.to,
       toName: options.name,
-      subject: t('emails.subscription.confirmation.subject', { planName: options.planName }),
+      subject: t('emails:subscription.confirmation.subject', { planName: options.planName }),
       templateName: 'subscriptionConfirmation',
       language: options.language,
       templateData: {
@@ -375,23 +400,23 @@ export class EmailService {
         paymentMethod: options.paymentMethod,
         features: options.features,
         accountUrl: options.accountUrl,
-        headline: t('emails.subscription.confirmation.headline'),
-        greeting: t('emails.common.greeting', { name: options.name }),
-        introHtml: t('emails.subscription.confirmation.intro', { planName: options.planName }),
-        detailsTitle: t('emails.subscription.confirmation.detailsTitle'),
-        planLabel: t('emails.subscription.confirmation.planLabel'),
-        billingCycleLabel: t('emails.subscription.confirmation.billingCycleLabel'),
-        amountLabel: t('emails.subscription.confirmation.amountLabel'),
-        nextBillingDateLabel: t('emails.subscription.confirmation.nextBillingDateLabel'),
-        paymentMethodLabel: t('emails.subscription.confirmation.paymentMethodLabel'),
-        featuresTitle: t('emails.subscription.confirmation.featuresTitle'),
-        footerNote: t('emails.subscription.confirmation.footerNote'),
-        manageCta: t('emails.subscription.confirmation.manageCta'),
-        supportText: t('emails.subscription.confirmation.supportText'),
-        closing: t('emails.common.closing'),
-        signature: t('emails.common.signature'),
-        supportFooter: t('emails.common.supportFooter', { email: options.email }),
-        footerLegal: t('emails.common.footerLegal', { email: options.email })
+        headline: t('emails:subscription.confirmation.headline'),
+        greeting: t('emails:common.greeting', { name: options.name }),
+        introHtml: t('emails:subscription.confirmation.intro', { planName: options.planName }),
+        detailsTitle: t('emails:subscription.confirmation.detailsTitle'),
+        planLabel: t('emails:subscription.confirmation.planLabel'),
+        billingCycleLabel: t('emails:subscription.confirmation.billingCycleLabel'),
+        amountLabel: t('emails:subscription.confirmation.amountLabel'),
+        nextBillingDateLabel: t('emails:subscription.confirmation.nextBillingDateLabel'),
+        paymentMethodLabel: t('emails:subscription.confirmation.paymentMethodLabel'),
+        featuresTitle: t('emails:subscription.confirmation.featuresTitle'),
+        footerNote: t('emails:subscription.confirmation.footerNote'),
+        manageCta: t('emails:subscription.confirmation.manageCta'),
+        supportText: t('emails:subscription.confirmation.supportText'),
+        closing: t('emails:common.closing'),
+        signature: t('emails:common.signature'),
+        supportFooter: t('emails:common.supportFooter', { email: options.email }),
+        footerLegal: t('emails:common.footerLegal', { email: options.email })
       },
     });
   }
@@ -409,12 +434,13 @@ export class EmailService {
     language?: 'en' | 'fr';
   }): Promise<EmailResult> {
     const lang = options.language || 'en';
+    await ensureEmailNamespaceLoaded(lang);
     const t = (key: string, params?: Record<string, unknown>) => getTranslation(key, lang, params ?? {});
 
     return this.sendTemplateEmail({
       to: options.to,
       toName: options.name,
-      subject: t('emails.subscription.cancellation.subject', { planName: options.planName }),
+      subject: t('emails:subscription.cancellation.subject', { planName: options.planName }),
       templateName: 'subscriptionCancellation',
       language: options.language,
       templateData: {
@@ -426,28 +452,28 @@ export class EmailService {
         reason: options.reason ?? '',
         feedbackUrl: options.feedbackUrl,
         reactivateUrl: options.reactivateUrl,
-        headline: t('emails.subscription.cancellation.headline'),
-        greeting: t('emails.common.greeting', { name: options.name }),
-        introHtml: t('emails.subscription.cancellation.intro', {
+        headline: t('emails:subscription.cancellation.headline'),
+        greeting: t('emails:common.greeting', { name: options.name }),
+        introHtml: t('emails:subscription.cancellation.intro', {
           planName: options.planName,
           effectiveDate: options.accessUntilDate,
         }),
-        detailsTitle: t('emails.subscription.cancellation.detailsTitle'),
-        planLabel: t('emails.subscription.cancellation.plan'),
-        cancellationDateLabel: t('emails.subscription.cancellation.cancellationDateLabel'),
-        accessUntilLabel: t('emails.subscription.cancellation.accessUntilLabel'),
-        reasonLabel: t('emails.subscription.cancellation.reasonLabel'),
-        accessNote: t('emails.subscription.cancellation.accessNote'),
-        feedbackTitle: t('emails.subscription.cancellation.feedbackTitle'),
-        feedbackText: t('emails.subscription.cancellation.feedbackText'),
-        feedbackCta: t('emails.subscription.cancellation.feedbackCta'),
-        reactivationNote: t('emails.subscription.cancellation.reactivationNote'),
-        reactivateCta: t('emails.subscription.cancellation.reactivateCta'),
-        supportText: t('emails.common.support'),
-        closing: t('emails.common.closing'),
-        signature: t('emails.common.signature'),
-        supportFooter: t('emails.common.supportFooter', { email: options.email }),
-        footerLegal: t('emails.common.footerLegal', { email: options.email })
+        detailsTitle: t('emails:subscription.cancellation.detailsTitle'),
+        planLabel: t('emails:subscription.cancellation.plan'),
+        cancellationDateLabel: t('emails:subscription.cancellation.cancellationDateLabel'),
+        accessUntilLabel: t('emails:subscription.cancellation.accessUntilLabel'),
+        reasonLabel: t('emails:subscription.cancellation.reasonLabel'),
+        accessNote: t('emails:subscription.cancellation.accessNote'),
+        feedbackTitle: t('emails:subscription.cancellation.feedbackTitle'),
+        feedbackText: t('emails:subscription.cancellation.feedbackText'),
+        feedbackCta: t('emails:subscription.cancellation.feedbackCta'),
+        reactivationNote: t('emails:subscription.cancellation.reactivationNote'),
+        reactivateCta: t('emails:subscription.cancellation.reactivateCta'),
+        supportText: t('emails:common.support'),
+        closing: t('emails:common.closing'),
+        signature: t('emails:common.signature'),
+        supportFooter: t('emails:common.supportFooter', { email: options.email }),
+        footerLegal: t('emails:common.footerLegal', { email: options.email })
       },
     });
   }

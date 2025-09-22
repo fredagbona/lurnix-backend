@@ -182,5 +182,27 @@
     "route": {
       "notFound": "errors.route.notFound"
     }
+  },
+  "emails": {
+    "registration": {
+      "steps": "emails.registration.steps",
+      "subject": "emails.registration.subject",
+      "headline": "emails.registration.headline",
+      "intro": "emails.registration.intro",
+      "cta": "emails.registration.cta",
+      "stepsTitle": "emails.registration.stepsTitle",
+      "expirationNote": "emails.registration.expirationNote"
+    },
+    "common": {
+      "greeting": "emails.common.greeting",
+      "support": "emails.common.support",
+      "closing": "emails.common.closing",
+      "signature": "emails.common.signature",
+      "supportFooter": "emails.common.supportFooter",
+      "footerLegal": "emails.common.footerLegal"
+    }
+  },
+  "email": {
+    "verificationSuccess": "email.verificationSuccess"
   }
 }
