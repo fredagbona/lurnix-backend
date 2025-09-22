@@ -125,6 +125,7 @@ export class AuthService {
         fullname: data.fullname,
         email: data.email.toLowerCase(),
         password_hash: hashedPassword,
+        language: data.language || 'en', // Use provided language or default to English
         isVerified: false, // User starts as unverified
       });
 
@@ -138,7 +139,7 @@ export class AuthService {
       try {
         const verificationUrl = `${config.FRONTEND_URL}/auth/verify-email?token=${verificationToken}`;
         console.log('Verification URL:', verificationUrl);
-        await emailService.sendRegistrationEmail(user.email, user.fullname, verificationUrl);
+        await emailService.sendRegistrationEmail(user.email, user.fullname, verificationUrl, user.language);
       } catch (emailError) {
         // Log email error but don't fail registration
         console.error('Failed to send verification email:', emailError);
@@ -208,6 +209,7 @@ export class AuthService {
         userId: user.id,
         email: user.email,
         username: user.username,
+        language: user.language
       });
 
       return {
@@ -254,6 +256,7 @@ export class AuthService {
         ...(data.username && { username: data.username.toLowerCase() }),
         ...(data.fullname && { fullname: data.fullname }),
         ...(data.email && { email: data.email.toLowerCase() }),
+        ...(data.language && { language: data.language }),
       });
 
       return toUserProfile(updatedUser);
@@ -341,7 +344,7 @@ export class AuthService {
 
       // Send account deletion confirmation email
       try {
-        await emailService.sendAccountDeletedEmail(user.email, user.fullname, user.username);
+        await emailService.sendAccountDeletedEmail(user.email, user.fullname, user.username, user.language);
       } catch (emailError) {
         // Log email error but don't fail account deletion
         console.error('Failed to send account deleted email:', emailError);
@@ -447,6 +450,29 @@ export class AuthService {
     }
   }
 
+  // Update user language preference
+  async updateLanguage(userId: string, language: 'en' | 'fr'): Promise<UserProfile> {
+    try {
+      const user = await userRepository.findActiveById(userId);
+      if (!user) {
+        throw new UserNotFoundServiceError();
+      }
+
+      const updatedUser = await userRepository.update(userId, { language });
+      return toUserProfile(updatedUser);
+    } catch (error) {
+      if (error instanceof UserNotFoundError) {
+        throw new UserNotFoundServiceError();
+      }
+
+      if (error instanceof AuthServiceError) {
+        throw error;
+      }
+
+      throw new AuthServiceError('Language update failed', 500);
+    }
+  }
+
   // Forgot password - generate and store reset token
   async forgotPassword(data: ForgotPasswordRequest): Promise<void> {
     try {
@@ -469,7 +495,7 @@ export class AuthService {
 
       // Send password reset email
       try {
-        await emailService.sendPasswordResetEmail(user.email, user.fullname, token);
+        await emailService.sendPasswordResetEmail(user.email, user.fullname, token, user.language);
       } catch (emailError) {
         // Log email error but don't fail the reset process
         console.error('Failed to send password reset email:', emailError);
@@ -543,7 +569,7 @@ export class AuthService {
       // Send welcome email after verification
       try {
         const dashboardUrl = `${process.env.FRONTEND_URL}/dashboard`;
-        await emailService.sendWelcomeAfterVerificationEmail(user.email, user.fullname, dashboardUrl);
+        await emailService.sendWelcomeAfterVerificationEmail(user.email, user.fullname, dashboardUrl, user.language);
       } catch (emailError) {
         console.error('Failed to send welcome email after verification:', emailError);
       }

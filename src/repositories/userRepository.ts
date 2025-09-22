@@ -30,12 +30,13 @@ export class UserRepository {
     try {
       const user = await prisma.user.create({
         data: {
-          username: data.username,
+          username: data.username.toLowerCase(),
           fullname: data.fullname,
-          email: data.email,
+          email: data.email.toLowerCase(),
           password_hash: data.password_hash,
           isActive: true,
           isVerified: data.isVerified ?? false,
+          subscriptionStatus: 'free',
         },
       });
       return mapPrismaUserToUser(user);
@@ -152,12 +153,17 @@ export class UserRepository {
   // Update user
   async update(id: string, data: UpdateUserData): Promise<User> {
     try {
+      const updateData = {
+        ...(data.username && { username: data.username.toLowerCase() }),
+        ...(data.email && { email: data.email.toLowerCase() }),
+        ...(data.fullname && { fullname: data.fullname }),
+        ...(data.password_hash && { password_hash: data.password_hash }),
+        ...(data.language && { language: data.language }),
+        updatedAt: new Date(),
+      };
       const user = await prisma.user.update({
         where: { id },
-        data: {
-          ...data,
-          updatedAt: new Date(),
-        },
+        data: updateData,
       });
       return mapPrismaUserToUser(user);
     } catch (error: any) {

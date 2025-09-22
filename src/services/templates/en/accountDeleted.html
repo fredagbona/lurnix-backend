@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reset Your Lurnix Password</title>
+  <title>Your Lurnix Account Has Been Deleted</title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -43,7 +43,7 @@
       display: inline-block;
       padding: 12px 24px;
       background-color: #4F46E5;
-      color: white;
+      color: white !important;
       text-decoration: none;
       border-radius: 4px;
       font-weight: bold;
@@ -51,21 +51,12 @@
     }
     .button:hover {
       background-color: #4338CA;
+      color: #fff !important;
     }
-    .reset-code {
-      font-size: 24px;
-      font-weight: bold;
-      letter-spacing: 2px;
-      text-align: center;
-      margin: 20px 0;
-      padding: 10px;
+    .info-box {
       background-color: #f0f7ff;
-      border-radius: 4px;
-    }
-    .warning {
-      background-color: #fff5f5;
-      border-left: 4px solid #f56565;
-      padding: 15px;
+      border-radius: 8px;
+      padding: 20px;
       margin: 20px 0;
     }
   </style>
@@ -76,28 +67,28 @@
       <img src="{{logoUrl}}" alt="Lurnix Logo">
     </div>
     <div class="content">
-      <h1>Password Reset Request</h1>
+      <h1>Your Account Has Been Deleted</h1>
       <p>Hi {{name}},</p>
-      <p>We received a request to reset your password for your Lurnix account. If you didn't make this request, you can safely ignore this email.</p>
+      <p>We're sorry to see you go. As requested, your Lurnix account (username: <strong>{{username}}</strong>) has been deleted from our system on <strong>{{deletionDate}}</strong>.</p>
       
-      <p>To reset your password, click the button below:</p>
-      <div style="text-align: center;">
-        <a href="{{resetUrl}}" class="button">Reset Password</a>
+      <div class="info-box">
+        <h3>What This Means</h3>
+        <p>Your personal information, learning progress, and subscription details have been removed from our active database. Please note that some information may be retained for a limited time in our backup systems as required by law.</p>
       </div>
       
-      <div class="warning">
-        <p><strong>Important:</strong> This password reset link will expire in 1 hour for security reasons.</p>
-      </div>
+      <p>If you deleted your account by mistake or would like to rejoin Lurnix in the future, you'll need to create a new account.</p>
       
-      <p>If you didn't request a password reset, please contact our support team immediately at <a href="mailto:support@lurnix.com">support@lurnix.com</a>.</p>
+      <p>We value your feedback. If you'd like to share the reason for leaving or have suggestions for how we could improve, please contact our support team.</p>
+      
+      <p>Thank you for being part of the Lurnix community.</p>
       
       <p>Best regards,</p>
-      <p>The Lurnix Security Team</p>
+      <p>The Lurnix Team</p>
     </div>
     <div class="footer">
       <p>&copy; {{currentYear}} Lurnix. All rights reserved.</p>
-      <p>If you have any questions, please contact our support team at <a href="mailto:support@lurnix.com">support@lurnix.com</a></p>
-      <p><small>This email was sent to {{email}}. If you didn't request a password reset, please ignore this email or contact us if you're concerned.</small></p>
+      <p>If you have any questions, please contact our support team at <a href="mailto:{{supportEmail}}">{{supportEmail}}</a></p>
+      <p><small>This email was sent to {{email}} as a confirmation of account deletion.</small></p>
     </div>
   </div>
 </body>

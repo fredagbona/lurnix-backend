@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
-  <title>Welcome to Lurnix!</title>
+  <title>Bienvenue sur le panneau d'administration Lurnix</title>
   <style>
+    /* Same styles as other templates */
     :root {
       color-scheme: light dark;
     }
@@ -43,19 +44,14 @@
       .button {
         background-color: #5E54E8 !important;
         border: 1px solid #7A72EA !important;
+        color: #fff !important;
       }
       .button:hover {
         background-color: #4F46E5 !important;
+        color: #fff !important;
       }
       a {
         color: #7A72EA !important;
-      }
-      .verification-code {
-        background-color: rgba(59, 130, 246, 0.1) !important;
-        color: #f7f7f7 !important;
-      }
-      ul li {
-        color: #f7f7f7 !important;
       }
     }
     
@@ -102,7 +98,7 @@
       display: inline-block;
       padding: 12px 24px;
       background-color: #4F46E5;
-      color: white !important; /* Force white text in both modes */
+      color: white !important;
       text-decoration: none;
       border-radius: 4px;
       font-weight: bold;
@@ -113,81 +109,51 @@
     
     .button:hover {
       background-color: #4338CA;
+      color: #fff !important;
     }
     
     a {
       color: #4F46E5;
       text-decoration: underline;
     }
-    
-    .verification-code {
-      font-size: 24px;
-      font-weight: bold;
-      letter-spacing: 2px;
-      text-align: center;
-      margin: 20px 0;
-      padding: 10px;
-      background-color: #f0f7ff;
-      border-radius: 4px;
-      color: #333333;
-    }
-    
-    ul {
-      padding-left: 20px;
-    }
-    
-    ul li {
-      margin-bottom: 8px;
-      color: #333333;
-    }
-    
-    /* Responsive styles */
-    @media screen and (max-width: 600px) {
-      .container {
-        width: 100% !important;
-        margin: 0 !important;
-        border-radius: 0 !important;
-      }
-      
-      .content {
-        padding: 20px 15px !important;
-      }
-    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <img src="{{logoUrl}}" alt="Lurnix Logo">
+      <img src="{{logoUrl}}" alt="Logo Lurnix">
     </div>
     <div class="content">
-      <h1>Welcome to Lurnix!</h1>
-      <p>Hi {{name}},</p>
-      <p>Thank you for registering with Lurnix! We're excited to have you join our community of smart learners.</p>
+      <h1>Bienvenue sur le panneau d'administration</h1>
+      <p>Bonjour {{name}},</p>
+      <p>Votre compte administrateur a été créé avec succès. Vous avez été ajouté(e) en tant qu'administrateur avec le rôle {{role}} par {{createdBy}}.</p>
       
-      <p>Please verify your email address by clicking the button below:</p>
+      <p>Pour accéder au panneau d'administration, cliquez sur le bouton ci-dessous :</p>
       <div style="text-align: center;">
-        <a href="{{verificationUrl}}" class="button">Verify Email Address</a>
+        <a href="{{loginUrl}}" class="button">Accéder au panneau d'administration</a>
       </div>
       
-      <p>This verification link will expire in 24 hours.</p>
-      
-      <p>Here's what you can do next:</p>
+      <p>Informations importantes :</p>
       <ul>
-        <li>Complete your profile</li>
-        <li>Take our learning style quiz</li>
-        <li>Start learning with your personalized roadmap</li>
+        <li>Email : {{email}}</li>
+        <li>Rôle : {{role}}</li>
       </ul>
       
-      <p>If you have any questions or need assistance, our support team is here to help.</p>
+      <p>Pour des raisons de sécurité, veuillez :</p>
+      <ul>
+        <li>Changer votre mot de passe lors de votre première connexion</li>
+        <li>Activer l'authentification à deux facteurs</li>
+        <li>Ne jamais partager vos identifiants</li>
+      </ul>
       
-      <p>Happy learning!</p>
-      <p>The Lurnix Team</p>
+      <p>Si vous avez des questions sur vos responsabilités ou vos accès, n'hésitez pas à contacter l'équipe de sécurité.</p>
+      
+      <p>Cordialement,</p>
+      <p>L'équipe Lurnix</p>
     </div>
     <div class="footer">
-      <p>&copy; {{currentYear}} Lurnix. All rights reserved.</p>
-      <p>If you have any questions, please contact our support team at <a href="mailto:support@lurnix.com">support@lurnix.com</a></p>
-      <p><small>This email was sent to {{email}}. If you didn't register for a Lurnix account, please ignore this email.</small></p>
+      <p>&copy; {{currentYear}} Lurnix. Tous droits réservés.</p>
+      <p>Cet e-mail a été envoyé à {{email}}.</p>
     </div>
   </div>
 </body>

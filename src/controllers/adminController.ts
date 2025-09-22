@@ -6,44 +6,38 @@ import { errorMonitoringService } from '../services/errorMonitoringService.js';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
 import { prisma } from '../prisma/client.js';
+import { I18nRequest } from '../config/i18n/types.js';
+import { sendTranslatedResponse } from '../utils/translationUtils.js';
+import { AppError } from '../errors/AppError.js';
 
 export class AdminController {
   // Simple test endpoint
-  testEndpoint = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  testEndpoint = asyncHandler(async (req: Request & I18nRequest, res: Response): Promise<void> => {
     try {
-      res.status(200).json({
-        success: true,
-        message: 'Admin test endpoint working',
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, 'admin.system.testSuccess', {
+        statusCode: 200
       });
     } catch (error) {
       console.error('Error in test endpoint:', error);
-      res.status(500).json({
-        success: false,
-        error: {
-          code: 'TEST_ERROR',
-          message: 'Test endpoint error',
-          details: error instanceof Error ? error.message : String(error),
-        },
-        timestamp: new Date().toISOString(),
-      });
+      throw new AppError('admin.system.testError', 500, 
+        error instanceof Error ? error.message : String(error)
+      );
     }
   });
   
   // Get user statistics
-  getUserStats = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  getUserStats = asyncHandler(async (req: Request & I18nRequest, res: Response): Promise<void> => {
     try {
       const activeUserCount = await userRepository.getActiveUserCount();
       
-      res.status(200).json({
-        success: true,
+      sendTranslatedResponse(res, 'admin.users.stats.retrieved', {
+        statusCode: 200,
         data: {
           stats: {
             activeUsers: activeUserCount,
             timestamp: new Date().toISOString(),
-          },
-        },
-        timestamp: new Date().toISOString(),
+          }
+        }
       });
     } catch (error) {
       throw error;
@@ -51,7 +45,7 @@ export class AdminController {
   });
 
   // Get all users (with pagination)
-  getAllUsers = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  getAllUsers = asyncHandler(async (req: Request & I18nRequest, res: Response): Promise<void> => {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
@@ -87,8 +81,8 @@ export class AdminController {
       
       const totalPages = Math.ceil(totalUsers / limit);
       
-      res.status(200).json({
-        success: true,
+      sendTranslatedResponse(res, 'admin.users.list.retrieved', {
+        statusCode: 200,
         data: {
           users,
           pagination: {
@@ -97,9 +91,8 @@ export class AdminController {
             totalUsers,
             hasNextPage: page < totalPages,
             hasPrevPage: page > 1,
-          },
-        },
-        timestamp: new Date().toISOString(),
+          }
+        }
       });
     } catch (error) {
       console.error('[ERROR] Admin getAllUsers - Caught error:', error);
@@ -108,39 +101,25 @@ export class AdminController {
         console.error('[ERROR] Admin getAllUsers - Error stack:', error.stack);
       }
       
-      res.status(500).json({
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'An unexpected error occurred during query validation',
-          details: error instanceof Error ? error.message : String(error),
-        },
-        timestamp: new Date().toISOString(),
-      });
+      throw new AppError('admin.errors.internal', 500, 
+        error instanceof Error ? error.message : String(error)
+      );
     }
   });
 
   // Get user by ID
-  getUserById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  getUserById = asyncHandler(async (req: Request & I18nRequest, res: Response): Promise<void> => {
     const { userId } = req.params;
 
     try {
       const user = await userRepository.findById(userId);
       
       if (!user) {
-        res.status(404).json({
-          success: false,
-          error: {
-            code: 'USER_NOT_FOUND',
-            message: 'User not found',
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
+        throw new AppError('admin.users.notFound', 404);
       }
 
-      res.status(200).json({
-        success: true,
+      sendTranslatedResponse(res, 'admin.users.detail.retrieved', {
+        statusCode: 200,
         data: {
           user: {
             id: user.id,
@@ -151,9 +130,8 @@ export class AdminController {
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
             deletedAt: user.deletedAt,
-          },
-        },
-        timestamp: new Date().toISOString(),
+          }
+        }
       });
     } catch (error) {
       throw error;
@@ -161,15 +139,14 @@ export class AdminController {
   });
 
   // Restore soft-deleted user
-  restoreUser = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  restoreUser = asyncHandler(async (req: Request & I18nRequest, res: Response): Promise<void> => {
     const { userId } = req.params;
 
     try {
       const restoredUser = await userRepository.restore(userId);
       
-      res.status(200).json({
-        success: true,
-        message: 'User restored successfully',
+      sendTranslatedResponse(res, 'admin.users.restored', {
+        statusCode: 200,
         data: {
           user: {
             id: restoredUser.id,
@@ -179,9 +156,8 @@ export class AdminController {
             isActive: restoredUser.isActive,
             createdAt: restoredUser.createdAt,
             updatedAt: restoredUser.updatedAt,
-          },
-        },
-        timestamp: new Date().toISOString(),
+          }
+        }
       });
     } catch (error) {
       throw error;
@@ -189,16 +165,14 @@ export class AdminController {
   });
 
   // Hard delete user (permanent)
-  hardDeleteUser = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  hardDeleteUser = asyncHandler(async (req: Request & I18nRequest, res: Response): Promise<void> => {
     const { userId } = req.params;
 
     try {
       await userRepository.hardDelete(userId);
       
-      res.status(200).json({
-        success: true,
-        message: 'User permanently deleted',
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, 'admin.users.deleted', {
+        statusCode: 200
       });
     } catch (error) {
       throw error;
@@ -206,18 +180,17 @@ export class AdminController {
   });
 
   // Get password reset token info for user
-  getResetTokenInfo = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  getResetTokenInfo = asyncHandler(async (req: Request & I18nRequest, res: Response): Promise<void> => {
     const { userId } = req.params;
 
     try {
       const tokenInfo = await passwordResetService.getResetTokenInfo(userId);
       
-      res.status(200).json({
-        success: true,
+      sendTranslatedResponse(res, 'admin.users.reset.tokenInfo', {
+        statusCode: 200,
         data: {
-          tokenInfo,
-        },
-        timestamp: new Date().toISOString(),
+          tokenInfo
+        }
       });
     } catch (error) {
       throw error;
@@ -225,49 +198,43 @@ export class AdminController {
   });
 
   // Cancel password reset for user
-  cancelPasswordReset = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  cancelPasswordReset = asyncHandler(async (req: Request & I18nRequest, res: Response): Promise<void> => {
     const { userId } = req.params;
 
     try {
       await passwordResetService.cancelPasswordReset(userId);
       
-      res.status(200).json({
-        success: true,
-        message: 'Password reset cancelled successfully',
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, 'admin.users.resetCancelled', {
+        statusCode: 200
       });
     } catch (error) {
       throw error;
     }
   });
 
-  // Run cleanup tasks manually
-  runCleanupTasks = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    // Run cleanup tasks manually
+  runCleanupTasks = asyncHandler(async (req: Request & I18nRequest, res: Response): Promise<void> => {
     try {
       await scheduledTasksService.runCleanupTasks();
       
-      res.status(200).json({
-        success: true,
-        message: 'Cleanup tasks completed successfully',
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, 'admin.system.cleanupSuccess', {
+        statusCode: 200
       });
     } catch (error) {
       throw error;
     }
   });
 
-  // Clean up expired reset tokens
-  cleanupExpiredTokens = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  // Clean up expired tokens
+  cleanupExpiredTokens = asyncHandler(async (req: Request & I18nRequest, res: Response): Promise<void> => {
     try {
       const cleanedCount = await passwordResetService.cleanupExpiredTokens();
       
-      res.status(200).json({
-        success: true,
-        message: 'Expired tokens cleaned up successfully',
+      sendTranslatedResponse(res, 'admin.system.tokensCleanedUp', {
+        statusCode: 200,
         data: {
-          cleanedCount,
-        },
-        timestamp: new Date().toISOString(),
+          cleanedCount
+        }
       });
     } catch (error) {
       throw error;
@@ -275,7 +242,7 @@ export class AdminController {
   });
 
   // System health check
-  healthCheck = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  healthCheck = asyncHandler(async (req: Request & I18nRequest, res: Response): Promise<void> => {
     try {
       // Basic health checks
       const activeUserCount = await userRepository.getActiveUserCount();
@@ -284,8 +251,8 @@ export class AdminController {
       const overallStatus = errorHealth.status === 'critical' ? 'unhealthy' : 'healthy';
       const statusCode = overallStatus === 'healthy' ? 200 : 503;
       
-      res.status(statusCode).json({
-        success: overallStatus === 'healthy',
+      sendTranslatedResponse(res, `admin.health.status.${overallStatus}`, {
+        statusCode,
         data: {
           status: overallStatus,
           timestamp: new Date().toISOString(),
@@ -293,39 +260,30 @@ export class AdminController {
             database: 'connected',
             activeUsers: activeUserCount,
             errorMonitoring: errorHealth,
-          },
-        },
-        timestamp: new Date().toISOString(),
+          }
+        }
       });
     } catch (error) {
-      res.status(503).json({
-        success: false,
-        error: {
-          code: 'HEALTH_CHECK_FAILED',
-          message: 'System health check failed',
-        },
-        timestamp: new Date().toISOString(),
-      });
+      throw new AppError('admin.health.checkFailed', 503);
     }
   });
 
   // Get error statistics
-  getErrorStats = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  getErrorStats = asyncHandler(async (req: Request & I18nRequest, res: Response): Promise<void> => {
     try {
       const stats = errorMonitoringService.getStats();
       const trends = errorMonitoringService.getErrorTrends();
       const commonErrors = errorMonitoringService.getMostCommonErrors();
       const periodStats = errorMonitoringService.getStatsForPeriod(24);
       
-      res.status(200).json({
-        success: true,
+      sendTranslatedResponse(res, 'admin.health.errorStats.retrieved', {
+        statusCode: 200,
         data: {
           overview: stats,
           trends,
           commonErrors,
-          last24Hours: periodStats,
-        },
-        timestamp: new Date().toISOString(),
+          last24Hours: periodStats
+        }
       });
     } catch (error) {
       throw error;
@@ -333,14 +291,12 @@ export class AdminController {
   });
 
   // Reset error statistics
-  resetErrorStats = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  resetErrorStats = asyncHandler(async (req: Request & I18nRequest, res: Response): Promise<void> => {
     try {
       errorMonitoringService.resetStats();
       
-      res.status(200).json({
-        success: true,
-        message: 'Error statistics reset successfully',
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, 'admin.health.errorStats.reset', {
+        statusCode: 200
       });
     } catch (error) {
       throw error;

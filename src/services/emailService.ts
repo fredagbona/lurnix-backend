@@ -10,6 +10,7 @@ interface EmailOptions {
   subject: string;
   templateName: string;
   templateData: Record<string, any>;
+  language?: 'en' | 'fr';  // Added language option
   cc?: string | string[];
   bcc?: string | string[];
   attachments?: Array<{
@@ -61,8 +62,11 @@ export class EmailService {
         return { success: true, message: 'Email sending is disabled' };
       }
 
-      // Read the template file
-      const templatePath = path.join(this.templatesDir, `${options.templateName}.html`);
+      // Get template path with language fallback
+      const language = options.language || 'en';
+      const templatePath = this.getTemplatePath(options.templateName, language);
+      
+      // Read template content
       const templateSource = fs.readFileSync(templatePath, 'utf8');
       
       // Compile the template
@@ -131,13 +135,20 @@ export class EmailService {
   async sendRegistrationEmail(
     to: string, 
     name: string, 
-    verificationUrl: string
+    verificationUrl: string,
+    language?: 'en' | 'fr'
   ): Promise<EmailResult> {
+    const subjects = {
+      en: 'Welcome to Lurnix - Verify Your Email',
+      fr: 'Bienvenue sur Lurnix - Vérifiez votre e-mail'
+    };
+    
     return this.sendTemplateEmail({
       to,
       toName: name,
-      subject: 'Welcome to Lurnix - Verify Your Email',
+      subject: subjects[language || 'en'],
       templateName: 'registration',
+      language,
       templateData: {
         name,
         email: to,
@@ -155,13 +166,20 @@ export class EmailService {
   async sendWelcomeAfterVerificationEmail(
     to: string, 
     name: string, 
-    dashboardUrl: string
+    dashboardUrl: string,
+    language?: 'en' | 'fr'
   ): Promise<EmailResult> {
+    const subjects = {
+      en: 'Welcome to Lurnix - Your Account is Ready!',
+      fr: 'Bienvenue sur Lurnix - Votre compte est prêt !'
+    };
+
     return this.sendTemplateEmail({
       to,
       toName: name,
-      subject: 'Welcome to Lurnix - Your Account is Ready!',
+      subject: subjects[language || 'en'],
       templateName: 'welcomeAfterVerification',
+      language,
       templateData: {
         name,
         email: to,
@@ -185,15 +203,22 @@ export class EmailService {
   async sendPasswordResetEmail(
     to: string, 
     name: string, 
-    resetToken: string
+    resetToken: string,
+    language?: 'en' | 'fr'
   ): Promise<EmailResult> {
     const resetUrl = `${config.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    
+    const subjects = {
+      en: 'Reset Your Lurnix Password',
+      fr: 'Réinitialisation de votre mot de passe Lurnix'
+    };
     
     return this.sendTemplateEmail({
       to,
       toName: name,
-      subject: 'Reset Your Lurnix Password',
+      subject: subjects[language || 'en'],
       templateName: 'passwordReset',
+      language,
       templateData: {
         name,
         email: to,
@@ -213,13 +238,20 @@ export class EmailService {
     to: string, 
     name: string, 
     changeDate: string, 
-    ipAddress: string
+    ipAddress: string,
+    language?: 'en' | 'fr'
   ): Promise<EmailResult> {
+    const subjects = {
+      en: 'Your Lurnix Password Has Been Changed',
+      fr: 'Votre mot de passe Lurnix a été modifié'
+    };
+
     return this.sendTemplateEmail({
       to,
       toName: name,
-      subject: 'Your Lurnix Password Has Been Changed',
+      subject: subjects[language || 'en'],
       templateName: 'passwordChanged',
+      language,
       templateData: {
         name,
         email: to,
@@ -239,18 +271,25 @@ export class EmailService {
   async sendAccountDeletedEmail(
     to: string, 
     name: string, 
-    username: string
+    username: string,
+    language?: 'en' | 'fr'
   ): Promise<EmailResult> {
+    const subjects = {
+      en: 'Your Lurnix Account Has Been Deleted',
+      fr: 'Votre compte Lurnix a été supprimé'
+    };
+
     return this.sendTemplateEmail({
       to,
       toName: name,
-      subject: 'Your Lurnix Account Has Been Deleted',
+      subject: subjects[language || 'en'],
       templateName: 'accountDeleted',
+      language,
       templateData: {
         name,
         email: to,
         username,
-        deletionDate: new Date().toLocaleDateString(),
+        deletionDate: new Date().toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US'),
         supportEmail: 'support@lurnix.com',
       },
     });
@@ -291,17 +330,61 @@ export class EmailService {
   }
   
   /**
-   * Get available email templates
+   * Get template path based on language
+   * @param templateName Name of the template
+   * @param language Language code ('en' or 'fr')
+   * @returns Path to the template
+   */
+  private getTemplatePath(templateName: string, language: string = 'en'): string {
+    const languageSpecificPath = path.join(this.templatesDir, language, `${templateName}.html`);
+    const defaultPath = path.join(this.templatesDir, 'en', `${templateName}.html`);
+    
+    if (fs.existsSync(languageSpecificPath)) {
+      return languageSpecificPath;
+    }
+    
+    if (fs.existsSync(defaultPath)) {
+      console.warn(`Template not found for language ${language}, falling back to English template`);
+      return defaultPath;
+    }
+    
+    throw new Error(`Template ${templateName} not found in any language`);
+  }
+
+  /**
+   * Check if a template exists for a specific language
+   * @param templateName Name of the template
+   * @param language Language code ('en' or 'fr')
+   * @returns boolean indicating if template exists
+   */
+  hasTemplate(templateName: string, language: string = 'en'): boolean {
+    try {
+      const templatePath = path.join(this.templatesDir, language, `${templateName}.html`);
+      return fs.existsSync(templatePath);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Get available email templates for a specific language
+   * @param language Language code ('en' or 'fr')
    * @returns List of available template names
    */
-  getAvailableTemplates(): string[] {
+  getAvailableTemplates(language: string = 'en'): string[] {
     try {
-      const files = fs.readdirSync(this.templatesDir);
+      const langDir = path.join(this.templatesDir, language);
+      if (!fs.existsSync(langDir)) {
+        console.warn(`Template directory for language ${language} not found`);
+        return [];
+      }
+      
+      const files = fs.readdirSync(langDir);
       return files
         .filter(file => file.endsWith('.html'))
         .map(file => file.replace('.html', ''));
     } catch (error) {
-      console.error('Error reading template directory:', error);
+      console.error(`Error reading template directory for language ${language}:`, error);
       return [];
     }
   }
@@ -363,15 +446,22 @@ export class EmailService {
   async sendWelcomeEmail(
     email: string,
     fullname: string,
-    username: string
+    username: string,
+    language?: 'en' | 'fr'
   ): Promise<EmailResult> {
     const loginUrl = `${config.FRONTEND_URL}/login`;
     
+    const subjects = {
+      en: 'Welcome to Lurnix!',
+      fr: 'Bienvenue sur Lurnix !'
+    };
+
     return this.sendTemplateEmail({
       to: email,
       toName: fullname,
-      subject: 'Welcome to Lurnix!',
+      subject: subjects[language || 'en'],
       templateName: 'welcome',
+      language,
       templateData: {
         fullname,
         username,
@@ -391,15 +481,22 @@ export class EmailService {
     email: string,
     name: string,
     role: string,
-    createdBy: string
+    createdBy: string,
+    language?: 'en' | 'fr'
   ): Promise<EmailResult> {
     const loginUrl = `${config.FRONTEND_URL}/admin/login`;
     
+    const subjects = {
+      en: 'Welcome to Lurnix Admin Panel',
+      fr: 'Bienvenue sur le panneau d\'administration Lurnix'
+    };
+
     return this.sendTemplateEmail({
       to: email,
       toName: name,
-      subject: 'Welcome to Lurnix Admin Panel',
+      subject: subjects[language || 'en'],
       templateName: 'adminWelcome',
+      language,
       templateData: {
         name,
         email,
@@ -419,15 +516,22 @@ export class EmailService {
   async sendAdminPasswordResetEmail(
     email: string,
     name: string,
-    resetToken: string
+    resetToken: string,
+    language?: 'en' | 'fr'
   ): Promise<EmailResult> {
     const resetUrl = `${config.FRONTEND_URL}/admin/reset-password?token=${resetToken}`;
     
+    const subjects = {
+      en: 'Admin Password Reset - Lurnix',
+      fr: 'Réinitialisation du mot de passe administrateur - Lurnix'
+    };
+
     return this.sendTemplateEmail({
       to: email,
       toName: name,
-      subject: 'Admin Password Reset - Lurnix',
+      subject: subjects[language || 'en'],
       templateName: 'adminPasswordReset',
+      language,
       templateData: {
         name,
         email,

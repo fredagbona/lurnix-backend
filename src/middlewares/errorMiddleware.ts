@@ -1,6 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { AuthRequest } from './authMiddleware.js';
+import type { I18nRequest } from '../config/i18n/types.js';
 import { AuthServiceError } from '../services/authService.js';
+
+// Extended request type that includes both i18n and auth properties
+interface LocalizedAuthRequest extends I18nRequest {
+  userId?: string;
+}
 import { PasswordResetError } from '../services/passwordResetService.js';
 import { UserRepositoryError } from '../repositories/userRepository.js';
 import { ValidationError } from './validation.js';
@@ -12,10 +17,13 @@ import { errorMonitoringService } from '../services/errorMonitoringService.js';
 // Global error handler middleware
 export function errorHandler(
   error: any,
-  req: AuthRequest,
+  req: LocalizedAuthRequest,
   res: Response,
   next: NextFunction
 ): void {
+  // Get user's preferred language
+  const language = req.language || 'en';
+
   // Normalize the error to AppError
   const normalizedError = normalizeError(error);
   
@@ -36,6 +44,7 @@ export function errorHandler(
       'user-agent': req.headers['user-agent'],
     },
     timestamp: new Date().toISOString(),
+    language, // Add language to error context
   };
   
   // Log the error with context
@@ -44,50 +53,43 @@ export function errorHandler(
   // Record error for monitoring
   errorMonitoringService.recordError(normalizedError, context);
   
-  // Handle legacy error types for backward compatibility
+    // Handle legacy error types with localization
   if (error instanceof AuthServiceError) {
-    const appError = new AppError(error.message, error.statusCode, 'AUTH_ERROR');
-    const response = sanitizeErrorForClient(appError);
-    res.status(appError.statusCode).json(response);
+    const appError = new AppError('errors.auth.generic', error.statusCode, 'AUTH_ERROR');
+    res.status(appError.statusCode).json(appError.toResponse(language));
     return;
   }
   
   if (error instanceof PasswordResetError) {
-    const appError = new AppError(error.message, error.statusCode, 'PASSWORD_RESET_ERROR');
-    const response = sanitizeErrorForClient(appError);
-    res.status(appError.statusCode).json(response);
+    const appError = new AppError('errors.auth.passwordReset', error.statusCode, 'PASSWORD_RESET_ERROR');
+    res.status(appError.statusCode).json(appError.toResponse(language));
     return;
   }
   
   if (error instanceof UserRepositoryError) {
-    const appError = new AppError('Database operation failed', 500, 'DATABASE_ERROR');
-    const response = sanitizeErrorForClient(appError);
-    res.status(appError.statusCode).json(response);
+    const appError = new AppError('errors.database.operationFailed', 500, 'DATABASE_ERROR');
+    res.status(appError.statusCode).json(appError.toResponse(language));
     return;
   }
   
   if (error instanceof ValidationError) {
-    const appError = new AppError(error.message, error.statusCode, 'VALIDATION_ERROR', true, error.errors);
-    const response = sanitizeErrorForClient(appError);
-    res.status(appError.statusCode).json(response);
+    const appError = new AppError('errors.validation.failed', error.statusCode, 'VALIDATION_ERROR', true, error.errors);
+    res.status(appError.statusCode).json(appError.toResponse(language));
     return;
   }
-  
-  // Send sanitized error response
-  const response = sanitizeErrorForClient(normalizedError);
+  // Send localized error response
+  const response = normalizedError.toResponse(language);
   res.status(normalizedError.statusCode).json(response);
 }
 
 // 404 handler middleware
 export function notFoundHandler(req: Request, res: Response): void {
-  res.status(404).json({
-    success: false,
-    error: {
-      code: 'NOT_FOUND',
-      message: `Route ${req.method} ${req.path} not found`,
-    },
-    timestamp: new Date().toISOString(),
+  const language = (req as LocalizedAuthRequest).language || 'en';
+  const error = new AppError('errors.route.notFound', 404, 'NOT_FOUND', true, null, {
+    method: req.method,
+    path: req.path
   });
+  res.status(404).json(error.toResponse(language));
 }
 
 // Async error wrapper
@@ -129,24 +131,14 @@ export function handleDatabaseError(error: any): AppError {
 
 // Rate limit error handler
 export function handleRateLimitError(req: Request, res: Response): void {
-  res.status(429).json({
-    success: false,
-    error: {
-      code: 'RATE_LIMIT_EXCEEDED',
-      message: 'Too many requests, please try again later',
-    },
-    timestamp: new Date().toISOString(),
-  });
+  const language = (req as LocalizedAuthRequest).language || 'en';
+  const error = new AppError('errors.rateLimit.tooManyRequests', 429, 'RATE_LIMIT_EXCEEDED');
+  res.status(429).json(error.toResponse(language));
 }
 
 // CORS error handler
 export function handleCORSError(req: Request, res: Response): void {
-  res.status(403).json({
-    success: false,
-    error: {
-      code: 'CORS_ERROR',
-      message: 'Cross-origin request blocked',
-    },
-    timestamp: new Date().toISOString(),
-  });
+  const language = (req as LocalizedAuthRequest).language || 'en';
+  const error = new AppError('errors.security.corsBlocked', 403, 'CORS_ERROR');
+  res.status(403).json(error.toResponse(language));
 }

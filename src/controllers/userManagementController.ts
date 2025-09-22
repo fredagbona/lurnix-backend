@@ -8,6 +8,8 @@ import {
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
 import { getClientIP } from '../utils/emailUtils.js';
+import { sendTranslatedResponse } from '../utils/translationUtils.js';
+import { AppError } from '../errors/AppError.js';
 
 export class UserManagementController {
   // Get user profile
@@ -15,39 +17,21 @@ export class UserManagementController {
     const userId = req.userId;
 
     if (!userId) {
-      res.status(401).json({
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_REQUIRED',
-          message: 'Authentication is required',
-        },
-        timestamp: new Date().toISOString(),
-      });
-      return;
+      throw new AppError('errors.auth.authenticationRequired', 401, 'AUTHENTICATION_REQUIRED');
     }
 
     try {
       const userProfile = await authService.getUserProfile(userId);
-      
-      res.status(200).json({
-        success: true,
-        message: 'Profile retrieved successfully',
+
+      sendTranslatedResponse(res, 'auth.profile.retrieved', {
+        statusCode: 200,
         data: {
           user: userProfile,
         },
-        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       if (error instanceof AuthServiceError) {
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.name,
-            message: error.message,
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
+        throw new AppError(error.message, error.statusCode, error.name);
       }
       throw error;
     }
@@ -59,39 +43,21 @@ export class UserManagementController {
     const updateData: UpdateProfileRequest = req.body;
 
     if (!userId) {
-      res.status(401).json({
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_REQUIRED',
-          message: 'Authentication is required',
-        },
-        timestamp: new Date().toISOString(),
-      });
-      return;
+      throw new AppError('errors.auth.authenticationRequired', 401, 'AUTHENTICATION_REQUIRED');
     }
 
     try {
       const updatedProfile = await authService.updateProfile(userId, updateData);
-      
-      res.status(200).json({
-        success: true,
-        message: 'Profile updated successfully',
+
+      sendTranslatedResponse(res, 'auth.profile.updated', {
+        statusCode: 200,
         data: {
           user: updatedProfile,
         },
-        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       if (error instanceof AuthServiceError) {
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.name,
-            message: error.message,
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
+        throw new AppError(error.message, error.statusCode, error.name);
       }
       throw error;
     }
@@ -103,37 +69,19 @@ export class UserManagementController {
     const passwordData: ChangePasswordRequest = req.body;
 
     if (!userId) {
-      res.status(401).json({
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_REQUIRED',
-          message: 'Authentication is required',
-        },
-        timestamp: new Date().toISOString(),
-      });
-      return;
+      throw new AppError('errors.auth.authenticationRequired', 401, 'AUTHENTICATION_REQUIRED');
     }
 
     try {
       const ipAddress = getClientIP(req);
       await authService.changePassword(userId, passwordData, ipAddress);
-      
-      res.status(200).json({
-        success: true,
-        message: 'Password changed successfully',
-        timestamp: new Date().toISOString(),
+
+      sendTranslatedResponse(res, 'auth.password.changed', {
+        statusCode: 200,
       });
     } catch (error) {
       if (error instanceof AuthServiceError) {
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.name,
-            message: error.message,
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
+        throw new AppError(error.message, error.statusCode, error.name);
       }
       throw error;
     }
@@ -145,63 +93,79 @@ export class UserManagementController {
     const deleteData: DeleteAccountRequest = req.body;
 
     if (!userId) {
-      res.status(401).json({
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_REQUIRED',
-          message: 'Authentication is required',
-        },
-        timestamp: new Date().toISOString(),
-      });
-      return;
+      throw new AppError('errors.auth.authenticationRequired', 401, 'AUTHENTICATION_REQUIRED');
     }
 
     try {
       await authService.deleteAccount(userId, deleteData);
-      
-      res.status(200).json({
-        success: true,
-        message: 'Account deleted successfully',
-        timestamp: new Date().toISOString(),
+
+      sendTranslatedResponse(res, 'auth.account.deleted', {
+        statusCode: 200,
       });
     } catch (error) {
       if (error instanceof AuthServiceError) {
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.name,
-            message: error.message,
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
+        throw new AppError(error.message, error.statusCode, error.name);
       }
       throw error;
     }
   });
 
  
-  // Get account status
-  getAccountStatus = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  // Update user language preference
+  updateLanguage = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
     const userId = req.userId;
+    const { language } = req.body;
 
     if (!userId) {
-      res.status(401).json({
+      throw new AppError('errors.auth.authenticationRequired', 401, 'AUTHENTICATION_REQUIRED');
+    }
+
+    if (!language || !['en', 'fr'].includes(language)) {
+      sendTranslatedResponse(res, 'auth.validation.language.invalid', {
+        statusCode: 400,
         success: false,
-        error: {
-          code: 'AUTHENTICATION_REQUIRED',
-          message: 'Authentication is required',
-        },
-        timestamp: new Date().toISOString(),
       });
       return;
     }
 
     try {
+      const updatedProfile = await authService.updateLanguage(userId, language as 'en' | 'fr');
+
+      // Ensure request context reflects the updated language preference
+      const authRequest = res.req as AuthRequest;
+      if (authRequest.user) {
+        authRequest.user.language = updatedProfile.language;
+      }
+      (res.req as any).language = updatedProfile.language;
+      (res.req as any).lng = updatedProfile.language;
+
+      sendTranslatedResponse(res, 'auth.language.updated', {
+        statusCode: 200,
+        data: {
+          user: updatedProfile,
+        },
+      });
+    } catch (error) {
+      if (error instanceof AuthServiceError) {
+        throw new AppError(error.message, error.statusCode, error.name);
+      }
+      throw error;
+    }
+  });
+
+  // Get account status
+  getAccountStatus = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const userId = req.userId;
+
+    if (!userId) {
+      throw new AppError('errors.auth.authenticationRequired', 401, 'AUTHENTICATION_REQUIRED');
+    }
+
+    try {
       const user = await authService.verifyUser(userId);
-      
-      res.status(200).json({
-        success: true,
+
+      sendTranslatedResponse(res, 'auth.account.statusRetrieved', {
+        statusCode: 200,
         data: {
           accountStatus: {
             isActive: user.isActive,
@@ -210,19 +174,10 @@ export class UserManagementController {
             deletedAt: user.deletedAt,
           },
         },
-        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       if (error instanceof AuthServiceError) {
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.name,
-            message: error.message,
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
+        throw new AppError(error.message, error.statusCode, error.name);
       }
       throw error;
     }
