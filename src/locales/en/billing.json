@@ -1,0 +1,24 @@
+{
+  "status": {
+    "pending": "Pending",
+    "paid": "Paid",
+    "failed": "Failed",
+    "refunded": "Refunded"
+  },
+  "invoice": {
+    "title": "Invoice {{number}}",
+    "amount": "Amount",
+    "discount": "Discount",
+    "finalAmount": "Total charged",
+    "dueDate": "Due date",
+    "period": "Billing period",
+    "download": "Download invoice",
+    "noInvoices": "No invoices available yet."
+  },
+  "upcoming": {
+    "title": "Upcoming charge",
+    "amount": "Next payment",
+    "date": "Scheduled for {{date}}",
+    "manage": "Manage billing"
+  }
+}

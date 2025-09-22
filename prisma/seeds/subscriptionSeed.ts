@@ -1,189 +1,207 @@
 import { randomUUID } from 'crypto';
+import { PlanType, BillingCycle, Prisma } from '@prisma/client';
 import { db } from '../../src/prisma/prismaWrapper';
 
-/**
- * Seed subscription plans with region-based pricing
- */
+const decimal = (value: number) => new Prisma.Decimal(value);
+
+type PlanTier = {
+  billingCycle: BillingCycle;
+  pricePerPeriod: number;
+  billingAmount: number;
+  commitmentMonths: number;
+  discountPercentage?: number;
+  paddlePriceId: string;
+};
+
+type PlanDefinition = {
+  planType: PlanType;
+  name: string;
+  description: string;
+  features: string[];
+  limits: Record<string, unknown>;
+  paddleProductId?: string;
+  tiers: PlanTier[];
+};
+
+const PLAN_DEFINITIONS: PlanDefinition[] = [
+  {
+    planType: PlanType.free,
+    name: 'Free',
+    description: 'Forever free plan to get started',
+    features: [
+      'Profile test → 7-day roadmap',
+      'Limited access to resources',
+      'Basic Discord community access',
+      'Checkpoints & streaks tracking',
+    ],
+    limits: {
+      roadmaps: 1,
+      ai_interactions_per_month: 50,
+      resource_access: 'limited',
+    },
+    tiers: [
+      {
+        billingCycle: BillingCycle.monthly,
+        pricePerPeriod: 0,
+        billingAmount: 0,
+        commitmentMonths: 1,
+        discountPercentage: 0,
+        paddlePriceId: 'price_free_monthly',
+      },
+    ],
+  },
+  {
+    planType: PlanType.builder,
+    name: 'Builder',
+    description: 'Complete learning toolkit with AI mentor',
+    features: [
+      'Multiple roadmaps (7/14/30 day options)',
+      'Unlimited resource access',
+      'AI Mentor (guidance + examples + feedback)',
+      'Progress tracking (streaks, checkpoints, deliverables)',
+      'All Free plan features',
+    ],
+    limits: {
+      roadmaps: 'unlimited',
+      ai_interactions_per_month: 'unlimited',
+      resource_access: 'unlimited',
+    },
+    paddleProductId: 'prod_builder',
+    tiers: [
+      {
+        billingCycle: BillingCycle.monthly,
+        pricePerPeriod: 20,
+        billingAmount: 20,
+        commitmentMonths: 1,
+        paddlePriceId: 'price_builder_monthly',
+      },
+      {
+        billingCycle: BillingCycle.six_months,
+        pricePerPeriod: 18,
+        billingAmount: 108,
+        commitmentMonths: 6,
+        discountPercentage: 10,
+        paddlePriceId: 'price_builder_6m',
+      },
+      {
+        billingCycle: BillingCycle.twelve_months,
+        pricePerPeriod: 16,
+        billingAmount: 192,
+        commitmentMonths: 12,
+        discountPercentage: 20,
+        paddlePriceId: 'price_builder_12m',
+      },
+    ],
+  },
+  {
+    planType: PlanType.master,
+    name: 'Master',
+    description: 'Premium coaching with human mentorship',
+    features: [
+      'Weekly 1:1 coaching sessions (25-30 min)',
+      'Personalized human feedback (code, projects, pitch)',
+      'Career guidance (LinkedIn/GitHub profile, project storytelling)',
+      'Networking opportunities & connections (when available)',
+      'Priority support (faster response times)',
+      'All Builder plan features',
+    ],
+    limits: {
+      coaching_sessions_per_month: 4,
+      priority_support: true,
+    },
+    paddleProductId: 'prod_master',
+    tiers: [
+      {
+        billingCycle: BillingCycle.monthly,
+        pricePerPeriod: 100,
+        billingAmount: 100,
+        commitmentMonths: 1,
+        paddlePriceId: 'price_master_monthly',
+      },
+      {
+        billingCycle: BillingCycle.six_months,
+        pricePerPeriod: 90,
+        billingAmount: 540,
+        commitmentMonths: 6,
+        discountPercentage: 10,
+        paddlePriceId: 'price_master_6m',
+      },
+      {
+        billingCycle: BillingCycle.twelve_months,
+        pricePerPeriod: 80,
+        billingAmount: 960,
+        commitmentMonths: 12,
+        discountPercentage: 20,
+        paddlePriceId: 'price_master_12m',
+      },
+    ],
+  },
+];
+
 export async function seedSubscriptionPlans() {
   console.log('🌱 Seeding subscription plans...');
 
-  try {
-    // Define regions with their currencies
-    const regions = [
-      { code: 'US', currency: 'USD', multiplier: 1.0 },
-      { code: 'GB', currency: 'GBP', multiplier: 0.8 },
-      { code: 'EU', currency: 'EUR', multiplier: 0.9 },
-      { code: 'CA', currency: 'CAD', multiplier: 1.3 },
-      { code: 'AU', currency: 'AUD', multiplier: 1.5 },
-      { code: 'IN', currency: 'INR', multiplier: 83 },
-      { code: 'NG', currency: 'NGN', multiplier: 1500 },
-      { code: 'ZA', currency: 'ZAR', multiplier: 18 },
-      { code: 'KE', currency: 'KES', multiplier: 130 },
-      { code: 'GH', currency: 'GHS', multiplier: 13 },
-    ];
+  let createdCount = 0;
 
-    // Define base plans (in USD)
-    const basePlans = [
-      {
-        code: 'basic-monthly',
-        name: 'Basic Plan (Monthly)',
-        description: 'Access to essential learning resources',
-        basePrice: 9.99,
-        interval: 'monthly' as const,
-        features: [
-          'Access to all basic courses',
-          'Learning path recommendations',
-          'Basic quiz assessments',
-          'Community forum access',
-        ],
-      },
-      {
-        code: 'basic-yearly',
-        name: 'Basic Plan (Yearly)',
-        description: 'Access to essential learning resources with yearly discount',
-        basePrice: 99.99,
-        interval: 'yearly' as const,
-        features: [
-          'Access to all basic courses',
-          'Learning path recommendations',
-          'Basic quiz assessments',
-          'Community forum access',
-          '16% discount compared to monthly plan',
-        ],
-      },
-      {
-        code: 'pro-monthly',
-        name: 'Professional Plan (Monthly)',
-        description: 'Advanced learning tools for serious learners',
-        basePrice: 19.99,
-        interval: 'monthly' as const,
-        features: [
-          'All Basic plan features',
-          'Access to advanced courses',
-          'Personalized learning roadmaps',
-          'Advanced quiz assessments',
-          'Priority community support',
-          'Monthly live Q&A sessions',
-        ],
-      },
-      {
-        code: 'pro-yearly',
-        name: 'Professional Plan (Yearly)',
-        description: 'Advanced learning tools for serious learners with yearly discount',
-        basePrice: 199.99,
-        interval: 'yearly' as const,
-        features: [
-          'All Basic plan features',
-          'Access to advanced courses',
-          'Personalized learning roadmaps',
-          'Advanced quiz assessments',
-          'Priority community support',
-          'Monthly live Q&A sessions',
-          '16% discount compared to monthly plan',
-        ],
-      },
-      {
-        code: 'premium-monthly',
-        name: 'Premium Plan (Monthly)',
-        description: 'Complete learning experience with all features',
-        basePrice: 29.99,
-        interval: 'monthly' as const,
-        features: [
-          'All Professional plan features',
-          'One-on-one mentoring sessions',
-          'Exclusive premium courses',
-          'Certificate of completion',
-          'Career guidance sessions',
-          'Job placement assistance',
-          'Weekly live workshops',
-        ],
-      },
-      {
-        code: 'premium-yearly',
-        name: 'Premium Plan (Yearly)',
-        description: 'Complete learning experience with all features and yearly discount',
-        basePrice: 299.99,
-        interval: 'yearly' as const,
-        features: [
-          'All Professional plan features',
-          'One-on-one mentoring sessions',
-          'Exclusive premium courses',
-          'Certificate of completion',
-          'Career guidance sessions',
-          'Job placement assistance',
-          'Weekly live workshops',
-          '16% discount compared to monthly plan',
-        ],
-      },
-    ];
+  for (const plan of PLAN_DEFINITIONS) {
+    for (const tier of plan.tiers) {
+      try {
+        await db.subscriptionPlan.upsert({
+          where: {
+            planType_billingCycle: {
+              planType: plan.planType,
+              billingCycle: tier.billingCycle,
+            },
+          },
+          update: {
+            name: plan.name,
+            description: plan.description,
+            pricePerPeriod: decimal(tier.pricePerPeriod),
+            billingAmount: decimal(tier.billingAmount),
+            commitmentMonths: tier.commitmentMonths,
+            discountPercentage: tier.discountPercentage ?? 0,
+            features: plan.features,
+            limits: plan.limits,
+            paddleProductId: plan.paddleProductId,
+            paddlePriceId: tier.paddlePriceId,
+            isActive: true,
+          },
+          create: {
+            id: randomUUID(),
+            planType: plan.planType,
+            billingCycle: tier.billingCycle,
+            name: plan.name,
+            description: plan.description,
+            pricePerPeriod: decimal(tier.pricePerPeriod),
+            billingAmount: decimal(tier.billingAmount),
+            commitmentMonths: tier.commitmentMonths,
+            discountPercentage: tier.discountPercentage ?? 0,
+            features: plan.features,
+            limits: plan.limits,
+            paddleProductId: plan.paddleProductId,
+            paddlePriceId: tier.paddlePriceId,
+            isActive: true,
+          },
+        });
 
-    // Create subscription plans for each region
-    let createdCount = 0;
-    
-    for (const region of regions) {
-      for (const plan of basePlans) {
-        // Calculate price based on region multiplier
-        const price = Math.round((plan.basePrice * region.multiplier) * 100) / 100;
-        const planCode = `${plan.code}-${region.code.toLowerCase()}`;
-        
-        try {
-          // Check if plan exists
-          const existingPlan = await db.subscriptionPlan.findUnique({
-            where: { code: planCode },
-          });
-          
-          if (existingPlan) {
-            // Update existing plan
-            await db.subscriptionPlan.update({
-              where: { code: planCode },
-              data: {
-                name: plan.name,
-                description: plan.description,
-                price,
-                currency: region.currency,
-                regionCode: region.code,
-                interval: plan.interval,
-                features: plan.features,
-                isActive: true,
-              },
-            });
-          } else {
-            // Create new plan
-            await db.subscriptionPlan.create({
-              data: {
-                id: randomUUID(),
-                code: planCode,
-                name: plan.name,
-                description: plan.description,
-                price,
-                currency: region.currency,
-                regionCode: region.code,
-                interval: plan.interval,
-                features: plan.features,
-                isActive: true,
-              },
-            });
-            createdCount++;
-          }
-        } catch (error) {
-          console.error(`Error creating/updating plan ${planCode}:`, error);
-        }
+        createdCount += 1;
+      } catch (error) {
+        console.error(
+          `Error creating/updating plan ${plan.planType} (${tier.billingCycle})`,
+          error,
+        );
       }
     }
-
-    console.log(`✅ Created/updated ${createdCount} subscription plans`);
-    return createdCount;
-  } catch (error) {
-    console.error('Error in seedSubscriptionPlans:', error);
-    throw error;
   }
+
+  console.log(`✅ Created/updated ${createdCount} subscription plan tiers`);
+  return createdCount;
 }
 
-// Run the seed function if this file is executed directly
 if (require.main === module) {
   seedSubscriptionPlans()
     .then((count) => {
-      console.log(`Seeded ${count} subscription plans successfully`);
+      console.log(`Seeded ${count} subscription plan tiers successfully`);
       process.exit(0);
     })
     .catch((e) => {

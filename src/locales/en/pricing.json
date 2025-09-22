@@ -1,0 +1,56 @@
+{
+  "plans": {
+    "free": {
+      "name": "Free",
+      "tagline": "Forever free plan to get started",
+      "description": "Perfect for exploring Lurnix at your own pace.",
+      "bulletPoints": [
+        "Profile test with 7-day roadmap",
+        "Limited access to resources",
+        "Basic Discord community access",
+        "Checkpoints and streak tracking"
+      ]
+    },
+    "builder": {
+      "name": "Builder",
+      "tagline": "Complete learning toolkit with AI mentor",
+      "description": "Unlock unlimited roadmaps, AI mentor support, and rich resources to accelerate your learning.",
+      "bulletPoints": [
+        "Unlimited roadmaps (7/14/30 day options)",
+        "Unlimited resource library access",
+        "AI mentor: guidance, examples, and feedback",
+        "Progress tracking with streaks and checkpoints",
+        "Everything included in the Free plan"
+      ]
+    },
+    "master": {
+      "name": "Master",
+      "tagline": "Premium coaching with human mentorship",
+      "description": "Weekly 1:1 coaching, personalized reviews, and priority support to reach professional goals.",
+      "bulletPoints": [
+        "Weekly 1:1 coaching sessions (25-30 min)",
+        "Personalized human feedback on code, projects, and pitches",
+        "Career guidance for LinkedIn, GitHub, and storytelling",
+        "Opportunities for networking and introductions when available",
+        "Priority support plus everything in the Builder plan"
+      ]
+    }
+  },
+  "billingCycle": {
+    "monthly": "Monthly",
+    "six_months": "6-month commitment",
+    "twelve_months": "12-month commitment"
+  },
+  "pricing": {
+    "perMonth": "{{amount}} / month",
+    "payNow": "Pay {{amount}} today",
+    "commitment": "Commitment: {{months}} month(s)",
+    "discount": "Save {{percent}}%"
+  },
+  "cta": {
+    "choosePlan": "Choose plan",
+    "upgrade": "Upgrade now",
+    "downgrade": "Change plan",
+    "manage": "Manage subscription"
+  }
+}

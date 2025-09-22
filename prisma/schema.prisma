@@ -12,37 +12,74 @@ enum Language {
   fr
 }
 
+enum PlanType {
+  free
+  builder
+  master
+}
+
+enum BillingCycle {
+  monthly
+  six_months    @map("6_months")
+  twelve_months @map("12_months")
+}
+
+enum UserSubscriptionStatus {
+  pending
+  active
+  cancelled
+  expired
+  paused
+}
+
+enum CouponDiscountType {
+  percentage
+  fixed_amount
+}
+
+enum CouponAppliesTo {
+  all
+  plan_type
+  specific_plan
+}
+
+enum InvoiceStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
 model User {
-  id            String       @id @default(uuid())
-  username      String       @unique
-  fullname      String
-  email         String       @unique
-  password_hash String
-  isActive      Boolean      @default(true)
-  isVerified    Boolean      @default(false)
-  language      Language     @default(en)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  deletedAt     DateTime?
-  
+  id               String    @id @default(uuid())
+  username         String    @unique
+  fullname         String
+  email            String    @unique
+  password_hash    String
+  isActive         Boolean   @default(true)
+  isVerified       Boolean   @default(false)
+  language         Language  @default(en)
+  paddleCustomerId String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
   // Email verification functionality
   verificationToken       String?
   verificationTokenExpiry DateTime?
-  
+
   // Password reset functionality
   resetToken       String?
   resetTokenExpiry DateTime?
-  
-  // Subscription related fields
-  subscriptionId      String?
-  subscriptionStatus  SubscriptionStatus @default(free)
-  subscriptionEndDate DateTime?
-  
+
   // Relations
   quizResults      QuizResult[]
   roadmaps         Roadmap[]
   progresses       Progress[]
-  subscription     SubscriptionPlan?    @relation(fields: [subscriptionId], references: [id])
+  subscriptions    UserSubscription[]
+  CouponRedemption CouponRedemption[]
+  BillingInvoice   BillingInvoice[]
+  featureUsages    FeatureUsage[]
 }
 
 model Admin {
@@ -54,7 +91,7 @@ model Admin {
   language      Language  @default(en)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
+
   // Password reset functionality
   resetToken       String?
   resetTokenExpiry DateTime?
@@ -87,7 +124,7 @@ model QuizQuestion {
   key            String       @unique
   title          String
   description    String?
-  type           String       // 'single' | 'multi' | 'scale'
+  type           String // 'single' | 'multi' | 'scale'
   weightCategory String?
   sortOrder      Int
   isActive       Boolean      @default(true)
@@ -102,22 +139,22 @@ model QuizQuestion {
 }
 
 model QuizOption {
-  id          String       @id @default(uuid())
-  questionId  String
-  label       String
-  value       String
-  weights     Json         // e.g., { visual:2, handsOn:1, reading:0 }
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  question    QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  id         String       @id @default(uuid())
+  questionId String
+  label      String
+  value      String
+  weights    Json // e.g., { visual:2, handsOn:1, reading:0 }
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
 
 model QuizResult {
   id              String   @id @default(uuid())
   userId          String
   version         Int
-  answers         Json     // raw answers
-  computedProfile Json     // resolved profile {style, goal, time, ...}
+  answers         Json // raw answers
+  computedProfile Json // resolved profile {style, goal, time, ...}
   createdAt       DateTime @default(now())
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -127,14 +164,14 @@ model QuizResult {
 
 // Roadmap models
 model Roadmap {
-  id              String       @id @default(uuid())
+  id              String      @id @default(uuid())
   userId          String
   roadmap_type    RoadmapType
-  profileSnapshot Json         // snapshot of QuizResult.computedProfile used for generation
-  jsonRoadmap     Json         // generated tasks/days
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileSnapshot Json // snapshot of QuizResult.computedProfile used for generation
+  jsonRoadmap     Json // generated tasks/days
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   objectives      Objective[]
   progresses      Progress[]
 
@@ -157,7 +194,7 @@ model Progress {
   id                  String   @id @default(uuid())
   userId              String
   roadmapId           String
-  completedTasks      Json     // list of completed task IDs from Roadmap.jsonRoadmap
+  completedTasks      Json // list of completed task IDs from Roadmap.jsonRoadmap
   completedObjectives Int      @default(0)
   streak              Int      @default(0)
   lastActivityAt      DateTime @default(now())
@@ -171,8 +208,8 @@ model Progress {
 }
 
 enum RoadmapType {
-  seven_day   @map("7-day")
-  thirty_day  @map("30-day")
+  seven_day  @map("7-day")
+  thirty_day @map("30-day")
 }
 
 enum ObjectiveStatus {
@@ -181,31 +218,146 @@ enum ObjectiveStatus {
   done
 }
 
-enum SubscriptionStatus {
-  free
-  active
-  canceled
-  expired
-}
-
 // Subscription models
 model SubscriptionPlan {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  description String?
-  price       Float
-  currency    String
-  regionCode  String   // e.g., 'US', 'FR', 'SN'
-  interval    String   // 'monthly', 'yearly'
-  features    Json     // Array of features included in this plan
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  users       User[]
-  
-  @@index([regionCode])
+  id                 String       @id @default(uuid())
+  planType           PlanType
+  name               String
+  description        String?
+  billingCycle       BillingCycle
+  pricePerPeriod     Decimal      @db.Decimal(10, 2)
+  billingAmount      Decimal      @db.Decimal(10, 2)
+  commitmentMonths   Int          @default(1)
+  discountPercentage Int          @default(0)
+  features           Json
+  limits             Json
+  stripePriceId      String?
+  paddlePriceId      String?
+  paddleProductId    String?
+  isActive           Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  userSubscriptions UserSubscription[]
+
+  @@unique([planType, billingCycle])
   @@index([isActive])
+}
+
+model UserSubscription {
+  id                   String                 @id @default(uuid())
+  userId               String
+  planId               String
+  status               UserSubscriptionStatus @default(active)
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  commitmentEndDate    DateTime?
+  autoRenewal          Boolean                @default(true)
+  stripeSubscriptionId String?
+  paddleSubscriptionId String?
+  paddleCheckoutId     String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  cancelledAt          DateTime?
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan              SubscriptionPlan   @relation(fields: [planId], references: [id])
+  couponRedemptions CouponRedemption[]
+  invoices          BillingInvoice[]
+  featureUsages     FeatureUsage[]
+
+  @@index([userId])
+  @@index([planId])
+  @@index([status])
+}
+
+model FeatureUsage {
+  id             String   @id @default(uuid())
+  userId         String
+  subscriptionId String?
+  feature        String
+  used           Int      @default(0)
+  periodStart    DateTime
+  periodEnd      DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription UserSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, feature, periodStart, periodEnd])
+  @@index([userId, feature])
+}
+
+model Coupon {
+  id                 String             @id @default(uuid())
+  code               String             @unique
+  name               String
+  description        String?
+  discountType       CouponDiscountType
+  discountValue      Decimal            @db.Decimal(10, 2)
+  appliesTo          CouponAppliesTo    @default(all)
+  appliesToValue     String?
+  minimumCommitment  BillingCycle?
+  firstTimeUsersOnly Boolean            @default(false)
+  maxRedemptions     Int?
+  currentRedemptions Int                @default(0)
+  maxPerUser         Int?
+  validFrom          DateTime           @default(now())
+  validUntil         DateTime?
+  isActive           Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  redemptions    CouponRedemption[]
+  BillingInvoice BillingInvoice[]
+
+  @@index([isActive])
+  @@index([validFrom])
+  @@index([validUntil])
+}
+
+model CouponRedemption {
+  id             String   @id @default(uuid())
+  couponId       String
+  userId         String
+  subscriptionId String?
+  discountAmount Decimal  @db.Decimal(10, 2)
+  redeemedAt     DateTime @default(now())
+
+  coupon       Coupon            @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription UserSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([couponId])
+  @@index([userId])
+  @@index([subscriptionId])
+}
+
+model BillingInvoice {
+  id                 String        @id @default(uuid())
+  userId             String
+  subscriptionId     String
+  invoiceNumber      String        @unique
+  amount             Decimal       @db.Decimal(10, 2)
+  discountAmount     Decimal       @default(0) @db.Decimal(10, 2)
+  finalAmount        Decimal       @db.Decimal(10, 2)
+  currency           String        @default("USD")
+  status             InvoiceStatus @default(pending)
+  stripeInvoiceId    String?
+  couponId           String?
+  billingPeriodStart DateTime
+  billingPeriodEnd   DateTime
+  dueDate            DateTime
+  paidAt             DateTime?
+  createdAt          DateTime      @default(now())
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription UserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  coupon       Coupon?          @relation(fields: [couponId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([subscriptionId])
+  @@index([couponId])
+  @@index([status])
 }

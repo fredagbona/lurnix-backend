@@ -1,0 +1,24 @@
+{
+  "status": {
+    "pending": "En attente",
+    "paid": "Payée",
+    "failed": "Échouée",
+    "refunded": "Remboursée"
+  },
+  "invoice": {
+    "title": "Facture {{number}}",
+    "amount": "Montant",
+    "discount": "Réduction",
+    "finalAmount": "Montant prélevé",
+    "dueDate": "Date d'échéance",
+    "period": "Période de facturation",
+    "download": "Télécharger la facture",
+    "noInvoices": "Aucune facture disponible pour le moment."
+  },
+  "upcoming": {
+    "title": "Prochain prélèvement",
+    "amount": "Prochain paiement",
+    "date": "Prévu le {{date}}",
+    "manage": "Gérer la facturation"
+  }
+}

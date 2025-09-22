@@ -1,0 +1,56 @@
+{
+  "plans": {
+    "free": {
+      "name": "Gratuit",
+      "tagline": "Plan gratuit pour commencer",
+      "description": "Idéal pour découvrir Lurnix à votre rythme.",
+      "bulletPoints": [
+        "Test de profil avec feuille de route sur 7 jours",
+        "Accès limité aux ressources",
+        "Accès de base à la communauté Discord",
+        "Suivi des points de contrôle et des séries"
+      ]
+    },
+    "builder": {
+      "name": "Builder",
+      "tagline": "Boîte à outils complète avec mentor IA",
+      "description": "Débloquez des feuilles de route illimitées, le mentor IA et des ressources riches pour accélérer votre progression.",
+      "bulletPoints": [
+        "Feuilles de route illimitées (options 7/14/30 jours)",
+        "Accès illimité à la bibliothèque de ressources",
+        "Mentor IA : conseils, exemples et retours",
+        "Suivi des progrès avec séries et points de contrôle",
+        "Tout le contenu du plan Gratuit"
+      ]
+    },
+    "master": {
+      "name": "Master",
+      "tagline": "Coaching premium avec mentorat humain",
+      "description": "Coaching individuel hebdomadaire, retours personnalisés et support prioritaire pour atteindre vos objectifs professionnels.",
+      "bulletPoints": [
+        "Séances individuelles hebdomadaires (25-30 min)",
+        "Retours personnalisés sur code, projets et pitch",
+        "Accompagnement carrière pour LinkedIn, GitHub et storytelling",
+        "Opportunités de networking et introductions quand disponibles",
+        "Support prioritaire et tout le contenu du plan Builder"
+      ]
+    }
+  },
+  "billingCycle": {
+    "monthly": "Mensuel",
+    "six_months": "Engagement 6 mois",
+    "twelve_months": "Engagement 12 mois"
+  },
+  "pricing": {
+    "perMonth": "{{amount}} / mois",
+    "payNow": "Payer {{amount}} aujourd'hui",
+    "commitment": "Engagement : {{months}} mois",
+    "discount": "Économisez {{percent}} %"
+  },
+  "cta": {
+    "choosePlan": "Choisir ce plan",
+    "upgrade": "Passer à l'offre supérieure",
+    "downgrade": "Changer de plan",
+    "manage": "Gérer l'abonnement"
+  }
+}

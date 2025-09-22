@@ -22,13 +22,6 @@ export type AuthRequest<
   ReqQuery = ParsedQs,
 > = Request<P, ResBody, ReqBody, ReqQuery, AuthLocals>;
 
-export enum SubscriptionStatus {
-  FREE = 'free',
-  ACTIVE = 'active',
-  CANCELED = 'canceled',
-  EXPIRED = 'expired'
-}
-
 // User-related types
 export interface User {
   id: string;
@@ -45,11 +38,8 @@ export interface User {
   verificationTokenExpiry: Date | null;
   resetToken: string | null;
   resetTokenExpiry: Date | null;
-  // Subscription fields
-  subscriptionId: string | null;
-  subscriptionStatus: SubscriptionStatus;
-  subscriptionEndDate: Date | null;
   language: Language;
+  paddleCustomerId: string | null;
 }
 
 // User profile (response without sensitive data)

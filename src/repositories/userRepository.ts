@@ -36,7 +36,6 @@ export class UserRepository {
           password_hash: data.password_hash,
           isActive: true,
           isVerified: data.isVerified ?? false,
-          subscriptionStatus: 'free',
         },
       });
       return mapPrismaUserToUser(user);

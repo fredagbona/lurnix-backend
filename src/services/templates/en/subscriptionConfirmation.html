@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Subscription Confirmation - Lurnix</title>
+  <title>{{headline}}</title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -96,36 +96,36 @@
       <img src="{{logoUrl}}" alt="Lurnix Logo">
     </div>
     <div class="content">
-      <h1>Thank You for Your Subscription!</h1>
-      <p>Hi {{name}},</p>
-      <p>Thank you for subscribing to Lurnix! Your subscription has been successfully processed, and your account has been upgraded to <strong>{{planName}}</strong>.</p>
+      <h1>{{headline}}</h1>
+      <p>{{{greeting}}}</p>
+      <p>{{{introHtml}}}</p>
       
       <div class="subscription-details">
-        <h3>Subscription Details</h3>
+        <h3>{{detailsTitle}}</h3>
         <table>
           <tr>
-            <th>Plan</th>
+            <th>{{planLabel}}</th>
             <td>{{planName}}</td>
           </tr>
           <tr>
-            <th>Billing Cycle</th>
+            <th>{{billingCycleLabel}}</th>
             <td>{{billingCycle}}</td>
           </tr>
           <tr>
-            <th>Amount</th>
+            <th>{{amountLabel}}</th>
             <td class="price">{{currency}}{{amount}}</td>
           </tr>
           <tr>
-            <th>Next Billing Date</th>
+            <th>{{nextBillingDateLabel}}</th>
             <td>{{nextBillingDate}}</td>
           </tr>
           <tr>
-            <th>Payment Method</th>
+            <th>{{paymentMethodLabel}}</th>
             <td>{{paymentMethod}}</td>
           </tr>
         </table>
         
-        <h3>Plan Features</h3>
+        <h3>{{featuresTitle}}</h3>
         <ul class="feature-list">
           {{#each features}}
             <li>{{this}}</li>
@@ -133,21 +133,21 @@
         </ul>
       </div>
       
-      <p>You can manage your subscription, update payment details, or cancel at any time from your account settings.</p>
+      <p>{{footerNote}}</p>
       
       <div style="text-align: center;">
-        <a href="{{accountUrl}}" class="button">Manage Subscription</a>
+        <a href="{{accountUrl}}" class="button">{{manageCta}}</a>
       </div>
       
-      <p>If you have any questions about your subscription or need assistance, our support team is here to help.</p>
+      <p>{{supportText}}</p>
       
-      <p>Happy learning!</p>
-      <p>The Lurnix Team</p>
+      <p>{{closing}}</p>
+      <p>{{signature}}</p>
     </div>
     <div class="footer">
       <p>&copy; {{currentYear}} Lurnix. All rights reserved.</p>
-      <p>If you have any questions, please contact our support team at <a href="mailto:support@lurnix.com">support@lurnix.com</a></p>
-      <p><small>This email was sent to {{email}}. You're receiving this email because you have an active subscription with Lurnix.</small></p>
+      <p>{{supportFooter}}</p>
+      <p><small>{{footerLegal}}</small></p>
     </div>
   </div>
 </body>
