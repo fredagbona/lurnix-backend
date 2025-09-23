@@ -40,6 +40,13 @@ export interface EnvironmentConfig {
   // Frontend Configuration
   FRONTEND_URL: string;
   ALLOWED_ORIGINS: string[];
+  API_BASE_URL: string;
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
+  GITHUB_CLIENT_ID: string;
+  GITHUB_CLIENT_SECRET: string;
+  GOOGLE_CALLBACK_URL: string;
+  GITHUB_CALLBACK_URL: string;
   
   // Security Configuration
   BCRYPT_ROUNDS: number;
@@ -107,6 +114,13 @@ export const config: EnvironmentConfig = {
   // Frontend Configuration
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+  API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:5050/api',
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+  GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID || '',
+  GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET || '',
+  GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || `${process.env.API_BASE_URL || 'http://localhost:5050/api'}/auth/google/callback`,
+  GITHUB_CALLBACK_URL: process.env.GITHUB_CALLBACK_URL || `${process.env.API_BASE_URL || 'http://localhost:5050/api'}/auth/github/callback`,
   
   // Security Configuration
   BCRYPT_ROUNDS: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
@@ -215,6 +229,13 @@ export function logConfiguration(): void {
     }
     console.log(`   FRONTEND_URL: ${config.FRONTEND_URL}`);
     console.log(`   ALLOWED_ORIGINS: ${config.ALLOWED_ORIGINS.join(', ')}`);
+    console.log(`   API_BASE_URL: ${config.API_BASE_URL}`);
+    console.log(`   GOOGLE_CLIENT_ID: ${config.GOOGLE_CLIENT_ID ? '✓ Configured' : '✗ Missing'}`);
+    console.log(`   GOOGLE_CLIENT_SECRET: ${config.GOOGLE_CLIENT_SECRET ? '✓ Configured' : '✗ Missing'}`);
+    console.log(`   GOOGLE_CALLBACK_URL: ${config.GOOGLE_CALLBACK_URL}`);
+    console.log(`   GITHUB_CLIENT_ID: ${config.GITHUB_CLIENT_ID ? '✓ Configured' : '✗ Missing'}`);
+    console.log(`   GITHUB_CLIENT_SECRET: ${config.GITHUB_CLIENT_SECRET ? '✓ Configured' : '✗ Missing'}`);
+    console.log(`   GITHUB_CALLBACK_URL: ${config.GITHUB_CALLBACK_URL}`);
   }
 }
 
@@ -253,6 +274,13 @@ export const {
   LOGO_URL,
   FRONTEND_URL,
   ALLOWED_ORIGINS,
+  API_BASE_URL,
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  GITHUB_CLIENT_ID,
+  GITHUB_CLIENT_SECRET,
+  GOOGLE_CALLBACK_URL,
+  GITHUB_CALLBACK_URL,
   BCRYPT_ROUNDS,
   RATE_LIMIT_WINDOW,
   RATE_LIMIT_MAX,

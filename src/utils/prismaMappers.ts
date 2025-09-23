@@ -9,6 +9,10 @@ type PrismaUserWithVerification = Omit<PrismaUser, 'language'> & {
   verificationToken?: string | null;
   verificationTokenExpiry?: Date | null;
   paddleCustomerId?: string | null;
+  googleId?: string | null;
+  githubId?: string | null;
+  providers?: string[] | null;
+  avatar?: string | null;
 };
 
 /**
@@ -23,7 +27,11 @@ export function mapPrismaUserToUser(prismaUser: PrismaUserWithVerification): Use
       username: prismaUser.username,
       fullname: prismaUser.fullname,
       email: prismaUser.email,
-      password_hash: prismaUser.password_hash,
+      password_hash: prismaUser.password_hash ?? null,
+      googleId: prismaUser.googleId ?? null,
+      githubId: prismaUser.githubId ?? null,
+      providers: prismaUser.providers ?? [],
+      avatar: prismaUser.avatar ?? null,
       isActive: prismaUser.isActive,
       isVerified: prismaUser.isVerified ?? false,
       createdAt: prismaUser.createdAt,

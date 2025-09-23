@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma/client.js';
 import { User, CreateUserData, UpdateUserData } from '../types/auth.js';
 import { mapPrismaUserToUser, mapPrismaUsersToUsers } from '../utils/prismaMappers.js';
@@ -28,22 +29,56 @@ export class UserRepository {
   // Create a new user
   async create(data: CreateUserData): Promise<User> {
     try {
+      const providers = data.providers ?? (data.password_hash ? ['email'] : []);
+
+      const createData: Prisma.UserCreateInput = {
+        username: data.username.toLowerCase(),
+        fullname: data.fullname,
+        email: data.email.toLowerCase(),
+        isActive: true,
+        isVerified: data.isVerified ?? false,
+      };
+
+      if (data.password_hash !== undefined) {
+        createData.password_hash = data.password_hash ?? null;
+      }
+
+      if (data.googleId !== undefined) {
+        createData.googleId = data.googleId ?? null;
+      }
+
+      if (data.githubId !== undefined) {
+        createData.githubId = data.githubId ?? null;
+      }
+
+      createData.providers = providers;
+
+      if (data.avatar !== undefined) {
+        createData.avatar = data.avatar ?? null;
+      }
+
+      if (data.language) {
+        createData.language = data.language;
+      }
+
       const user = await prisma.user.create({
-        data: {
-          username: data.username.toLowerCase(),
-          fullname: data.fullname,
-          email: data.email.toLowerCase(),
-          password_hash: data.password_hash,
-          isActive: true,
-          isVerified: data.isVerified ?? false,
-        },
+        data: createData,
       });
       return mapPrismaUserToUser(user);
     } catch (error: any) {
       if (error.code === 'P2002') {
         // Unique constraint violation
-        const field = error.meta?.target?.[0] || 'field';
-        const value = field === 'email' ? data.email : data.username;
+        const target = error.meta?.target;
+        const field = Array.isArray(target) ? target[0] : typeof target === 'string' ? target : 'field';
+        const value = field === 'email'
+          ? data.email
+          : field === 'username'
+            ? data.username
+            : field === 'googleId'
+              ? data.googleId || 'googleId'
+              : field === 'githubId'
+                ? data.githubId || 'githubId'
+                : 'unknown';
         throw new DuplicateUserError(field, value);
       }
       throw new UserRepositoryError(`Failed to create user: ${error.message}`);
@@ -86,6 +121,36 @@ export class UserRepository {
       return user ? mapPrismaUserToUser(user) : null;
     } catch (error: any) {
       throw new UserRepositoryError(`Failed to find user by email: ${error.message}`);
+    }
+  }
+
+  // Find active user by Google provider ID
+  async findByGoogleId(googleId: string): Promise<User | null> {
+    try {
+      const user = await prisma.user.findFirst({
+        where: {
+          googleId,
+          isActive: true,
+        },
+      });
+      return user ? mapPrismaUserToUser(user) : null;
+    } catch (error: any) {
+      throw new UserRepositoryError(`Failed to find user by Google ID: ${error.message}`);
+    }
+  }
+
+  // Find active user by GitHub provider ID
+  async findByGithubId(githubId: string): Promise<User | null> {
+    try {
+      const user = await prisma.user.findFirst({
+        where: {
+          githubId,
+          isActive: true,
+        },
+      });
+      return user ? mapPrismaUserToUser(user) : null;
+    } catch (error: any) {
+      throw new UserRepositoryError(`Failed to find user by GitHub ID: ${error.message}`);
     }
   }
 
@@ -152,14 +217,65 @@ export class UserRepository {
   // Update user
   async update(id: string, data: UpdateUserData): Promise<User> {
     try {
-      const updateData = {
-        ...(data.username && { username: data.username.toLowerCase() }),
-        ...(data.email && { email: data.email.toLowerCase() }),
-        ...(data.fullname && { fullname: data.fullname }),
-        ...(data.password_hash && { password_hash: data.password_hash }),
-        ...(data.language && { language: data.language }),
-        updatedAt: new Date(),
+      const updateData: Prisma.UserUpdateInput = {
+        updatedAt: { set: new Date() },
       };
+
+      if (data.username !== undefined) {
+        updateData.username = data.username.toLowerCase();
+      }
+
+      if (data.email !== undefined) {
+        updateData.email = data.email.toLowerCase();
+      }
+
+      if (data.fullname !== undefined) {
+        updateData.fullname = data.fullname;
+      }
+
+      if (data.password_hash !== undefined) {
+        updateData.password_hash = data.password_hash;
+      }
+
+      if (data.googleId !== undefined) {
+        updateData.googleId = data.googleId;
+      }
+
+      if (data.githubId !== undefined) {
+        updateData.githubId = data.githubId;
+      }
+
+      if (data.providers !== undefined) {
+        updateData.providers = data.providers;
+      }
+
+      if (data.avatar !== undefined) {
+        updateData.avatar = data.avatar;
+      }
+
+      if (data.language !== undefined) {
+        updateData.language = data.language;
+      }
+
+      if (data.isVerified !== undefined) {
+        updateData.isVerified = data.isVerified;
+      }
+
+      if (data.verificationToken !== undefined) {
+        updateData.verificationToken = data.verificationToken;
+      }
+
+      if (data.verificationTokenExpiry !== undefined) {
+        updateData.verificationTokenExpiry = data.verificationTokenExpiry;
+      }
+
+      if (data.resetToken !== undefined) {
+        updateData.resetToken = data.resetToken;
+      }
+
+      if (data.resetTokenExpiry !== undefined) {
+        updateData.resetTokenExpiry = data.resetTokenExpiry;
+      }
       const user = await prisma.user.update({
         where: { id },
         data: updateData,
@@ -171,8 +287,17 @@ export class UserRepository {
       }
       if (error.code === 'P2002') {
         // Unique constraint violation
-        const field = error.meta?.target?.[0] || 'field';
-        const value = data.email || data.username || 'unknown';
+        const target = error.meta?.target;
+        const field = Array.isArray(target) ? target[0] : typeof target === 'string' ? target : 'field';
+        const value = field === 'email'
+          ? data.email || 'unknown-email'
+          : field === 'username'
+            ? data.username || 'unknown-username'
+            : field === 'googleId'
+              ? (data.googleId ?? 'googleId')
+              : field === 'githubId'
+                ? (data.githubId ?? 'githubId')
+                : 'unknown';
         throw new DuplicateUserError(field, value);
       }
       throw new UserRepositoryError(`Failed to update user: ${error.message}`);

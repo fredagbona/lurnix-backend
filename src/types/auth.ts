@@ -3,8 +3,14 @@ import type { ParamsDictionary } from 'express-serve-static-core';
 import type { ParsedQs } from 'qs';
 import type { User as PrismaUser, Admin as PrismaAdmin } from '@prisma/client';
 import type { Language } from '../prisma/prismaTypes.js';
+import type {
+  OAuthProvider as PassportOAuthProvider,
+  OAuthVerifyCallbackPayload as PassportOAuthVerifyCallbackPayload,
+} from '../services/oauth/oauthTypes.js';
 
 export type { Language };
+export type OAuthProvider = PassportOAuthProvider;
+export type OAuthVerifyCallbackPayload = PassportOAuthVerifyCallbackPayload;
 
 // Request type extension for authenticated requests
 export interface AuthLocals extends Record<string, any> {
@@ -28,7 +34,11 @@ export interface User {
   username: string;
   fullname: string;
   email: string;
-  password_hash: string;
+  password_hash: string | null;
+  googleId: string | null;
+  githubId: string | null;
+  providers: string[];
+  avatar: string | null;
   isActive: boolean;
   isVerified: boolean;
   createdAt: Date;
@@ -52,6 +62,8 @@ export interface UserProfile {
   isVerified: boolean;
   language: Language;
   createdAt: Date;
+  providers: string[];
+  avatar: string | null;
 }
 
 // Registration DTOs
@@ -127,6 +139,8 @@ export interface JWTPayload {
   username?: string;
   role?: AdminRole;
   language?: Language;
+  providers?: string[];
+  avatar?: string | null;
   iat: number;
   exp: number;
 }
@@ -211,7 +225,11 @@ export interface CreateUserData {
   username: string;
   fullname: string;
   email: string;
-  password_hash: string;
+  password_hash?: string;
+  googleId?: string | null;
+  githubId?: string | null;
+  providers?: string[];
+  avatar?: string | null;
   language?: Language;
   isVerified?: boolean;
 }
@@ -220,11 +238,37 @@ export interface UpdateUserData {
   username?: string;
   fullname?: string;
   email?: string;
-  password_hash?: string;
+  password_hash?: string | null;
+  googleId?: string | null;
+  githubId?: string | null;
+  providers?: string[];
+  avatar?: string | null;
   language?: Language;
   isVerified?: boolean;
   verificationToken?: string | null;
   verificationTokenExpiry?: Date | null;
   resetToken?: string | null;
   resetTokenExpiry?: Date | null;
+}
+
+// OAuth login result
+export interface OAuthLoginResult {
+  token: string;
+  user: UserProfile;
+  providers: string[];
+  isNewUser: boolean;
+  requiresPassword: boolean;
+}
+
+// Linked providers response
+export interface LinkedProvidersResponse {
+  providers: string[];
+  primaryProvider: string | null;
+  hasPassword: boolean;
+  avatar: string | null;
+}
+
+// Unlink provider request body
+export interface UnlinkProviderRequest {
+  password?: string;
 }

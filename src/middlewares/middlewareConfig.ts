@@ -10,6 +10,7 @@ import {
 } from './securityMiddleware.js';
 import { errorHandler, notFoundHandler } from './errorMiddleware.js';
 import { sanitizeInput } from './validation.js';
+import { initializePassport, passport as oauthPassport } from '../services/oauth/passport.js';
 
 // CORS configuration - Allow all origins for development
 const corsOptions = {
@@ -32,6 +33,10 @@ export function configureMiddleware(app: Application): void {
   
   // Cookie parsing
   app.use(cookieParser());
+
+  // Initialize Passport for OAuth strategies
+  initializePassport();
+  app.use(oauthPassport.initialize());
   
   // Request logging (only in development)
   if (process.env.NODE_ENV === 'development') {

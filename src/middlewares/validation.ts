@@ -154,32 +154,29 @@ setInterval(() => {
 // Validate query parameters
 export function validateQuery(schema: ZodSchema) {
   return (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const validatedData = schema.parse(req.query);
-      req.query = validatedData;
-      next();
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const language = (req as any).language || 'en';
-        const validationErrors = error.errors.map(err => {
-          const field = err.path.join('.') || 'value';
-          const messageKey = err.message;
-          const { message, resolvedKey } = translateKey(messageKey, { language });
+    const result = schema.safeParse(req.query);
 
-          return {
-            field,
-            message,
-            ...(messageKey !== message && messageKey !== resolvedKey ? { messageKey } : {}),
-            code: err.code,
-            source: 'query',
-          };
-        });
+    if (!result.success) {
+      const validationErrors = result.error.errors.map(err => ({
+        field: err.path.join('.'),
+        message: err.message,
+        code: err.code,
+      }));
 
-        return next(new ValidationError('Invalid query parameters', validationErrors));
-      }
-
-      return next(error);
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'QUERY_VALIDATION_ERROR',
+          message: 'Invalid query parameters',
+          details: validationErrors,
+        },
+        timestamp: new Date().toISOString(),
+      });
     }
+
+    // Preserve validated values alongside the original query object
+    (req as any).validatedQuery = result.data;
+    next();
   };
 }
 
@@ -252,3 +249,4 @@ export const rateLimitConfigs = {
     message: 'Rate limit exceeded for sensitive operation',
   },
 };
+
