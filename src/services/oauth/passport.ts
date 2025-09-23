@@ -1,25 +1,48 @@
 import type { Express } from 'express';
 import passport from 'passport';
-import { Strategy as GoogleStrategy, Profile as GoogleProfile } from 'passport-google-oauth20';
-import { Strategy as GitHubStrategy, Profile as GitHubProfile } from 'passport-github2';
+import {
+  Strategy as GoogleStrategy,
+  Profile as GoogleProfile,
+} from 'passport-google-oauth20';
+import {
+  Strategy as GitHubStrategy,
+  Profile as GitHubProfile,
+} from 'passport-github2';
 import { config } from '../../config/environment.js';
 import { NormalizedOAuthProfile, OAuthVerifyCallbackPayload } from './oauthTypes.js';
+
+type GoogleRawProfile = GoogleProfile & {
+  _json?: {
+    email_verified?: boolean;
+    locale?: string;
+    picture?: string;
+  };
+};
+
+type GitHubRawProfile = GitHubProfile & {
+  _json?: {
+    name?: string;
+    avatar_url?: string;
+    locale?: string;
+  };
+};
+
+type StrategyDone = (error: any, user?: any, info?: any) => void;
 
 let configured = false;
 
 function mapGoogleProfile(profile: GoogleProfile): NormalizedOAuthProfile {
+  const raw = (profile as GoogleRawProfile)._json ?? {};
   const primaryEmail = profile.emails?.[0];
   const email = primaryEmail?.value || null;
-  const emailVerified = Boolean(
-    primaryEmail?.verified ?? (profile._json as Record<string, unknown> | undefined)?.email_verified ?? false
-  );
+  const emailVerified = Boolean(primaryEmail?.verified ?? raw.email_verified ?? false);
   const fullname =
     profile.displayName ||
     [profile.name?.givenName, profile.name?.familyName].filter(Boolean).join(' ').trim() ||
     profile.name?.givenName ||
     profile.id;
   const avatarUrl = profile.photos?.[0]?.value || null;
-  const locale = (profile._json as Record<string, unknown> | undefined)?.locale as string | undefined;
+  const locale = raw.locale;
 
   return {
     provider: 'google',
@@ -30,17 +53,18 @@ function mapGoogleProfile(profile: GoogleProfile): NormalizedOAuthProfile {
     username: profile.username ?? (email ? email.split('@')[0] : null),
     avatarUrl,
     locale: locale ?? null,
-    rawProfile: profile._json as Record<string, unknown> | undefined,
+    rawProfile: raw as Record<string, unknown>,
   };
 }
 
 function mapGithubProfile(profile: GitHubProfile): NormalizedOAuthProfile {
+  const raw = (profile as GitHubRawProfile)._json ?? {};
   const emails = profile.emails || [];
   const primaryEmail = emails.find(email => (email as any).primary) || emails[0];
   const emailValue = primaryEmail?.value || null;
   const emailVerified = Boolean((primaryEmail as any)?.verified ?? false);
-  const displayName = profile.displayName || (profile._json as any)?.name || profile.username || 'GitHub User';
-  const avatarUrl = (profile._json as any)?.avatar_url || profile.photos?.[0]?.value || null;
+  const displayName = profile.displayName || raw.name || profile.username || 'GitHub User';
+  const avatarUrl = raw.avatar_url || profile.photos?.[0]?.value || null;
 
   return {
     provider: 'github',
@@ -50,8 +74,8 @@ function mapGithubProfile(profile: GitHubProfile): NormalizedOAuthProfile {
     fullname: displayName,
     username: profile.username,
     avatarUrl,
-    locale: (profile._json as any)?.locale ?? null,
-    rawProfile: profile._json as Record<string, unknown> | undefined,
+    locale: raw.locale ?? null,
+    rawProfile: raw as Record<string, unknown>,
   };
 }
 
@@ -68,9 +92,13 @@ function registerGoogleStrategy() {
         clientSecret: config.GOOGLE_CLIENT_SECRET,
         callbackURL: config.GOOGLE_CALLBACK_URL,
         scope: ['profile', 'email'],
-        passReqToCallback: false,
       },
-      (accessToken, refreshToken, profile, done) => {
+      (
+        accessToken: string,
+        refreshToken: string,
+        profile: GoogleProfile,
+        done: StrategyDone,
+      ) => {
         try {
           const normalizedProfile = mapGoogleProfile(profile);
           const payload: OAuthVerifyCallbackPayload = {
@@ -100,9 +128,13 @@ function registerGithubStrategy() {
         clientSecret: config.GITHUB_CLIENT_SECRET,
         callbackURL: config.GITHUB_CALLBACK_URL,
         scope: ['user:email'],
-        passReqToCallback: false,
       },
-      (accessToken, refreshToken, profile, done) => {
+      (
+        accessToken: string,
+        refreshToken: string,
+        profile: GitHubProfile,
+        done: StrategyDone,
+      ) => {
         try {
           const normalizedProfile = mapGithubProfile(profile);
           const payload: OAuthVerifyCallbackPayload = {
