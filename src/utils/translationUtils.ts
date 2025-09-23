@@ -9,6 +9,106 @@ export interface TranslatedResponse {
   timestamp: string;
 }
 
+interface TranslationOptions {
+  language?: string;
+  interpolation?: Record<string, any>;
+  fallbackMessage?: string;
+}
+
+function ensureBundle(language: string, namespace?: string) {
+  if (!namespace) {
+    return;
+  }
+
+  if (i18next.hasResourceBundle(language, namespace)) {
+    return;
+  }
+
+  try {
+    const bundle = require(`../locales/${language}/${namespace}.json`);
+    i18next.addResourceBundle(language, namespace, bundle, true, true);
+  } catch (error) {
+    console.error(`Failed to load translation bundle ${language}/${namespace}:`, error);
+  }
+}
+
+function resolveTranslationKey(rawKey: string) {
+  if (!rawKey) {
+    return { namespace: undefined as string | undefined, key: rawKey };
+  }
+
+  if (rawKey.includes(':')) {
+    const [namespace, key] = rawKey.split(':');
+    return { namespace: namespace || undefined, key: key || rawKey };
+  }
+
+  const namespaces = new Set<string>(
+    Array.isArray(i18next.options?.ns)
+      ? (i18next.options?.ns as string[])
+      : typeof i18next.options?.ns === 'string'
+        ? [i18next.options?.ns as string]
+        : []
+  );
+
+  const defaultNamespace = Array.isArray(i18next.options?.defaultNS)
+    ? (i18next.options?.defaultNS[0] as string | undefined)
+    : (i18next.options?.defaultNS as string | undefined) ?? 'translation';
+
+  const parts = rawKey.split('.');
+  const potentialNamespace = parts[0];
+
+  if (namespaces.has(potentialNamespace) && parts.length > 1) {
+    return {
+      namespace: potentialNamespace,
+      key: parts.slice(1).join('.'),
+    };
+  }
+
+  return {
+    namespace: defaultNamespace,
+    key: rawKey,
+  };
+}
+
+export function translateKey(
+  rawKey: string,
+  options: TranslationOptions = {}
+): { message: string; resolvedKey: string; namespace?: string } {
+  const language = options.language || i18next.language || 'en';
+  const { namespace, key } = resolveTranslationKey(rawKey);
+
+  ensureBundle(language, namespace);
+
+  const translationOptions = {
+    ...options.interpolation,
+    lng: language,
+    ...(namespace ? { ns: namespace } : {}),
+  };
+
+  let message = i18next.t(key, translationOptions);
+
+  if ((message === key || message === rawKey) && language !== 'en') {
+    ensureBundle('en', namespace);
+    message = i18next.t(key, {
+      ...options.interpolation,
+      lng: 'en',
+      ...(namespace ? { ns: namespace } : {}),
+    });
+  }
+
+  if (message === key || message === rawKey) {
+    if (options.fallbackMessage) {
+      message = options.fallbackMessage;
+    }
+  }
+
+  return {
+    message,
+    resolvedKey: key,
+    namespace,
+  };
+}
+
 export function sendTranslatedResponse(
   res: Response,
   key: string,
@@ -19,7 +119,6 @@ export function sendTranslatedResponse(
     interpolation?: Record<string, any>;
   }
 ): void {
-  // Get the user's preferred language with detailed logging
   const userLang = (res.req as AuthRequest).user?.language;
   const reqLang = (res.req as any).language;
   const lngLang = (res.req as any).lng;
@@ -28,43 +127,14 @@ export function sendTranslatedResponse(
   const statusCode = options.statusCode || 200;
   const success = options.success ?? true;
 
-  // Extract namespace from key
-  const keyParts = key.split('.');
-  const namespace = keyParts[0];
-  const namespacedKey = keyParts.length > 1 ? keyParts.slice(1).join('.') : key;
-  
-  // Check if namespace bundle is loaded
-  if (!i18next.hasResourceBundle(language, namespace)) {
-    console.warn(`Translation bundle not loaded for ${language}/${namespace}, forcing reload...`);
-    try {
-      const bundle = require(`../locales/${language}/${namespace}.json`);
-      i18next.addResourceBundle(language, namespace, bundle, true, true);
-    } catch (error) {
-      console.error(`Failed to load translation bundle ${language}/${namespace}:`, error);
-    }
-  }
-
-  // Try translation with current language first
-  let message = i18next.t(namespacedKey, { 
-    ...options.interpolation, 
-    lng: language,
-    ns: namespace
+  const { message, resolvedKey } = translateKey(key, {
+    language,
+    interpolation: options.interpolation,
+    fallbackMessage: success ? 'Operation completed successfully' : 'Operation failed',
   });
-  
-  // If the message is the same as the key, try with fallback language
-  const untranslatedTokens = new Set([key, namespacedKey]);
-  if (untranslatedTokens.has(message) && language !== 'en') {
-    message = i18next.t(namespacedKey, { 
-      ...options.interpolation, 
-      lng: 'en',
-      ns: namespace
-    });
-  }
 
-  // If still no translation, use a generic message
-  if (untranslatedTokens.has(message)) {
+  if (message === resolvedKey || message === key) {
     console.error(`Translation missing for key: ${key} in both ${language} and en`);
-    message = success ? 'Operation completed successfully' : 'Operation failed';
   }
 
   const response: TranslatedResponse = {

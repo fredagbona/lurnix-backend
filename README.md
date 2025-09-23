@@ -208,7 +208,36 @@ FROM_NAME="Your App Name"
 PORT=5000
 NODE_ENV=development
 FRONTEND_URL="http://localhost:3000"
+
+# OAuth Providers
+API_BASE_URL="http://localhost:5050/api"
+GOOGLE_CLIENT_ID="your-local-google-client-id"
+GOOGLE_CLIENT_SECRET="your-local-google-client-secret"
+GOOGLE_CALLBACK_URL="http://localhost:5050/api/auth/google/callback"
+GITHUB_CLIENT_ID="your-local-github-client-id"
+GITHUB_CLIENT_SECRET="your-local-github-client-secret"
+GITHUB_CALLBACK_URL="http://localhost:5050/api/auth/github/callback"
 ```
+
+### OAuth Provider Configuration
+
+1. **Google Cloud Console**
+   - Create an OAuth 2.0 Client ID (Web application) and add the following:
+     - Authorized redirect URI: `http://localhost:5050/api/auth/google/callback`
+     - Authorized JavaScript origin: `http://localhost:3000`
+   - Copy the client ID/secret into `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+2. **GitHub Developer Settings**
+   - Create a new OAuth app with:
+     - Authorization callback URL: `http://localhost:5050/api/auth/github/callback`
+     - Homepage URL: `http://localhost:3000`
+   - Copy the client ID/secret into `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
+
+3. **Production**
+   - Mirror the setup with production domains (e.g., `https://api.lurnix.tech/api/auth/google/callback`).
+   - Update environment variables with the production client credentials and callback URLs.
+
+> Note: OAuth users are considered verified automatically, so ensure your redirect URLs are protected with HTTPS in production.
 
 ---
 

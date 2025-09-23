@@ -48,10 +48,19 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     // Verify user still exists and is active
     const user = await authService.verifyUser(decoded.userId);
     
+    const providerSet = new Set<string>(user.providers ?? []);
+    if (user.password_hash) {
+      providerSet.add('email');
+    } else {
+      providerSet.delete('email');
+    }
+
     // Add user info to request
     req.user = {
       ...decoded,
       language: user.language,
+      providers: Array.from(providerSet),
+      avatar: user.avatar ?? null,
     } as JWTPayload;
     req.userId = decoded.userId;
     
@@ -126,10 +135,19 @@ export const optionalAuthenticate = async (req: AuthRequest, res: Response, next
     // Verify user still exists and is active
     const user = await authService.verifyUser(decoded.userId);
     
+    const providerSet = new Set<string>(user.providers ?? []);
+    if (user.password_hash) {
+      providerSet.add('email');
+    } else {
+      providerSet.delete('email');
+    }
+
     // Add user info to request
     req.user = {
       ...decoded,
       language: user.language,
+      providers: Array.from(providerSet),
+      avatar: user.avatar ?? null,
     } as JWTPayload;
     req.userId = decoded.userId;
     

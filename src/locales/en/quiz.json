@@ -2,173 +2,173 @@
   "quiz": {
     "sections": {
       "learningStyle": {
-        "title": "🧠 Your Natural Learning Style",
+        "title": "Your Natural Learning Style",
         "description": "Let's discover how you naturally like to learn"
       },
       "motivations": {
-        "title": "🎯 Your Deep Motivations",
+        "title": "Your Deep Motivations",
         "description": "What truly drives you to keep going?"
       },
       "techPassions": {
-        "title": "🔥 Your Tech Passions",
+        "title": "Your Tech Passions",
         "description": "Which areas of tech make you light up?"
       },
       "challenges": {
-        "title": "💪 Your Relationship with Challenges",
+        "title": "Your Relationship with Challenges",
         "description": "How do you react when things get tough?"
       }
     },
     "questions": {
       "new_framework_scenario": {
-        "title": "🚀 Your team just adopted a new framework (e.g., Vue.js). What's your first move?",
+        "title": "Your team just adopted a new framework (e.g., Vue.js). What's your first move?",
         "description": "Be honest about your first instinct!",
         "options": {
-          "visual_first": "📺 I watch YouTube tutorials to see it in action",
-          "documentation_first": "📖 I read the official docs to understand the concepts",
-          "hands_on_first": "⚡ I clone a sample project and start tweaking things",
-          "social_first": "🗣️ I ask a teammate to explain the basics"
+          "visual_first": "I watch YouTube tutorials to see it in action",
+          "documentation_first": "I read the official docs to understand the concepts",
+          "hands_on_first": "I clone a sample project and start tweaking things",
+          "social_first": "I ask a teammate to explain the basics"
         }
       },
       "bug_hunting_preference": {
-        "title": "🐛 A mysterious bug is breaking your app. What do you do?",
+        "title": "A mysterious bug is breaking your app. What do you do?",
         "description": "Pick the instinct that sounds most like you when things break.",
         "options": {
-          "analytical_debug": "🔬 I dissect the logs and stack traces step by step",
-          "experimental_debug": "🎯 I try different approaches until something works",
-          "community_debug": "📱 I throw the problem to Discord or Stack Overflow",
-          "reflective_debug": "🚶 I step away and let the solution come to me"
+          "analytical_debug": "I dissect the logs and stack traces step by step",
+          "experimental_debug": "I try different approaches until something works",
+          "community_debug": "I throw the problem to Discord or Stack Overflow",
+          "reflective_debug": "I step away and let the solution come to me"
         }
       },
       "learning_retention": {
-        "title": "🧠 A week after learning something, you remember it best if...",
+        "title": "A week after learning something, you remember it best if...",
         "description": "What really helps new knowledge stay in your brain?",
         "options": {
-          "visual_memory": "👁️ I saw visuals or diagrams that explained it",
-          "practical_memory": "⚡ I built something with it",
-          "social_memory": "💭 I explained it or discussed it with someone",
-          "analytical_memory": "📝 I took detailed notes about it"
+          "visual_memory": "I saw visuals or diagrams that explained it",
+          "practical_memory": "I built something with it",
+          "social_memory": "I explained it or discussed it with someone",
+          "analytical_memory": "I took detailed notes about it"
         }
       },
       "project_approach": {
-        "title": "🏗️ New side project: a task manager app. Where do you start?",
+        "title": "New side project: a task manager app. Where do you start?",
         "description": "Choose the step you usually tackle first on a fresh build.",
         "options": {
-          "ui_first": "🎨 I sketch wireframes or the UI flow",
-          "architecture_first": "🏛️ I plan the architecture and data model",
-          "mvp_first": "⚡ I build a minimal version right away",
-          "research_first": "📊 I review existing solutions for inspiration"
+          "ui_first": "I sketch wireframes or the UI flow",
+          "architecture_first": "I plan the architecture and data model",
+          "mvp_first": "I build a minimal version right away",
+          "research_first": "I review existing solutions for inspiration"
         }
       },
       "coding_dream": {
-        "title": "✨ In your wildest dreams, coding lets you...",
+        "title": "In your wildest dreams, coding lets you...",
         "description": "Let your imagination speak!",
         "options": {
-          "impact_global": "🌍 Build something that helps millions of people",
-          "freedom_lifestyle": "💰 Earn freedom and work from anywhere",
-          "intellectual_challenge": "🧠 Tackle complex and fascinating technical problems",
-          "creative_expression": "🎨 Express creativity and craft beautiful things",
-          "team_growth": "🏢 Join a great team and learn from the best"
+          "impact_global": "Build something that helps millions of people",
+          "freedom_lifestyle": "Earn freedom and work from anywhere",
+          "intellectual_challenge": "Tackle complex and fascinating technical problems",
+          "creative_expression": "Express creativity and craft beautiful things",
+          "team_growth": "Join a great team and learn from the best"
         }
       },
       "frustration_trigger": {
-        "title": "😤 What frustrates you the MOST when you're learning?",
+        "title": "What frustrates you the MOST when you're learning?",
         "description": "We want to help you avoid that in your roadmap!",
         "options": {
-          "impatient_practical": "🐌 Explanations that drag on—I want to build",
-          "need_theory": "📖 Skipping the theory—I need the 'why'",
-          "need_examples": "😵 Abstract concepts without concrete examples",
-          "need_time": "🏃 Moving too fast—I need time to digest",
-          "need_community": "🏝️ Learning alone—I crave interaction"
+          "impatient_practical": "Explanations that drag on—I want to build",
+          "need_theory": "Skipping the theory—I need the 'why'",
+          "need_examples": "Abstract concepts without concrete examples",
+          "need_time": "Moving too fast—I need time to digest",
+          "need_community": "Learning alone—I crave interaction"
         }
       },
       "success_feeling": {
-        "title": "🎉 You feel proudest when...",
+        "title": "You feel proudest when...",
         "description": "Tell us what kind of win gives you the biggest boost.",
         "options": {
-          "clean_execution": "⚡ My code works on the first try",
-          "completion_focus": "🚀 I completed an end-to-end project, even if imperfect",
-          "teaching_satisfaction": "🤝 I helped someone else understand",
-          "problem_solving_satisfaction": "🔧 I solved a really tricky bug",
-          "innovation_satisfaction": "💡 I had a creative idea that worked"
+          "clean_execution": "My code works on the first try",
+          "completion_focus": "I completed an end-to-end project, even if imperfect",
+          "teaching_satisfaction": "I helped someone else understand",
+          "problem_solving_satisfaction": "I solved a really tricky bug",
+          "innovation_satisfaction": "I had a creative idea that worked"
         }
       },
       "time_availability": {
-        "title": "⏰ Time-wise, what's your current situation?",
+        "title": "Time-wise, what's your current situation?",
         "description": "So we can match the right pace",
         "options": {
-          "intensive_time": "🔥 I have lots of time and want to go all-in (15h+/week)",
-          "balanced_time": "⚖️ Balanced with life (5–10h/week)",
-          "constrained_time": "🏃 Tight schedule but motivated (2–5h/week)",
-          "irregular_time": "🌊 It depends on the week—totally irregular"
+          "intensive_time": "I have lots of time and want to go all-in (15h+/week)",
+          "balanced_time": "Balanced with life (5–10h/week)",
+          "constrained_time": "Tight schedule but motivated (2–5h/week)",
+          "irregular_time": "It depends on the week—totally irregular"
         }
       },
       "demo_excitement": {
-        "title": "🤩 Which demo would excite you the most?",
+        "title": "Which demo would excite you the most?",
         "description": "Imagine you see it live in 5 minutes",
         "options": {
-          "ui_excitement": "🎨 A stunning UI with slick animations",
-          "ai_excitement": "🤖 An AI that generates code or answers questions",
-          "data_excitement": "📊 Data turned into interactive insights",
-          "backend_excitement": "⚡ An API handling thousands of requests per second",
-          "interactive_excitement": "🎮 An immersive game or interactive experience",
-          "security_excitement": "🔐 A security system that blocks real-time attacks"
+          "ui_excitement": "A stunning UI with slick animations",
+          "ai_excitement": "An AI that generates code or answers questions",
+          "data_excitement": "Data turned into interactive insights",
+          "backend_excitement": "An API handling thousands of requests per second",
+          "interactive_excitement": "An immersive game or interactive experience",
+          "security_excitement": "A security system that blocks real-time attacks"
         }
       },
       "first_project_dream": {
-        "title": "🏗️ Your first 'real' project—you dream it would be...",
+        "title": "Your first 'real' project—you dream it would be...",
         "description": "Imagine the flagship project you’d brag about shipping.",
         "options": {
-          "mobile_app_dream": "📱 A mobile app your friends actually use",
-          "website_cause_dream": "🌐 A website for a cause you care about",
-          "automation_dream": "🔧 A tool that automates an annoying task",
-          "game_dream": "🎮 A fun little game or interactive experience",
-          "dashboard_dream": "📈 A dashboard tracking something you love",
-          "opensource_dream": "🚀 Contribute to an open-source project you use"
+          "mobile_app_dream": "A mobile app your friends actually use",
+          "website_cause_dream": "A website for a cause you care about",
+          "automation_dream": "A tool that automates an annoying task",
+          "game_dream": "A fun little game or interactive experience",
+          "dashboard_dream": "A dashboard tracking something you love",
+          "opensource_dream": "Contribute to an open-source project you use"
         }
       },
       "tech_personality": {
-        "title": "🧬 Tech personality-wise, you relate most to...",
+        "title": "Tech personality-wise, you relate most to...",
         "description": "Which archetype best matches how you show up in tech?",
         "options": {
-          "designer_dev": "🎨 The Designer-Dev: UI & UX first",
-          "speed_runner": "⚡ The Speed Runner: ship fast and iterate",
-          "architect": "🔬 The Architect: structure and best practices",
-          "innovator": "🌟 The Innovator: experimenting with new tech",
-          "problem_solver": "🎯 The Problem Solver: give me a tough challenge",
-          "team_player": "🤝 The Team Player: collaboration and knowledge sharing"
+          "designer_dev": "The Designer-Dev: UI & UX first",
+          "speed_runner": "The Speed Runner: ship fast and iterate",
+          "architect": "The Architect: structure and best practices",
+          "innovator": "The Innovator: experimenting with new tech",
+          "problem_solver": "The Problem Solver: give me a tough challenge",
+          "team_player": "The Team Player: collaboration and knowledge sharing"
         }
       },
       "stuck_reaction": {
-        "title": "😰 You're stuck on a problem for 2 hours. What do you do?",
+        "title": "You're stuck on a problem for 2 hours. What do you do?",
         "description": "Be honest!",
         "options": {
-          "persistent_fighter": "😤 I power through—even if it takes all night",
-          "strategic_pauser": "🔄 I take a break—the solution often appears later",
-          "help_seeker": "🆘 I ask the community for help pretty quickly",
-          "knowledge_builder": "📚 I go back to the docs or fundamentals",
-          "pragmatic_workaround": "🔀 I find a workaround and revisit it later"
+          "persistent_fighter": "I power through—even if it takes all night",
+          "strategic_pauser": "I take a break—the solution often appears later",
+          "help_seeker": "I ask the community for help pretty quickly",
+          "knowledge_builder": "I go back to the docs or fundamentals",
+          "pragmatic_workaround": "I find a workaround and revisit it later"
         }
       },
       "failure_recovery": {
-        "title": "💥 Your code crashes in prod (or a demo fails). What's your reaction?",
+        "title": "Your code crashes in prod (or a demo fails). What's your reaction?",
         "description": "How do you bounce back when everything flames out?",
         "options": {
-          "stress_reactive": "🔥 Maximum stress—panic mode",
-          "tunnel_fixer": "🎯 Tunnel vision: I fix it no matter how long it takes",
-          "growth_mindset": "😅 Oops! I learn from it and move on",
-          "collaborative_learner": "🤝 I ask for advice so it doesn't happen again",
-          "analytical_post_mortem": "🧠 I run a detailed post-mortem to understand it"
+          "stress_reactive": "Maximum stress—panic mode",
+          "tunnel_fixer": "Tunnel vision: I fix it no matter how long it takes",
+          "growth_mindset": "Oops! I learn from it and move on",
+          "collaborative_learner": "I ask for advice so it doesn't happen again",
+          "analytical_post_mortem": "I run a detailed post-mortem to understand it"
         }
       },
       "learning_plateau": {
-        "title": "📈 After a few months you plateau. How do you bounce back?",
+        "title": "After a few months you plateau. How do you bounce back?",
         "description": "What’s your go-to move when progress slows to a crawl?",
         "options": {
-          "challenge_escalator": "🚀 I launch a bigger challenge to boost motivation",
-          "foundation_strengthener": "📖 I revisit fundamentals to reinforce them",
-          "technology_explorer": "🌟 I explore a new technology to feel renewed",
-          "community_joiner": "👥 I join a community/team to learn from others",
-          "strategic_breaker": "🔄 I take a strategic break for a fresh perspective"
+          "challenge_escalator": "I launch a bigger challenge to boost motivation",
+          "foundation_strengthener": "I revisit fundamentals to reinforce them",
+          "technology_explorer": "I explore a new technology to feel renewed",
+          "community_joiner": "I join a community/team to learn from others",
+          "strategic_breaker": "I take a strategic break for a fresh perspective"
         }
       }
     },

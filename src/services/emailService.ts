@@ -205,12 +205,7 @@ export class EmailService {
     await ensureEmailNamespaceLoaded(lang);
     const t = (key: string, params?: Record<string, unknown>) => getTranslation(key, lang, params ?? {});
     const steps = getTranslation('emails:welcome.steps', lang, { returnObjects: true }) as unknown as string[];
-    const courses = [
-      { name: t('emails:welcome.course1Name'), url: `${config.FRONTEND_URL}/courses/getting-started` },
-      { name: t('emails:welcome.course2Name'), url: `${config.FRONTEND_URL}/courses/web-dev-fundamentals` },
-      { name: t('emails:welcome.course3Name'), url: `${config.FRONTEND_URL}/courses/intro-javascript` },
-    ];
-
+ 
     return this.sendTemplateEmail({
       to,
       toName: name,
@@ -224,8 +219,6 @@ export class EmailService {
         headline: t('emails:welcome.headline'),
         greeting: t('emails:common.greeting', { name }),
         intro: t('emails:welcome.intro'),
-        courseIntro: t('emails:welcome.courseIntro'),
-        courses,
         stepTitle: t('emails:welcome.stepTitle'),
         steps,
         cta: t('emails:welcome.cta'),

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z, ZodSchema } from 'zod';
+import { translateKey } from '../utils/translationUtils.js';
 
 // Custom error class for validation errors
 export class ValidationError extends Error {
@@ -27,32 +28,27 @@ export function validateRequest(schema: ZodSchema) {
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const validationErrors = error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message,
-          code: err.code,
-        }));
+        const language = (req as any).language || 'en';
+        const validationErrors = error.errors.map(err => {
+          const field = err.path.join('.') || 'value';
+          const messageKey = err.message;
+          const { message, resolvedKey } = translateKey(messageKey, {
+            language,
+          });
 
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid input data',
-            details: validationErrors,
-          },
-          timestamp: new Date().toISOString(),
+          return {
+            field,
+            message,
+            ...(messageKey !== message && messageKey !== resolvedKey ? { messageKey } : {}),
+            code: err.code,
+          };
         });
+
+        return next(new ValidationError('Invalid input data', validationErrors));
       }
 
       // Handle unexpected errors
-      return res.status(500).json({
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'An unexpected error occurred during validation',
-        },
-        timestamp: new Date().toISOString(),
-      });
+      return next(error);
     }
   };
 }
@@ -158,38 +154,29 @@ setInterval(() => {
 // Validate query parameters
 export function validateQuery(schema: ZodSchema) {
   return (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const validatedData = schema.parse(req.query);
-      req.query = validatedData;
-      next();
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const validationErrors = error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message,
-          code: err.code,
-        }));
+    const result = schema.safeParse(req.query);
 
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'QUERY_VALIDATION_ERROR',
-            message: 'Invalid query parameters',
-            details: validationErrors,
-          },
-          timestamp: new Date().toISOString(),
-        });
-      }
+    if (!result.success) {
+      const validationErrors = result.error.errors.map(err => ({
+        field: err.path.join('.'),
+        message: err.message,
+        code: err.code,
+      }));
 
-      return res.status(500).json({
+      return res.status(400).json({
         success: false,
         error: {
-          code: 'INTERNAL_ERROR',
-          message: 'An unexpected error occurred during query validation',
+          code: 'QUERY_VALIDATION_ERROR',
+          message: 'Invalid query parameters',
+          details: validationErrors,
         },
         timestamp: new Date().toISOString(),
       });
     }
+
+    // Preserve validated values alongside the original query object
+    (req as any).validatedQuery = result.data;
+    next();
   };
 }
 
@@ -202,31 +189,25 @@ export function validateParams(schema: ZodSchema) {
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const validationErrors = error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message,
-          code: err.code,
-        }));
+        const language = (req as any).language || 'en';
+        const validationErrors = error.errors.map(err => {
+          const field = err.path.join('.') || 'value';
+          const messageKey = err.message;
+          const { message, resolvedKey } = translateKey(messageKey, { language });
 
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'PARAMS_VALIDATION_ERROR',
-            message: 'Invalid URL parameters',
-            details: validationErrors,
-          },
-          timestamp: new Date().toISOString(),
+          return {
+            field,
+            message,
+            ...(messageKey !== message && messageKey !== resolvedKey ? { messageKey } : {}),
+            code: err.code,
+            source: 'params',
+          };
         });
+
+        return next(new ValidationError('Invalid URL parameters', validationErrors));
       }
 
-      return res.status(500).json({
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'An unexpected error occurred during parameter validation',
-        },
-        timestamp: new Date().toISOString(),
-      });
+      return next(error);
     }
   };
 }
@@ -268,3 +249,4 @@ export const rateLimitConfigs = {
     message: 'Rate limit exceeded for sensitive operation',
   },
 };
+
