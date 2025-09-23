@@ -78,6 +78,34 @@ export const resetPasswordSchema = z.object({
   newPassword: passwordSchema,
 });
 
+// OAuth initiation query schema
+export const oauthStartQuerySchema = z.object({
+  redirect: z
+    .string()
+    .optional()
+    .refine(
+      (value) => !value || value.startsWith('/'),
+      { message: 'validation.oauth.redirectInvalid' }
+    ),
+});
+
+// OAuth provider params schema
+const oauthProviderEnum = z.enum(['google', 'github'], {
+  errorMap: () => ({ message: 'validation.oauth.providerUnsupported' }),
+});
+
+export const unlinkProviderParamsSchema = z.object({
+  provider: oauthProviderEnum,
+});
+
+// Unlink provider body schema
+export const unlinkProviderSchema = z.object({
+  password: z
+    .string()
+    .min(1, 'validation.password.required')
+    .optional(),
+});
+
 // Email verification validation schema
 export const verifyEmailSchema = z.object({
   token: z.string().min(1, 'Verification token is required'),
@@ -98,6 +126,8 @@ export const jwtTokenSchema = z.object({
   userId: z.string().uuid(),
   email: emailSchema,
   username: usernameSchema,
+  providers: z.array(z.string()).optional(),
+  avatar: z.string().min(1).or(z.null()).optional(),
   iat: z.number(),
   exp: z.number(),
 });
@@ -109,4 +139,5 @@ export {
   usernameSchema,
   fullnameSchema,
   languageSchema,
+  oauthProviderEnum,
 };

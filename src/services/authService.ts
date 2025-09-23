@@ -1,7 +1,8 @@
+import { randomUUID } from 'crypto';
 import { userRepository, DuplicateUserError, UserNotFoundError } from '../repositories/userRepository.js';
 import { hashPassword, comparePassword, generateResetToken } from '../utils/passwordUtils.js';
 import { emailService } from './emailService.js';
-import { generateToken, generateTokenPair } from '../utils/jwt.js';
+import { generateToken } from '../utils/jwt.js';
 import { toUserProfile } from '../utils/userUtils.js';
 import { generateSecureToken } from '../utils/tokenUtils.js';
 import { config } from '../config/environment.js';
@@ -16,8 +17,14 @@ import {
   ForgotPasswordRequest,
   ResetPasswordRequest,
   UserProfile,
-  User
+  User,
+  OAuthProvider,
+  OAuthVerifyCallbackPayload,
+  OAuthLoginResult,
+  LinkedProvidersResponse,
+  UnlinkProviderRequest
 } from '../types/auth.js';
+import { NormalizedOAuthProfile } from '../services/oauth/oauthTypes.js';
 
 // Custom error classes for authentication service
 export class AuthServiceError extends Error {
@@ -100,7 +107,312 @@ export class InvalidVerificationTokenError extends AuthServiceError {
   }
 }
 
+export class OAuthEmailRequiredError extends AuthServiceError {
+  constructor() {
+    super('OAuth provider did not return an email address', 400);
+    this.name = 'OAuthEmailRequiredError';
+  }
+}
+
+export class OAuthProviderNotLinkedError extends AuthServiceError {
+  constructor() {
+    super('Authentication provider is not linked to this account', 400);
+    this.name = 'OAuthProviderNotLinkedError';
+  }
+}
+
+export class CannotUnlinkLastProviderError extends AuthServiceError {
+  constructor() {
+    super('Cannot unlink the last authentication method for this account', 400);
+    this.name = 'CannotUnlinkLastProviderError';
+  }
+}
+
+export class PasswordConfirmationRequiredError extends AuthServiceError {
+  constructor() {
+    super('Password confirmation is required to perform this action', 400);
+    this.name = 'PasswordConfirmationRequiredError';
+  }
+}
+
 export class AuthService {
+  private supportedProviders: OAuthProvider[] = ['google', 'github'];
+
+  private buildProviderStorageList(
+    providers: string[] | null | undefined,
+    hasPassword: boolean,
+    additions: string[] = [],
+    removals: string[] = [],
+  ): string[] {
+    const providerSet = new Set<string>();
+    (providers ?? []).forEach(provider => providerSet.add(provider));
+    additions.forEach(provider => providerSet.add(provider));
+    removals.forEach(provider => providerSet.delete(provider));
+
+    if (hasPassword) {
+      providerSet.add('email');
+    } else {
+      providerSet.delete('email');
+    }
+
+    return Array.from(providerSet);
+  }
+
+  // OAuth login/linking
+  async handleOAuthLogin(provider: OAuthProvider, payload: OAuthVerifyCallbackPayload): Promise<OAuthLoginResult> {
+    try {
+      if (!this.supportedProviders.includes(provider)) {
+        throw new AuthServiceError('Unsupported authentication provider', 400);
+      }
+
+      const { profile } = payload;
+
+      let user = await this.findUserByProvider(provider, profile.providerUserId);
+      let isNewUser = false;
+
+      if (!user && profile.email) {
+        const existingByEmail = await userRepository.findByEmail(profile.email);
+        if (existingByEmail) {
+          if (!existingByEmail.isActive) {
+            throw new AccountDeactivatedError();
+          }
+          user = await this.attachProviderToUser(existingByEmail, provider, profile);
+        }
+      }
+
+      if (!user) {
+        user = await this.createUserFromOAuth(provider, profile);
+        isNewUser = true;
+      } else {
+        user = await this.attachProviderToUser(user, provider, profile);
+      }
+
+      const providers = this.normalizeProvidersList(user.providers, !!user.password_hash);
+
+      const token = generateToken({
+        userId: user.id,
+        email: user.email,
+        username: user.username,
+        language: user.language,
+        providers,
+        avatar: user.avatar ?? undefined,
+      });
+
+      return {
+        token,
+        user: toUserProfile(user),
+        providers,
+        isNewUser,
+        requiresPassword: !user.password_hash,
+      };
+    } catch (error) {
+      if (error instanceof AuthServiceError) {
+        throw error;
+      }
+      throw new AuthServiceError('OAuth login failed', 500);
+    }
+  }
+
+  async getLinkedProviders(userId: string): Promise<LinkedProvidersResponse> {
+    try {
+      const user = await userRepository.findActiveById(userId);
+      if (!user) {
+        throw new UserNotFoundServiceError();
+      }
+
+      return this.buildLinkedProvidersResponse(user);
+    } catch (error) {
+      if (error instanceof AuthServiceError) {
+        throw error;
+      }
+      throw new AuthServiceError('Failed to retrieve linked providers', 500);
+    }
+  }
+
+  async unlinkProvider(userId: string, provider: OAuthProvider, request: UnlinkProviderRequest): Promise<LinkedProvidersResponse> {
+    try {
+      const user = await userRepository.findActiveById(userId);
+      if (!user) {
+        throw new UserNotFoundServiceError();
+      }
+
+      if (!this.supportedProviders.includes(provider)) {
+        throw new OAuthProviderNotLinkedError();
+      }
+
+      const hasPassword = !!user.password_hash;
+      const storedProviders = user.providers ?? [];
+
+      if (!storedProviders.includes(provider)) {
+        throw new OAuthProviderNotLinkedError();
+      }
+
+      if (!hasPassword && storedProviders.filter(p => p !== provider).length === 0) {
+        throw new CannotUnlinkLastProviderError();
+      }
+
+      if (hasPassword) {
+        if (!request.password) {
+          throw new PasswordConfirmationRequiredError();
+        }
+        const passwordHash = user.password_hash;
+        if (!passwordHash) {
+          throw new InvalidCredentialsError();
+        }
+
+        const isPasswordValid = await comparePassword(request.password, passwordHash);
+        if (!isPasswordValid) {
+          throw new InvalidCredentialsError();
+        }
+      }
+
+      const providers = this.buildProviderStorageList(storedProviders, hasPassword, [], [provider]);
+
+      const updatedUser = await userRepository.update(userId, {
+        ...this.getProviderUpdate(provider, null),
+        providers,
+      });
+
+      if (!hasPassword && this.normalizeProvidersList(updatedUser.providers, !!updatedUser.password_hash).length === 0) {
+        throw new CannotUnlinkLastProviderError();
+      }
+
+      return this.buildLinkedProvidersResponse(updatedUser);
+    } catch (error) {
+      if (error instanceof AuthServiceError) {
+        throw error;
+      }
+      throw new AuthServiceError('Failed to unlink provider', 500);
+    }
+  }
+
+  private normalizeProvidersList(providers: string[] | null | undefined, hasPassword: boolean): string[] {
+    const set = new Set<string>(providers ?? []);
+    if (hasPassword) {
+      set.add('email');
+    } else {
+      set.delete('email');
+    }
+    return Array.from(set).sort((a, b) => {
+      if (a === 'email') return -1;
+      if (b === 'email') return 1;
+      return a.localeCompare(b);
+    });
+  }
+
+  private buildLinkedProvidersResponse(user: User): LinkedProvidersResponse {
+    const providers = this.normalizeProvidersList(user.providers, !!user.password_hash);
+    return {
+      providers,
+      primaryProvider: providers[0] ?? (user.password_hash ? 'email' : null),
+      hasPassword: !!user.password_hash,
+      avatar: user.avatar ?? null,
+    };
+  }
+
+  private pickLanguageFromLocale(locale?: string | null): 'en' | 'fr' {
+    if (!locale) {
+      return 'en';
+    }
+    const normalized = locale.toLowerCase();
+    if (normalized.startsWith('fr')) {
+      return 'fr';
+    }
+    return 'en';
+  }
+
+  private sanitizeUsername(source?: string | null): string {
+    if (!source) {
+      return '';
+    }
+    return source
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[^a-z0-9_-]/g, '')
+      .replace(/_{2,}/g, '_')
+      .replace(/-{2,}/g, '-');
+  }
+
+  private async generateUniqueUsername(base?: string | null): Promise<string> {
+    let sanitized = this.sanitizeUsername(base);
+
+    if (sanitized.length < 3) {
+      sanitized = `user-${randomUUID().slice(0, 6)}`;
+    }
+
+    if (sanitized.length > 30) {
+      sanitized = sanitized.slice(0, 30);
+    }
+
+    let candidate = sanitized;
+    let counter = 1;
+    while (await userRepository.usernameExists(candidate)) {
+      const suffix = `-${counter}`;
+      const basePart = sanitized.slice(0, Math.max(3, 30 - suffix.length));
+      candidate = `${basePart}${suffix}`;
+      counter += 1;
+      if (counter > 1000) {
+        candidate = `user-${randomUUID().slice(0, 8)}`;
+        break;
+      }
+    }
+
+    return candidate;
+  }
+
+  private async findUserByProvider(provider: OAuthProvider, providerUserId: string): Promise<User | null> {
+    if (provider === 'google') {
+      return userRepository.findByGoogleId(providerUserId);
+    }
+    if (provider === 'github') {
+      return userRepository.findByGithubId(providerUserId);
+    }
+    return null;
+  }
+
+  private getProviderUpdate(provider: OAuthProvider, providerUserId: string | null) {
+    if (provider === 'google') {
+      return { googleId: providerUserId };
+    }
+    return { githubId: providerUserId };
+  }
+
+  private async attachProviderToUser(user: User, provider: OAuthProvider, profile: NormalizedOAuthProfile): Promise<User> {
+    const providers = this.buildProviderStorageList(user.providers, !!user.password_hash, [provider]);
+
+    const updateData = {
+      ...this.getProviderUpdate(provider, profile.providerUserId),
+      providers,
+      avatar: profile.avatarUrl ?? user.avatar ?? null,
+      isVerified: true,
+    } as const;
+
+    return userRepository.update(user.id, updateData);
+  }
+
+  private async createUserFromOAuth(provider: OAuthProvider, profile: NormalizedOAuthProfile): Promise<User> {
+    if (!profile.email) {
+      throw new OAuthEmailRequiredError();
+    }
+
+    const usernameBase = profile.username || profile.fullname || profile.email.split('@')[0] || `${provider}-${profile.providerUserId}`;
+    const username = await this.generateUniqueUsername(usernameBase);
+    const fullname = profile.fullname?.trim() || username;
+    const language = this.pickLanguageFromLocale(profile.locale);
+    const providers = this.buildProviderStorageList([], false, [provider]);
+
+    return userRepository.create({
+      username,
+      fullname,
+      email: profile.email.toLowerCase(),
+      password_hash: undefined,
+      language,
+      isVerified: true,
+      providers,
+      avatar: profile.avatarUrl ?? null,
+      ...this.getProviderUpdate(provider, profile.providerUserId),
+    });
+  }
   // User registration
   async register(data: RegisterRequest): Promise<RegisterResponse> {
     try {
@@ -182,6 +494,10 @@ export class AuthService {
       }
 
       // Verify password
+      if (!user.password_hash) {
+        throw new InvalidCredentialsError();
+      }
+
       const isPasswordValid = await comparePassword(data.password, user.password_hash);
       if (!isPasswordValid) {
         throw new InvalidCredentialsError();
@@ -204,12 +520,16 @@ export class AuthService {
         throw new EmailNotVerifiedError();
       }
 
+      const providers = this.normalizeProvidersList(user.providers, !!user.password_hash);
+
       // Generate JWT token
       const token = generateToken({
         userId: user.id,
         email: user.email,
         username: user.username,
-        language: user.language
+        language: user.language,
+        providers,
+        avatar: user.avatar ?? undefined,
       });
 
       return {
@@ -291,6 +611,10 @@ export class AuthService {
       }
 
       // Verify current password
+      if (!user.password_hash) {
+        throw new InvalidCredentialsError();
+      }
+
       const isCurrentPasswordValid = await comparePassword(data.currentPassword, user.password_hash);
       if (!isCurrentPasswordValid) {
         throw new InvalidCredentialsError();
@@ -334,6 +658,10 @@ export class AuthService {
       }
 
       // Verify password for security
+      if (!user.password_hash) {
+        throw new InvalidCredentialsError();
+      }
+
       const isPasswordValid = await comparePassword(data.password, user.password_hash);
       if (!isPasswordValid) {
         throw new InvalidCredentialsError();
@@ -432,10 +760,15 @@ export class AuthService {
         throw new UserNotFoundServiceError();
       }
 
+      const providers = this.normalizeProvidersList(user.providers, !!user.password_hash);
+
       return generateToken({
         userId: user.id,
         email: user.email,
         username: user.username,
+        language: user.language,
+        providers,
+        avatar: user.avatar ?? undefined,
       });
     } catch (error) {
       if (error instanceof UserNotFoundError) {

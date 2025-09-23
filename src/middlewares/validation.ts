@@ -158,38 +158,29 @@ setInterval(() => {
 // Validate query parameters
 export function validateQuery(schema: ZodSchema) {
   return (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const validatedData = schema.parse(req.query);
-      req.query = validatedData;
-      next();
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const validationErrors = error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message,
-          code: err.code,
-        }));
+    const result = schema.safeParse(req.query);
 
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'QUERY_VALIDATION_ERROR',
-            message: 'Invalid query parameters',
-            details: validationErrors,
-          },
-          timestamp: new Date().toISOString(),
-        });
-      }
+    if (!result.success) {
+      const validationErrors = result.error.errors.map(err => ({
+        field: err.path.join('.'),
+        message: err.message,
+        code: err.code,
+      }));
 
-      return res.status(500).json({
+      return res.status(400).json({
         success: false,
         error: {
-          code: 'INTERNAL_ERROR',
-          message: 'An unexpected error occurred during query validation',
+          code: 'QUERY_VALIDATION_ERROR',
+          message: 'Invalid query parameters',
+          details: validationErrors,
         },
         timestamp: new Date().toISOString(),
       });
     }
+
+    // Preserve validated values alongside the original query object
+    (req as any).validatedQuery = result.data;
+    next();
   };
 }
 

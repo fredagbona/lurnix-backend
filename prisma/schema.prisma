@@ -55,7 +55,11 @@ model User {
   username         String    @unique
   fullname         String
   email            String    @unique
-  password_hash    String
+  password_hash    String?
+  googleId         String?   @unique
+  githubId         String?   @unique
+  providers        String[]  @default([])
+  avatar           String?
   isActive         Boolean   @default(true)
   isVerified       Boolean   @default(false)
   language         Language  @default(en)

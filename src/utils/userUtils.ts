@@ -2,6 +2,19 @@ import { User, UserProfile } from '../types/auth.js';
 
 // Convert User entity to UserProfile (removes sensitive data)
 export function toUserProfile(user: User): UserProfile {
+  const providerSet = new Set<string>(user.providers ?? []);
+  if (user.password_hash) {
+    providerSet.add('email');
+  } else {
+    providerSet.delete('email');
+  }
+
+  const providers = Array.from(providerSet).sort((a, b) => {
+    if (a === 'email') return -1;
+    if (b === 'email') return 1;
+    return a.localeCompare(b);
+  });
+
   return {
     id: user.id,
     username: user.username,
@@ -11,6 +24,8 @@ export function toUserProfile(user: User): UserProfile {
     isVerified: user.isVerified ?? false,
     language: user.language,
     createdAt: user.createdAt,
+    providers,
+    avatar: user.avatar ?? null,
   };
 }
 
