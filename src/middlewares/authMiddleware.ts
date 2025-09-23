@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import i18next from 'i18next';
 import { verifyToken, extractTokenFromHeader, TokenExpiredError, InvalidTokenError } from '../utils/jwt.js';
 import { authService } from '../services/authService.js';
@@ -11,7 +11,8 @@ export interface AuthRequest extends Request {
 }
 
 // Authentication middleware - verifies JWT token
-export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const authenticate: RequestHandler = async (req, res, next): Promise<void> => {
+  const authReq = req as AuthRequest;
   try {
     // Extract token from Authorization header
     const authHeader = req.headers.authorization;
@@ -56,19 +57,19 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     }
 
     // Add user info to request
-    req.user = {
+    authReq.user = {
       ...decoded,
       language: user.language,
       providers: Array.from(providerSet),
       avatar: user.avatar ?? null,
     } as JWTPayload;
-    req.userId = decoded.userId;
+    authReq.userId = decoded.userId;
     
     // Set language from user preference
     if (user.language) {
-      (req as any).language = user.language;
+      (authReq as any).language = user.language;
       // Also set i18next language
-      req.lng = user.language;
+      (authReq as any).lng = user.language;
       i18next.changeLanguage(user.language);
     }
     
@@ -111,7 +112,8 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
 };
 
 // Optional authentication middleware - doesn't fail if no token
-export const optionalAuthenticate = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const optionalAuthenticate: RequestHandler = async (req, res, next): Promise<void> => {
+  const authReq = req as AuthRequest;
   try {
     const authHeader = req.headers.authorization;
     const token = extractTokenFromHeader(authHeader);
@@ -143,17 +145,17 @@ export const optionalAuthenticate = async (req: AuthRequest, res: Response, next
     }
 
     // Add user info to request
-    req.user = {
+    authReq.user = {
       ...decoded,
       language: user.language,
       providers: Array.from(providerSet),
       avatar: user.avatar ?? null,
     } as JWTPayload;
-    req.userId = decoded.userId;
-    
+    authReq.userId = decoded.userId;
+
     if (user.language) {
-      (req as any).language = user.language;
-      req.lng = user.language;
+      (authReq as any).language = user.language;
+      (authReq as any).lng = user.language;
       i18next.changeLanguage(user.language);
     }
     
