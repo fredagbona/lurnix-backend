@@ -1,31 +1,36 @@
 import { z } from 'zod';
 
+// Language validation schema
+const languageSchema = z.enum(['en', 'fr'], {
+  errorMap: () => ({ message: 'validation.language.invalid' })
+});
+
 // Password validation schema
 const passwordSchema = z
   .string()
-  .min(8, 'Password must be at least 8 characters long')
+  .min(8, 'validation.password.tooShort')
   .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 
-    'Password must contain at least one uppercase letter, one lowercase letter, and one number');
+    'validation.password.requirements');
 
 // Email validation schema
 const emailSchema = z
   .string()
-  .email('Invalid email format')
+  .email('validation.email.invalid')
   .toLowerCase();
 
 // Username validation schema
 const usernameSchema = z
   .string()
-  .min(3, 'Username must be at least 3 characters long')
-  .max(30, 'Username must be no more than 30 characters long')
-  .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, underscores, and hyphens');
+  .min(3, 'validation.username.tooShort')
+  .max(30, 'validation.username.tooLong')
+  .regex(/^[a-zA-Z0-9_-]+$/, 'validation.username.invalidFormat');
 
 // Full name validation schema
 const fullnameSchema = z
   .string()
-  .min(2, 'Full name must be at least 2 characters long')
-  .max(100, 'Full name must be no more than 100 characters long')
-  .regex(/^[a-zA-Z\s'-]+$/, 'Full name can only contain letters, spaces, apostrophes, and hyphens');
+  .min(2, 'validation.fullname.tooShort')
+  .max(100, 'validation.fullname.tooLong')
+  .regex(/^[a-zA-Z\s'-]+$/, 'validation.fullname.invalidFormat');
 
 // Registration validation schema
 export const registerSchema = z.object({
@@ -33,6 +38,7 @@ export const registerSchema = z.object({
   fullname: fullnameSchema,
   email: emailSchema,
   password: passwordSchema,
+  language: languageSchema.optional().default('en'),
 });
 
 // Login validation schema
@@ -46,9 +52,10 @@ export const updateProfileSchema = z.object({
   username: usernameSchema.optional(),
   fullname: fullnameSchema.optional(),
   email: emailSchema.optional(),
+  language: languageSchema.optional(),
 }).refine(
   (data) => Object.keys(data).length > 0,
-  { message: 'At least one field must be provided for update' }
+  { message: 'validation.profile.noFields' }
 );
 
 // Password change validation schema
@@ -101,4 +108,5 @@ export {
   emailSchema,
   usernameSchema,
   fullnameSchema,
+  languageSchema,
 };

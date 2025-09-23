@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
 import { authService, AuthServiceError, EmailNotVerifiedError } from '../services/authService.js';
+import i18next from 'i18next';
 import { passwordResetService, PasswordResetError } from '../services/passwordResetService.js';
 import { 
   RegisterRequest, 
@@ -11,6 +12,8 @@ import {
   ResendVerificationRequest
 } from '../types/auth.js';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
+import { sendTranslatedResponse } from '../utils/translationUtils.js';
+import { AppError } from '../errors/AppError.js';
 
 export class AuthController {
   // User registration
@@ -20,23 +23,13 @@ export class AuthController {
     try {
       const result = await authService.register(registerData);
       
-      res.status(201).json({
-        success: true,
-        message: 'User registered successfully',
-        data: result,
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, 'auth.register.success', {
+        statusCode: 201,
+        data: result
       });
     } catch (error) {
       if (error instanceof AuthServiceError) {
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.name,
-            message: error.message,
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
+        throw new AppError('auth.register.failed', error.statusCode, error.name);
       }
       throw error; // Let global error handler deal with unexpected errors
     }
@@ -49,35 +42,21 @@ export class AuthController {
     try {
       const result = await authService.login(loginData);
       
-      res.status(200).json({
-        success: true,
-        message: 'Login successful',
-        data: result,
-        timestamp: new Date().toISOString(),
+      // Set the language based on the user's preference
+      (req as any).language = result.user.language;
+      i18next.changeLanguage(result.user.language);
+      
+      sendTranslatedResponse(res, 'auth.login.success', {
+        statusCode: 200,
+        data: result
       });
     } catch (error) {
       if (error instanceof EmailNotVerifiedError) {
-        // Special handling for unverified email
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.name,
-            message: error.message,
-            requiresVerification: true
-          },
-          timestamp: new Date().toISOString(),
+        throw new AppError('auth.verification.required', error.statusCode, error.name, true, {
+          requiresVerification: true
         });
-        return;
       } else if (error instanceof AuthServiceError) {
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.name,
-            message: error.message,
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
+        throw new AppError('auth.login.failed', error.statusCode, error.name);
       }
       throw error;
     }
@@ -90,25 +69,15 @@ export class AuthController {
     try {
       // Check rate limiting
       if (passwordResetService.isRateLimited(forgotPasswordData.email)) {
-        res.status(429).json({
-          success: false,
-          error: {
-            code: 'RATE_LIMIT_EXCEEDED',
-            message: 'Too many password reset requests. Please try again later.',
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
+        throw new AppError('errors.rateLimit.passwordReset', 429, 'RATE_LIMIT_EXCEEDED');
       }
 
       // Initiate password reset
       const result = await passwordResetService.initiatePasswordReset(forgotPasswordData);
       
       // For security, always return success regardless of whether email exists
-      res.status(200).json({
-        success: true,
-        message: 'If an account with that email exists, a password reset link has been sent.',
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, 'auth.password.resetInitiated', {
+        statusCode: 200
       });
 
       // Email is sent automatically by the password reset service
@@ -117,43 +86,29 @@ export class AuthController {
       }
     } catch (error) {
       if (error instanceof PasswordResetError) {
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.name,
-            message: error.message,
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
+        throw new AppError('auth.password.resetFailed', error.statusCode, error.name);
       }
       throw error;
     }
   });
 
-  // Reset password
+  // Reset password with token
   resetPassword = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const resetPasswordData: ResetPasswordRequest = req.body;
 
     try {
-      await passwordResetService.resetPassword(resetPasswordData);
+      const result = await passwordResetService.resetPassword(resetPasswordData);
       
-      res.status(200).json({
-        success: true,
-        message: 'Password has been reset successfully',
-        timestamp: new Date().toISOString(),
-      });
+      if (result.success) {
+        sendTranslatedResponse(res, 'auth.password.resetSuccess', {
+          statusCode: 200
+        });
+      } else {
+        throw new AppError('auth.password.resetFailed', 400, 'PASSWORD_RESET_FAILED');
+      }
     } catch (error) {
       if (error instanceof PasswordResetError) {
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.name,
-            message: error.message,
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
+        throw new AppError('auth.password.error', error.statusCode, error.name);
       }
       throw error;
     }
@@ -166,39 +121,21 @@ export class AuthController {
     const userId = req.userId; // From auth middleware
 
     if (!userId) {
-      res.status(401).json({
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_REQUIRED',
-          message: 'Authentication is required',
-        },
-        timestamp: new Date().toISOString(),
-      });
-      return;
+      throw new AppError('auth.login.required', 401, 'AUTHENTICATION_REQUIRED');
     }
 
     try {
       const newToken = await authService.refreshToken(userId);
       
-      res.status(200).json({
-        success: true,
-        message: 'Token refreshed successfully',
+      sendTranslatedResponse(res, 'auth.token.refreshed', {
+        statusCode: 200,
         data: {
           token: newToken,
-        },
-        timestamp: new Date().toISOString(),
+        }
       });
     } catch (error) {
       if (error instanceof AuthServiceError) {
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.name,
-            message: error.message,
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
+        throw new AppError('auth.token.refreshFailed', error.statusCode, error.name);
       }
       throw error;
     }
@@ -211,23 +148,13 @@ export class AuthController {
     try {
       const result = await authService.verifyEmail(token);
       
-      res.status(200).json({
-        success: true,
-        message: 'Email verified successfully',
-        data: result,
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, 'auth.email.verificationSuccess', {
+        statusCode: 200,
+        data: result
       });
     } catch (error) {
       if (error instanceof AuthServiceError) {
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.name,
-            message: error.message,
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
+        throw new AppError('auth.email.verificationFailed', error.statusCode, error.name);
       }
       throw error;
     }
@@ -241,20 +168,16 @@ export class AuthController {
       await authService.resendVerificationEmail(email);
       
       // Always return success for security (don't reveal if email exists)
-      res.status(200).json({
-        success: true,
-        message: 'If an account with that email exists, a verification email has been sent.',
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, 'auth.email.resendVerification', {
+        statusCode: 200
       });
     } catch (error) {
       // Log error but don't expose details
       console.error('Resend verification error:', error);
       
       // Always return success for security
-      res.status(200).json({
-        success: true,
-        message: 'If an account with that email exists, a verification email has been sent.',
-        timestamp: new Date().toISOString(),
+      sendTranslatedResponse(res, 'auth.email.resendVerification', {
+        statusCode: 200
       });
     }
   });

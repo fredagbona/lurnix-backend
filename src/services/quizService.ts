@@ -1,11 +1,20 @@
+import i18next from 'i18next';
 import { AppError } from '../errors/AppError';
 import { db } from '../prisma/prismaWrapper';
+import {
+  quizPersonalityDimensions,
+  quizProfileMapping,
+  quizProfileNameKey,
+  quizProfileSummaryKey
+} from '../config/quizScoring';
 
 // Define types for quiz-related data
 export interface QuizSection {
   id: string;
   title: string;
   description?: string;
+  titleKey: string;
+  descriptionKey?: string;
   sortOrder: number;
   questions: QuizQuestion[];
 }
@@ -14,7 +23,9 @@ export interface QuizQuestion {
   id: string;
   key: string;
   title: string;
-  description: string;
+  description?: string;
+  titleKey: string;
+  descriptionKey?: string;
   type: string;
   sortOrder: number;
   weightCategory?: string;
@@ -25,6 +36,7 @@ export interface QuizQuestion {
 export interface QuizOption {
   id: string;
   label: string;
+  labelKey: string;
   value: string;
   weights?: Record<string, number>;
 }
@@ -37,101 +49,112 @@ export interface QuizSubmission {
 
 export class QuizService {
   // Get active quiz questions
-  async getActiveQuiz(version?: number): Promise<any> {
+  async getActiveQuiz(
+    version?: number,
+    language: string = 'en',
+    options: { includeWeights?: boolean } = {}
+  ): Promise<any> {
     try {
-      // If version not specified, get the latest active version
-      if (!version) {
+      let resolvedVersion = version;
+
+      if (!resolvedVersion) {
         const latestQuestion = await db.quizQuestion.findFirst({
           where: { isActive: true },
-          orderBy: { version: 'desc' },
+          orderBy: { version: 'desc' }
         });
-        
+
         if (!latestQuestion) {
           throw new AppError('No active quiz found', 404);
         }
-        
-        version = latestQuestion.version;
+
+        resolvedVersion = latestQuestion.version;
       }
-      
-      console.log(`Getting active quiz for version ${version}`);
-      
-      // Get all sections for this version
-      const sections = await db.quizSection.findMany({
-        where: { 
-          version,
-          isActive: true 
-        },
-        include: {
-          questions: {
-            where: { isActive: true },
-            include: { options: true },
-            orderBy: { sortOrder: 'asc' }
-          }
-        },
-        orderBy: {
-          sortOrder: 'asc'
-        }
-      });
-      
-      console.log(`Found ${sections.length} active sections`);
-      
-      // Get questions that don't belong to any section
-      const standaloneQuestions = await db.quizQuestion.findMany({
-        where: { 
-          version,
-          isActive: true,
-          sectionId: null
-        },
-        include: {
-          options: true
-        },
-        orderBy: {
-          sortOrder: 'asc'
-        }
-      });
-      
-      console.log(`Found ${standaloneQuestions.length} standalone questions`);
-      
+
+      const [sections, standaloneQuestions] = await Promise.all([
+        db.quizSection.findMany({
+          where: {
+            version: resolvedVersion,
+            isActive: true
+          },
+          include: {
+            questions: {
+              where: { isActive: true },
+              include: { options: true },
+              orderBy: { sortOrder: 'asc' }
+            }
+          },
+          orderBy: { sortOrder: 'asc' }
+        }),
+        db.quizQuestion.findMany({
+          where: {
+            version: resolvedVersion,
+            isActive: true,
+            sectionId: null
+          },
+          include: { options: true },
+          orderBy: { sortOrder: 'asc' }
+        })
+      ]);
+
       if (sections.length === 0 && standaloneQuestions.length === 0) {
-        throw new AppError(`No active questions found for version ${version}`, 404);
+        throw new AppError(`No active questions found for version ${resolvedVersion}`, 404);
       }
-      
-      // Transform the response to hide internal details
-      const formattedSections = sections.map((section: any) => ({
-        id: section.id,
-        title: section.title,
-        description: section.description,
-        questions: section.questions.map((question: any) => ({
-          id: question.id,
-          key: question.key,
-          title: question.title,
-          description: question.description,
-          type: question.type,
-          sortOrder: question.sortOrder,
-          options: question.options.map((option: any) => ({
-            id: option.id,
-            label: option.label,
-            value: option.value
-          }))
-        }))
-      }));
-      
-      const formattedStandaloneQuestions = standaloneQuestions.map((question: any) => ({
+
+      const translate = (key?: string | null) => {
+        if (!key) return undefined;
+        const result = i18next.t(key, {
+          lng: language,
+          ns: 'quiz',
+          defaultValue: key
+        });
+        return result;
+      };
+
+      const formatOption = (option: any) => ({
+        id: option.id,
+        value: option.value,
+        labelKey: option.label,
+        label: translate(option.label),
+        ...(options.includeWeights ? { weights: option.weights || {} } : {})
+      });
+
+      const formatQuestion = (question: any) => ({
         id: question.id,
         key: question.key,
-        title: question.title,
-        description: question.description,
         type: question.type,
         sortOrder: question.sortOrder,
-        options: question.options.map((option: any) => ({
-          id: option.id,
-          label: option.label,
-          value: option.value
-        }))
+        weightCategory: question.weightCategory || undefined,
+        sectionId: question.sectionId || undefined,
+        titleKey: question.title,
+        title: translate(question.title),
+        descriptionKey: question.description || undefined,
+        description: question.description ? translate(question.description) : undefined,
+        options: question.options.map(formatOption)
+      });
+
+      const formattedSections = sections.map((section: any) => ({
+        id: section.id,
+        sortOrder: section.sortOrder,
+        titleKey: section.title,
+        title: translate(section.title),
+        descriptionKey: section.description || undefined,
+        description: section.description ? translate(section.description) : undefined,
+        questions: section.questions.map(formatQuestion)
       }));
-      
+
+      const sectionQuestionIds = new Set<string>();
+      sections.forEach((section: any) => {
+        section.questions.forEach((question: any) => {
+          sectionQuestionIds.add(question.id);
+        });
+      });
+
+      const formattedStandaloneQuestions = standaloneQuestions
+        .filter((question: any) => !sectionQuestionIds.has(question.id))
+        .map(formatQuestion);
+
       return {
-        version,
+        version: resolvedVersion,
         sections: formattedSections,
         questions: formattedStandaloneQuestions
       };
@@ -183,20 +206,37 @@ export class QuizService {
   
   // Submit quiz answers and compute profile
   async submitQuiz(submission: QuizSubmission): Promise<any> {
-    // Validate that all required questions are answered
-    const quiz = await this.getActiveQuiz(submission.version);
-    const requiredQuestionKeys = quiz.questions.map((q: any) => q.key);
-    
-    // Check if all required questions are answered
-    const missingKeys = requiredQuestionKeys.filter((key: string) => !submission.answers[key]);
+    const quiz = await this.getActiveQuiz(submission.version, 'en', { includeWeights: true });
+
+    const sectionQuestions = quiz.sections.flatMap((section: QuizSection) => section.questions);
+    const allQuestions = [...quiz.questions, ...sectionQuestions];
+
+    const questionMap = new Map<string, QuizQuestion>();
+    allQuestions.forEach(question => {
+      questionMap.set(question.key, question);
+    });
+
+    if (questionMap.size === 0) {
+      throw new AppError('No quiz questions available for this version', 404);
+    }
+
+    const missingKeys = Array.from(questionMap.keys()).filter(key => {
+      const value = submission.answers[key];
+      if (value === undefined || value === null) {
+        return true;
+      }
+      if (Array.isArray(value)) {
+        return value.length === 0;
+      }
+      return false;
+    });
+
     if (missingKeys.length > 0) {
       throw new AppError(`Missing answers for questions: ${missingKeys.join(', ')}`, 400);
     }
-    
-    // Compute profile based on answers and weights
-    const computedProfile = await this.computeProfile(submission.answers, quiz.questions);
-    
-    // Save the quiz result
+
+    const computedProfile = this.computeProfile(submission.answers, Array.from(questionMap.values()));
+
     const quizResult = await db.quizResult.create({
       data: {
         userId: submission.userId,
@@ -205,7 +245,7 @@ export class QuizService {
         computedProfile
       }
     });
-    
+
     return {
       quizResultId: quizResult.id,
       profile: computedProfile
@@ -213,86 +253,202 @@ export class QuizService {
   }
   
   // Compute user profile from answers
-  private async computeProfile(answers: Record<string, any>, questions: any[]): Promise<any> {
-    // Initialize profile with default values
-    const profile: Record<string, any> = {
-      style: 'balanced',
-      visual: 0.33,
-      reading: 0.33,
-      handsOn: 0.34,
-      level: 'beginner',
-      timePerDay: 30, // default 30 minutes
-      goal: 'general',
-      preferredStack: ['javascript']
+  private computeProfile(answers: Record<string, any>, questions: QuizQuestion[]): any {
+    const traitScores: Record<string, number> = {};
+
+    const addTraitScore = (trait: string, score: number) => {
+      if (!trait) return;
+      traitScores[trait] = (traitScores[trait] || 0) + score;
     };
-    
-    // Get all question options to calculate weights
-    const questionOptionsMap = new Map();
-    for (const question of questions) {
-      const options = await db.quizOption.findMany({
-        where: { questionId: question.id }
-      });
-      questionOptionsMap.set(question.key, options);
-    }
-    
-    // Process each answer to build the profile
+
+    const applyOptionWeights = (weights?: Record<string, number>, multiplier: number = 1) => {
+      if (!weights) return;
+      for (const [trait, value] of Object.entries(weights)) {
+        addTraitScore(trait, value * multiplier);
+      }
+    };
+
     for (const question of questions) {
       const answer = answers[question.key];
-      
-      if (!answer) continue;
-      
-      // Handle different question types
-      switch (question.key) {
-        case 'learning_style':
-          // Find the selected option
-          const options = questionOptionsMap.get(question.key);
-          const option = options.find((opt: any) => opt.value === answer);
-          if (option) {
-            profile.style = option.value;
-            
-            // Apply weights from the option
-            const weights = option.weights as Record<string, number>;
-            let totalWeight = 0;
-            
-            for (const [key, weight] of Object.entries(weights)) {
-              totalWeight += weight;
+      if (answer === undefined || answer === null) {
+        continue;
+      }
+
+      switch (question.type) {
+        case 'multi': {
+          const values = Array.isArray(answer) ? answer : [answer];
+          values.forEach((value: any) => {
+            const option = question.options.find(opt => opt.value === value);
+            if (option) {
+              applyOptionWeights(option.weights);
             }
-            
-            // Normalize weights
-            if (totalWeight > 0) {
-              for (const [key, weight] of Object.entries(weights)) {
-                profile[key] = weight / totalWeight;
+          });
+          break;
+        }
+
+        case 'rank': {
+          if (Array.isArray(answer)) {
+            const maxWeight = answer.length;
+            answer.forEach((value: any, index: number) => {
+              const option = question.options.find(opt => opt.value === value);
+              if (option) {
+                const multiplier = Math.max(maxWeight - index, 1);
+                applyOptionWeights(option.weights, multiplier);
               }
-            }
+            });
           }
           break;
-          
-        case 'time_per_day':
-          profile.timePerDay = parseInt(answer, 10) || 30;
-          break;
-          
-        case 'experience_level':
-          profile.level = answer;
-          break;
-          
-        case 'goal':
-          profile.goal = answer;
-          break;
-          
-        case 'target_stack':
-          profile.preferredStack = Array.isArray(answer) ? answer : [answer];
-          break;
-          
-        // Add more cases for other question types
-        default:
-          // For custom questions, store the answer directly
-          if (question.weightCategory) {
-            profile[question.weightCategory] = answer;
+        }
+
+        case 'scale': {
+          if (question.weightCategory && typeof answer === 'number') {
+            addTraitScore(question.weightCategory, answer);
           }
+          break;
+        }
+
+        case 'single':
+        default: {
+          const option = question.options.find(opt => opt.value === answer);
+          if (option) {
+            applyOptionWeights(option.weights);
+          }
+          break;
+        }
+      }
+
+      if (question.weightCategory && (!question.options || question.options.length === 0)) {
+        if (typeof answer === 'number') {
+          addTraitScore(question.weightCategory, answer);
+        } else if (typeof answer === 'string') {
+          addTraitScore(question.weightCategory, 1);
+        }
       }
     }
-    
-    return profile;
+
+    const summarizeDimension = (traits: string[]) => {
+      const ordered = traits
+        .map(trait => ({ trait, score: Number((traitScores[trait] || 0).toFixed(3)) }))
+        .sort((a, b) => b.score - a.score);
+
+      const positiveTotal = ordered.reduce((sum, item) => sum + Math.max(item.score, 0), 0);
+      const normalized: Record<string, number> = {};
+      ordered.forEach(item => {
+        const value = positiveTotal > 0 ? Math.max(item.score, 0) / positiveTotal : 0;
+        normalized[item.trait] = Number(value.toFixed(3));
+      });
+
+      return {
+        dominant: ordered[0] && ordered[0].score !== 0 ? ordered[0].trait : null,
+        scores: ordered.reduce((acc, item) => {
+          acc[item.trait] = item.score;
+          return acc;
+        }, {} as Record<string, number>),
+        normalizedScores: normalized,
+        ordered
+      };
+    };
+
+    const learningStyle = summarizeDimension(quizPersonalityDimensions.learning_style);
+    const problemApproach = summarizeDimension(quizPersonalityDimensions.problem_approach);
+    const motivationType = summarizeDimension(quizPersonalityDimensions.motivation_type);
+    const resilienceStyle = summarizeDimension(quizPersonalityDimensions.resilience_style);
+    const techAffinity = summarizeDimension(quizPersonalityDimensions.tech_affinity);
+
+    const topTraits = Object.entries(traitScores)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([trait, score]) => ({ trait, score: Number(score.toFixed(3)) }));
+
+    const preferredStack = techAffinity.ordered
+      .filter(item => item.score > 0)
+      .slice(0, 3)
+      .map(item => item.trait);
+
+    const timeAvailability = answers.time_availability || answers.time_per_day;
+    const timeMap: Record<string, number> = {
+      intensive_time: 150,
+      balanced_time: 90,
+      constrained_time: 45,
+      irregular_time: 60
+    };
+
+    const goal = answers.coding_dream || answers.learning_goal || 'general';
+    const timePerDay = timeMap[timeAvailability] || 60;
+
+    const learningTotal = ['visual', 'analytical', 'practical'].reduce(
+      (sum, trait) => sum + Math.max(learningStyle.normalizedScores[trait] || 0, 0),
+      0
+    ) || 1;
+
+    const legacyVisual = learningStyle.normalizedScores.visual || 0;
+    const legacyReading = learningStyle.normalizedScores.analytical || 0;
+    const legacyHandsOn = learningStyle.normalizedScores.practical || 0;
+
+    const recommendedProfile = this.determineProfileRecommendation(traitScores);
+
+    return {
+      style: learningStyle.dominant || 'balanced',
+      visual: Number((legacyVisual / learningTotal).toFixed(3)),
+      reading: Number((legacyReading / learningTotal).toFixed(3)),
+      handsOn: Number((legacyHandsOn / learningTotal).toFixed(3)),
+      level: answers.experience_level || 'beginner',
+      timePerDay,
+      goal,
+      preferredStack: preferredStack.length > 0 ? preferredStack : ['javascript'],
+      motivations: motivationType.ordered.slice(0, 3),
+      resilience: resilienceStyle.dominant,
+      problemApproach: problemApproach.dominant,
+      techAffinity: techAffinity.ordered,
+      traitScores,
+      topTraits,
+      dimensions: {
+        learningStyle,
+        problemApproach,
+        motivationType,
+        resilienceStyle,
+        techAffinity
+      },
+      profileRecommendation: recommendedProfile
+    };
+  }
+
+  private determineProfileRecommendation(traitScores: Record<string, number>) {
+    let bestProfile: { key: string; score: number } | null = null;
+
+    for (const [profileKey, mapping] of Object.entries(quizProfileMapping)) {
+      let score = 0;
+
+      mapping.primary.forEach(trait => {
+        score += (traitScores[trait] || 0) * 2;
+      });
+
+      mapping.secondary.forEach(trait => {
+        score += (traitScores[trait] || 0) * 1.2;
+      });
+
+      mapping.tech_preference.forEach(trait => {
+        score += (traitScores[trait] || 0) * 1.5;
+      });
+
+      if (!bestProfile || score > bestProfile.score) {
+        bestProfile = {
+          key: profileKey,
+          score: Number(score.toFixed(3))
+        };
+      }
+    }
+
+    if (!bestProfile) {
+      return null;
+    }
+
+    return {
+      key: bestProfile.key,
+      score: bestProfile.score,
+      nameKey: quizProfileNameKey(bestProfile.key),
+      summaryKey: quizProfileSummaryKey(bestProfile.key)
+    };
   }
   
   // Get a specific quiz result

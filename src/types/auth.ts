@@ -1,10 +1,26 @@
-// Subscription status enum to match Prisma schema
-export enum SubscriptionStatus {
-  FREE = 'free',
-  ACTIVE = 'active',
-  CANCELED = 'canceled',
-  EXPIRED = 'expired'
+import { Request } from 'express';
+import type { ParamsDictionary } from 'express-serve-static-core';
+import type { ParsedQs } from 'qs';
+import type { User as PrismaUser, Admin as PrismaAdmin } from '@prisma/client';
+import type { Language } from '../prisma/prismaTypes.js';
+
+export type { Language };
+
+// Request type extension for authenticated requests
+export interface AuthLocals extends Record<string, any> {
+  userId?: string;
+  adminId?: string;
+  user?: PrismaUser;
+  admin?: PrismaAdmin;
+  language?: Language;
 }
+
+export type AuthRequest<
+  P = ParamsDictionary,
+  ResBody = any,
+  ReqBody = any,
+  ReqQuery = ParsedQs,
+> = Request<P, ResBody, ReqBody, ReqQuery, AuthLocals>;
 
 // User-related types
 export interface User {
@@ -22,10 +38,8 @@ export interface User {
   verificationTokenExpiry: Date | null;
   resetToken: string | null;
   resetTokenExpiry: Date | null;
-  // Subscription fields
-  subscriptionId: string | null;
-  subscriptionStatus: SubscriptionStatus | string;
-  subscriptionEndDate: Date | null;
+  language: Language;
+  paddleCustomerId: string | null;
 }
 
 // User profile (response without sensitive data)
@@ -36,6 +50,7 @@ export interface UserProfile {
   email: string;
   isActive: boolean;
   isVerified: boolean;
+  language: Language;
   createdAt: Date;
 }
 
@@ -45,6 +60,7 @@ export interface RegisterRequest {
   fullname: string;
   email: string;
   password: string;
+  language?: Language;
 }
 
 export interface RegisterResponse {
@@ -70,6 +86,7 @@ export interface UpdateProfileRequest {
   username?: string;
   fullname?: string;
   email?: string;
+  language?: Language;
 }
 
 // Password Change DTOs
@@ -109,6 +126,7 @@ export interface JWTPayload {
   email: string;
   username?: string;
   role?: AdminRole;
+  language?: Language;
   iat: number;
   exp: number;
 }
@@ -126,6 +144,7 @@ export interface Admin {
   email: string;
   password_hash: string;
   role: AdminRole;
+  language: Language;
   createdAt: Date;
   updatedAt: Date;
   resetToken?: string | null;
@@ -137,6 +156,7 @@ export interface AdminProfile {
   name: string;
   email: string;
   role: AdminRole;
+  language: Language;
   createdAt: Date;
 }
 
@@ -146,6 +166,7 @@ export interface AdminRegisterRequest {
   email: string;
   password: string;
   role: AdminRole;
+  language?: Language;
 }
 
 export interface AdminLoginRequest {
@@ -191,6 +212,7 @@ export interface CreateUserData {
   fullname: string;
   email: string;
   password_hash: string;
+  language?: Language;
   isVerified?: boolean;
 }
 
@@ -199,6 +221,7 @@ export interface UpdateUserData {
   fullname?: string;
   email?: string;
   password_hash?: string;
+  language?: Language;
   isVerified?: boolean;
   verificationToken?: string | null;
   verificationTokenExpiry?: Date | null;

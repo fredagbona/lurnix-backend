@@ -1,0 +1,63 @@
+{
+  "auth": {
+    "registerSuccess": "Admin registered successfully",
+    "loginSuccess": "Admin logged in successfully",
+    "unauthorized": "Authentication required",
+    "profileRetrieved": "Admin profile retrieved successfully",
+    "passwordChanged": "Password changed successfully",
+    "languageUpdated": "Language preference updated successfully",
+    "errors": {
+      "invalidCredentials": "Invalid email or password",
+      "accountDisabled": "Admin account is disabled",
+      "invalidToken": "Invalid or expired token",
+      "insufficientPermissions": "Insufficient permissions for this action"
+    }
+  },
+  "system": {
+    "testSuccess": "Admin test endpoint working",
+    "testError": "Test endpoint error",
+    "cleanupSuccess": "Cleanup tasks completed successfully",
+    "tokensCleanedUp": "Expired tokens cleaned up successfully",
+    "errorStatsReset": "Error statistics reset successfully"
+  },
+  "users": {
+    "notFound": "User not found",
+    "restored": "User restored successfully",
+    "deleted": "User permanently deleted",
+    "resetCancelled": "Password reset cancelled successfully",
+    "stats": {
+      "retrieved": "User statistics retrieved successfully"
+    },
+    "list": {
+      "retrieved": "User list retrieved successfully"
+    },
+    "detail": {
+      "retrieved": "User details retrieved successfully"
+    },
+    "reset": {
+      "tokenInfo": "Password reset token information retrieved"
+    }
+  },
+  "health": {
+    "status": {
+      "healthy": "System is healthy",
+      "unhealthy": "System is unhealthy",
+      "critical": "System is in critical state"
+    },
+    "checks": {
+      "database": "Database connection",
+      "errorMonitoring": "Error monitoring system"
+    },
+    "checkFailed": "System health check failed",
+    "errorStats": {
+      "retrieved": "Error statistics retrieved successfully",
+      "reset": "Error statistics reset successfully"
+    }
+  },
+  "errors": {
+    "internal": "An unexpected error occurred",
+    "validation": "Validation error occurred",
+    "notFound": "Resource not found",
+    "unauthorized": "Unauthorized access"
+  }
+}

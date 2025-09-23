@@ -1,14 +1,14 @@
-import { User, SubscriptionStatus } from '../types/auth.js';
+import { User } from '../types/auth.js';
+import type { Language } from '../prisma/prismaTypes.js';
 import { User as PrismaUser } from '@prisma/client';
 
-// Define a type that includes the verification fields that might be missing in Prisma
-type PrismaUserWithVerification = PrismaUser & {
+// Define a type that includes all fields from Prisma User
+type PrismaUserWithVerification = Omit<PrismaUser, 'language'> & {
+  language?: Language;
   isVerified?: boolean;
   verificationToken?: string | null;
   verificationTokenExpiry?: Date | null;
-  subscriptionId?: string | null;
-  subscriptionStatus?: string;
-  subscriptionEndDate?: Date | null;
+  paddleCustomerId?: string | null;
 };
 
 /**
@@ -17,9 +17,6 @@ type PrismaUserWithVerification = PrismaUser & {
  * doesn't match our type definition exactly
  */
 export function mapPrismaUserToUser(prismaUser: PrismaUserWithVerification): User {
-  // Use default values for subscription fields if they don't exist
-  const subscriptionStatus = prismaUser.subscriptionStatus || SubscriptionStatus.FREE;
-  
   try {
     return {
       id: prismaUser.id,
@@ -36,10 +33,8 @@ export function mapPrismaUserToUser(prismaUser: PrismaUserWithVerification): Use
       verificationTokenExpiry: prismaUser.verificationTokenExpiry ?? null,
       resetToken: prismaUser.resetToken ?? null,
       resetTokenExpiry: prismaUser.resetTokenExpiry ?? null,
-      // Subscription fields with defaults
-      subscriptionId: prismaUser.subscriptionId ?? null,
-      subscriptionStatus: subscriptionStatus as SubscriptionStatus,
-      subscriptionEndDate: prismaUser.subscriptionEndDate ?? null,
+      language: (prismaUser.language as Language) ?? 'en',
+      paddleCustomerId: prismaUser.paddleCustomerId ?? null,
     };
   } catch (error) {
     console.error('Error in mapPrismaUserToUser:', error);

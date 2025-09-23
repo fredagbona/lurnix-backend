@@ -53,6 +53,7 @@ export interface ErrorContext {
   params?: any;
   headers?: any;
   timestamp: string;
+  language?: string;
 }
 
 // Enhanced error logging

@@ -9,6 +9,8 @@ import { errorMonitoringService } from './services/errorMonitoringService';
 import { healthCheckService } from './services/healthCheckService';
 import { adminSeedService } from './services/adminSeedService.js';
 import { prisma } from './prisma/client';
+import { initI18n } from './config/i18n';
+import { i18nextMiddleware, languageMiddleware } from './middlewares/languageMiddleware';
 
 // Validate environment configuration
 let envValidation;
@@ -40,8 +42,18 @@ const app: Application = express();
 // Setup Swagger documentation (before routes)
 setupSwagger(app);
 
+// Initialize i18next before any middleware
+initI18n().catch(error => {
+  console.error('Failed to initialize i18next:', error);
+  process.exit(1);
+});
+
 // Configure global middleware
 configureMiddleware(app);
+
+// Add language middleware before i18next middleware
+app.use(languageMiddleware);
+app.use(i18nextMiddleware);
 
 // Root endpoint
 app.get('/', (req: Request, res: Response) => {

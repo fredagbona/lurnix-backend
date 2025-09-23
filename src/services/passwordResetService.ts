@@ -90,7 +90,7 @@ export class PasswordResetService {
   }
 
   // Reset password using token
-  async resetPassword(data: ResetPasswordRequest): Promise<void> {
+  async resetPassword(data: ResetPasswordRequest): Promise<{ success: boolean }> {
     try {
       // Verify token and get user
       const verification = await this.verifyResetToken(data.token);
@@ -126,6 +126,7 @@ export class PasswordResetService {
       });
 
       console.log(`Password successfully reset for user: ${user.email}`);
+      return { success: true };
 
     } catch (error) {
       if (error instanceof PasswordResetError) {

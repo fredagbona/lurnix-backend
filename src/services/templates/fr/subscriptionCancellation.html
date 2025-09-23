@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{headline}}</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .header img {
+      max-height: 60px;
+    }
+    .content {
+      padding: 30px 20px;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 12px;
+      color: #666;
+      border-top: 1px solid #eee;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #4F46E5;
+      color: white !important;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+    .info-box {
+      background-color: #f0f7ff;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .subscription-details {
+      margin: 20px 0;
+      padding: 15px;
+      background-color: #f9fafb;
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table th, table td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="{{logoUrl}}" alt="Logo Lurnix">
+    </div>
+    <div class="content">
+      <h1>{{headline}}</h1>
+      <p>{{{greeting}}}</p>
+      <p>{{{introHtml}}}</p>
+      
+      <div class="subscription-details">
+        <h3>{{detailsTitle}}</h3>
+        <table>
+          <tr>
+            <th>{{planLabel}}</th>
+            <td>{{planName}}</td>
+          </tr>
+          <tr>
+            <th>{{cancellationDateLabel}}</th>
+            <td>{{cancellationDate}}</td>
+          </tr>
+          <tr>
+            <th>{{accessUntilLabel}}</th>
+            <td><strong>{{accessUntilDate}}</strong></td>
+          </tr>
+          {{#if reason}}
+          <tr>
+            <th>{{reasonLabel}}</th>
+            <td>{{reason}}</td>
+          </tr>
+          {{/if}}
+        </table>
+      </div>
+      
+      <p>{{accessNote}}</p>
+      
+      <div class="info-box">
+        <h3>{{feedbackTitle}}</h3>
+        <p>{{feedbackText}}</p>
+        <div style="text-align: center;">
+          <a href="{{feedbackUrl}}" class="button">{{feedbackCta}}</a>
+        </div>
+      </div>
+      
+      <p>{{reactivationNote}}</p>
+      
+      <div style="text-align: center;">
+        <a href="{{reactivateUrl}}" class="button" style="background-color: #10B981;">{{reactivateCta}}</a>
+      </div>
+      
+      <p>{{supportText}}</p>
+      
+      <p>{{closing}}</p>
+      <p>{{signature}}</p>
+    </div>
+    <div class="footer">
+      <p>&copy; {{currentYear}} Lurnix. Tous droits réservés.</p>
+      <p>{{supportFooter}}</p>
+      <p><small>{{footerLegal}}</small></p>
+    </div>
+  </div>
+</body>
+</html>

@@ -7,8 +7,9 @@ export class QuizController {
   // Get active quiz questions
   getQuiz = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const version = req.query.version ? parseInt(req.query.version as string, 10) : undefined;
-    
-    const quiz = await quizService.getActiveQuiz(version);
+    const language = (req as any).language || (req.headers['accept-language']?.slice(0, 2)) || 'en';
+
+    const quiz = await quizService.getActiveQuiz(version, language);
     
     res.status(200).json({
       success: true,

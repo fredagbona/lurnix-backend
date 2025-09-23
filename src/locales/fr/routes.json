@@ -1,0 +1,8 @@
+{
+  "route": {
+    "notFound": "Route {{method}} {{path}} introuvable"
+  },
+  "security": {
+    "corsBlocked": "Requête cross-origin bloquée"
+  }
+}

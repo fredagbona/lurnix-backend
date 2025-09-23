@@ -1,180 +1,168 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { subscriptionService } from '../services/subscriptionService';
+import { planService } from '../services/planService';
+import type { AuthRequest } from '../middlewares/authMiddleware';
 import {
-  createSubscriptionPlanSchema,
-  updateSubscriptionPlanSchema,
-  getSubscriptionPlansSchema,
-  idParamSchema,
-  regionCodeParamSchema,
-  subscribeUserSchema,
-  userIdParamSchema,
+  createSubscriptionSchema,
+  subscriptionIdParamSchema,
+  changePlanSchema,
+  cancelSubscriptionSchema,
+  reactivateSubscriptionSchema,
 } from '../schemas/subscriptionSchemas';
+import { AppError } from '../errors/AppError';
 
 export class SubscriptionController {
-  // Create a new subscription plan
-  async createSubscriptionPlan(req: Request, res: Response, next: NextFunction) {
+  async createSubscription(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const data = createSubscriptionPlanSchema.parse(req.body);
-      const result = await subscriptionService.createSubscriptionPlan(data);
-      
+      if (!req.userId) {
+        throw new AppError('Authentication required', 401);
+      }
+
+      const payload = createSubscriptionSchema.parse(req.body);
+      const result = await subscriptionService.createSubscription({
+        userId: req.userId,
+        planId: payload.planId,
+        autoRenewal: payload.autoRenewal,
+        startDate: payload.startDate,
+        couponCode: payload.couponCode,
+      });
+
       res.status(201).json({
         success: true,
-        message: 'Subscription plan created successfully',
-        data: result,
+        message: result.message,
+        data: result.subscription,
+        coupon: result.coupon,
+        checkout: result.checkout,
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Get all subscription plans with pagination and filters
-  async getSubscriptionPlans(req: Request, res: Response, next: NextFunction) {
+  async upgradeSubscription(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const query = getSubscriptionPlansSchema.parse(req.query);
-      const result = await subscriptionService.getSubscriptionPlans(query);
-      
-      res.status(200).json({
-        success: true,
-        data: result.data,
-        pagination: result.pagination,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
+      const { subscriptionId } = subscriptionIdParamSchema.parse(req.params);
+      const payload = changePlanSchema.parse(req.body);
 
-  // Get subscription plan by ID
-  async getSubscriptionPlanById(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { id } = idParamSchema.parse(req.params);
-      const result = await subscriptionService.getSubscriptionPlanById(id);
-      
-      res.status(200).json({
-        success: true,
-        data: result,
+      const result = await subscriptionService.upgradeSubscription({
+        subscriptionId,
+        newPlanId: payload.newPlanId,
+        couponCode: payload.couponCode,
       });
-    } catch (error) {
-      next(error);
-    }
-  }
 
-  // Get subscription plans by region code
-  async getSubscriptionPlansByRegion(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { regionCode } = regionCodeParamSchema.parse(req.params);
-      const result = await subscriptionService.getSubscriptionPlansByRegion(regionCode);
-      
-      res.status(200).json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Update a subscription plan
-  async updateSubscriptionPlan(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { id } = idParamSchema.parse(req.params);
-      const data = updateSubscriptionPlanSchema.parse(req.body);
-      const result = await subscriptionService.updateSubscriptionPlan(id, data);
-      
-      res.status(200).json({
-        success: true,
-        message: 'Subscription plan updated successfully',
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Delete a subscription plan
-  async deleteSubscriptionPlan(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { id } = idParamSchema.parse(req.params);
-      const result = await subscriptionService.deleteSubscriptionPlan(id);
-      
       res.status(200).json({
         success: true,
         message: result.message,
+        data: {
+          subscription: result.subscription,
+          previousPlan: result.previousPlan,
+        },
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Subscribe a user to a plan
-  async subscribeUser(req: Request, res: Response, next: NextFunction) {
+  async downgradeSubscription(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const data = subscribeUserSchema.parse(req.body);
-      const result = await subscriptionService.subscribeUser(data);
-      
+      const { subscriptionId } = subscriptionIdParamSchema.parse(req.params);
+      const payload = changePlanSchema.parse(req.body);
+
+      const result = await subscriptionService.downgradeSubscription({
+        subscriptionId,
+        newPlanId: payload.newPlanId,
+        couponCode: payload.couponCode,
+      });
+
       res.status(200).json({
         success: true,
         message: result.message,
-        data: result.data,
+        data: {
+          subscription: result.subscription,
+          previousPlan: result.previousPlan,
+        },
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Cancel a user's subscription
-  async cancelSubscription(req: Request, res: Response, next: NextFunction) {
+  async cancelSubscription(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const { userId } = userIdParamSchema.parse(req.params);
-      const result = await subscriptionService.cancelSubscription(userId);
-      
+      const { subscriptionId } = subscriptionIdParamSchema.parse(req.params);
+      const payload = cancelSubscriptionSchema.parse(req.body);
+
+      const result = await subscriptionService.cancelSubscription({
+        subscriptionId,
+        cancelImmediately: payload.cancelImmediately,
+        reason: payload.reason,
+      });
+
       res.status(200).json({
         success: true,
         message: result.message,
-        data: result.data,
+        data: {
+          subscription: result.subscription,
+          effectiveDate: result.effectiveDate,
+          reason: result.reason,
+        },
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Get a user's subscription details
-  async getUserSubscription(req: Request, res: Response, next: NextFunction) {
+  async reactivateSubscription(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const { userId } = userIdParamSchema.parse(req.params);
-      const result = await subscriptionService.getUserSubscription(userId);
-      
+      const { subscriptionId } = subscriptionIdParamSchema.parse(req.params);
+      const payload = reactivateSubscriptionSchema.parse(req.body);
+
+      const result = await subscriptionService.reactivateSubscription({
+        subscriptionId,
+        billingCycle: payload.billingCycle,
+      });
+
       res.status(200).json({
         success: true,
-        data: result,
+        message: result.message,
+        data: result.subscription,
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Get subscription plans based on user's region
-  async getSubscriptionPlansForUser(req: Request, res: Response, next: NextFunction) {
+  async getCurrentSubscription(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const result = await subscriptionService.getSubscriptionPlansForUser(req);
-      
-      res.status(200).json({
-        success: true,
-        data: result.data,
-        region: result.region,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
+      if (!req.userId) {
+        throw new AppError('Authentication required', 401);
+      }
 
-  // Get all available regions with subscription plans
-  async getAvailableRegions(req: Request, res: Response, next: NextFunction) {
-    try {
-      const regions = await subscriptionService.getAvailableRegions();
-      
+      const subscription = await subscriptionService.getCurrentSubscription(req.userId);
+      if (subscription) {
+        res.status(200).json({
+          success: true,
+          data: subscription,
+        });
+        return;
+      }
+
+      const fallback = await subscriptionService.getFreePlanSnapshot(req.userId);
+
+      if (!fallback) {
+        res.status(200).json({ success: true, data: null });
+        return;
+      }
+
+      const planMeta = await planService.getPlanPricing('free', 'monthly');
+
       res.status(200).json({
         success: true,
-        data: regions,
+        data: {
+          ...fallback,
+          isDefaultFreePlan: true,
+          planMetadata: planMeta,
+        },
       });
     } catch (error) {
       next(error);

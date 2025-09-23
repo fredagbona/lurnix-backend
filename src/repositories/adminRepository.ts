@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { Admin, AdminRole } from '../types/auth';
+import { Admin, AdminRole, Language } from '../types/auth';
 import { AppError } from '../errors/AppError.js';
 
 const prisma = new PrismaClient();
@@ -24,6 +24,7 @@ export interface CreateAdminData {
   email: string;
   password_hash: string;
   role?: AdminRole;
+  language?: Language;
 }
 
 export interface UpdateAdminData {
@@ -31,6 +32,7 @@ export interface UpdateAdminData {
   email?: string;
   password_hash?: string;
   role?: AdminRole;
+  language?: Language;
 }
 
 export class AdminRepository {
@@ -39,8 +41,8 @@ export class AdminRepository {
     try {
       // Using raw query since Prisma client doesn't have Admin model yet
       const result = await prisma.$executeRaw`
-        INSERT INTO "Admin" (id, name, email, password_hash, role, "createdAt", "updatedAt")
-        VALUES (gen_random_uuid(), ${data.name}, ${data.email}, ${data.password_hash}, ${data.role}::"AdminRole", NOW(), NOW())
+        INSERT INTO "Admin" (id, name, email, password_hash, role, language, "createdAt", "updatedAt")
+        VALUES (gen_random_uuid(), ${data.name}, ${data.email}, ${data.password_hash}, ${data.role}::"AdminRole", ${data.language || 'en'}::"Language", NOW(), NOW())
         RETURNING *
       `;
       
@@ -116,6 +118,11 @@ export class AdminRepository {
         setClauses.push(`role = $${values.length + 1}`);
         values.push(data.role);
       }
+
+      if (data.language) {
+        setClauses.push(`language = $${values.length + 1}`);
+        values.push(data.language);
+      }
       
       if (data.resetToken !== undefined) {
         setClauses.push(`"resetToken" = $${values.length + 1}`);
@@ -144,6 +151,9 @@ export class AdminRepository {
         }
         if (data.role) {
           await prisma.$executeRaw`UPDATE "Admin" SET role = ${data.role}::"AdminRole" WHERE id = ${id}`;
+        }
+        if (data.language) {
+          await prisma.$executeRaw`UPDATE "Admin" SET language = ${data.language}::"Language" WHERE id = ${id}`;
         }
         if (data.resetToken !== undefined) {
           await prisma.$executeRaw`UPDATE "Admin" SET "resetToken" = ${data.resetToken} WHERE id = ${id}`;

@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import i18next from 'i18next';
 import { verifyToken, extractTokenFromHeader, TokenExpiredError, InvalidTokenError } from '../utils/jwt.js';
 import { authService } from '../services/authService.js';
 import { JWTPayload } from '../types/auth.js';
@@ -48,8 +49,19 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     const user = await authService.verifyUser(decoded.userId);
     
     // Add user info to request
-    req.user = decoded;
+    req.user = {
+      ...decoded,
+      language: user.language,
+    } as JWTPayload;
     req.userId = decoded.userId;
+    
+    // Set language from user preference
+    if (user.language) {
+      (req as any).language = user.language;
+      // Also set i18next language
+      req.lng = user.language;
+      i18next.changeLanguage(user.language);
+    }
     
     next();
   } catch (error) {
@@ -115,8 +127,17 @@ export const optionalAuthenticate = async (req: AuthRequest, res: Response, next
     const user = await authService.verifyUser(decoded.userId);
     
     // Add user info to request
-    req.user = decoded;
+    req.user = {
+      ...decoded,
+      language: user.language,
+    } as JWTPayload;
     req.userId = decoded.userId;
+    
+    if (user.language) {
+      (req as any).language = user.language;
+      req.lng = user.language;
+      i18next.changeLanguage(user.language);
+    }
     
     next();
   } catch (error) {
