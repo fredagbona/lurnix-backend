@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "postbuild": "mkdir -p dist/services && cp -r src/services/templates dist/services || true",
+    "postbuild": "npm run copy:templates && npm run copy:locales",
+    "copy:templates": "copyfiles -u 2 \"src/services/templates/**/*\" dist/services",
+    "copy:locales": "copyfiles -u 2 \"src/locales/**/*\" dist/locales",
     "start": "node dist/server.js",
     "db:migrate:dev": "npx prisma migrate dev",
     "db:migrate": "npx prisma migrate deploy",
@@ -18,7 +20,7 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist .tsbuildinfo",
     "precommit": "npm run lint && npm run format:check"
   },
   "keywords": [],

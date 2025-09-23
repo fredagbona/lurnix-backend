@@ -224,27 +224,7 @@ NEXT_PUBLIC_API_URL=https://api.lurnix.tech/api
 
 ---
 
-## 9. Monitoring and Analytics
 
-### OAuth Usage Metrics
-- **Provider Popularity**: Track which OAuth providers are most used
-- **Success Rates**: Monitor authentication success vs. failure rates
-- **Account Linking**: Measure frequency of account linking activities
-- **User Adoption**: Track OAuth vs. traditional registration ratios
-
-### Error Monitoring Requirements
-- **Failed Attempts**: Log and alert on OAuth authentication failures
-- **Token Issues**: Monitor JWT validation and expiration problems
-- **Provider Downtime**: Track impact of OAuth provider service interruptions
-- **Performance Metrics**: Monitor OAuth flow completion times
-
-### Key Performance Indicators (KPIs)
-- OAuth authentication success rate: > 95%
-- Average OAuth flow completion time: < 10 seconds
-- Account linking success rate: > 90%
-- User satisfaction with OAuth experience: > 4.0/5.0
-
----
 
 ## 10. Risk Assessment and Mitigation
 
