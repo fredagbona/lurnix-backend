@@ -1,6 +1,24 @@
-import fetch from 'node-fetch';
 import { ensurePaddleConfigured, paddleConfig } from '../config/paddle';
 import { AppError } from '../errors/AppError';
+
+type FetchFn = (input: string | URL, init?: any) => Promise<any>;
+
+let cachedFetch: FetchFn | null = null;
+
+async function getFetch(): Promise<FetchFn> {
+  if (cachedFetch) {
+    return cachedFetch;
+  }
+
+  if (typeof globalThis.fetch === 'function') {
+    cachedFetch = globalThis.fetch.bind(globalThis) as FetchFn;
+    return cachedFetch;
+  }
+
+  const { default: nodeFetch } = await import('node-fetch');
+  cachedFetch = nodeFetch as FetchFn;
+  return cachedFetch;
+}
 
 interface PaddleRequestOptions {
   method?: string;
@@ -46,7 +64,8 @@ class PaddleService {
     ensurePaddleConfigured();
 
     const url = new URL(path, paddleConfig.apiUrl).toString();
-    const response = await fetch(url, {
+    const fetchFn = await getFetch();
+    const response = await fetchFn(url, {
       method: options.method ?? 'POST',
       headers: {
         'Content-Type': 'application/json',
