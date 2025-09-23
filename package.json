@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "postbuild": "mkdir -p dist/services && cp -r src/services/templates dist/services || true",
+    "postbuild": "npm run copy:templates && npm run copy:locales",
+    "copy:templates": "copyfiles -u 2 \"src/services/templates/**/*\" dist/services",
+    "copy:locales": "copyfiles -u 2 \"src/locales/**/*\" dist/locales",
     "start": "node dist/server.js",
     "db:migrate:dev": "npx prisma migrate dev",
     "db:migrate": "npx prisma migrate deploy",
