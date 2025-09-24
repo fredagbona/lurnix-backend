@@ -33,6 +33,7 @@ import { evidenceService, SubmittedArtifactInput } from './evidenceService.js';
 import { reviewerService } from './reviewerService.js';
 import { ReviewerSummary, zReviewerSummary } from '../types/reviewer.js';
 
+
 export interface CreateObjectiveRequest {
   userId: string;
   title: string;
@@ -168,6 +169,7 @@ export class ObjectiveService {
 
     const objectiveRecord = objective as ObjectiveWithRelations | null;
 
+
     if (!objectiveRecord) {
       throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
     }
@@ -185,6 +187,7 @@ export class ObjectiveService {
       objective: serializeObjective(objectiveRecord, { userId, limits: objectiveLimits }),
       planLimits
     };
+
   }
 
   async createObjective(request: CreateObjectiveRequest): Promise<CreateObjectiveResponse> {
@@ -230,6 +233,7 @@ export class ObjectiveService {
         sprints: {
           orderBy: { createdAt: 'desc' },
           include: { progresses: true, artifacts: true }
+
         }
       }
     })) as ObjectiveWithRelations | null;
@@ -256,6 +260,7 @@ export class ObjectiveService {
       : undefined;
     const sprintPayload = serializeSprint(
       { ...sprint, progresses: [], artifacts: [] },
+
       request.userId,
       objectiveWithRelations,
       {
@@ -366,6 +371,7 @@ export class ObjectiveService {
       sprintId: request.sprintId
     });
 
+
     await evidenceService.upsertArtifacts(request.sprintId, request.artifacts ?? []);
 
     const updates: SprintUpdateInput = {};
@@ -387,6 +393,7 @@ export class ObjectiveService {
     if (hasUpdates) {
       await sprintService.updateSprint(request.sprintId, updates);
     }
+
 
     const refreshed = await this.loadSprintForUser({
       userId: request.userId,
