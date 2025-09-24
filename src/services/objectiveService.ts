@@ -27,6 +27,12 @@ import {
 import type { PlanLimitsPayload, ObjectiveSprintLimitPayload } from '../types/planLimits.js';
 import { planLimitationService, type PlanLimitsSummary } from './planLimitationService.js';
 
+
+type ObjectiveWithSprints = {
+  sprints: Record<string, unknown>[];
+} & Record<string, unknown>;
+
+
 export interface CreateObjectiveRequest {
   userId: string;
   title: string;
@@ -129,6 +135,7 @@ export class ObjectiveService {
       })
     ]);
 
+
     const objectiveRecord = objective as ObjectiveWithRelations | null;
 
     if (!objectiveRecord) {
@@ -148,6 +155,7 @@ export class ObjectiveService {
       objective: serializeObjective(objectiveRecord, { userId, limits: objectiveLimits }),
       planLimits
     };
+
   }
 
   async createObjective(request: CreateObjectiveRequest): Promise<CreateObjectiveResponse> {
@@ -214,6 +222,7 @@ export class ObjectiveService {
       userId: request.userId,
       limits: objectiveLimits
     });
+
     const metadataOverride = plan.metadata
       ? (JSON.parse(JSON.stringify(plan.metadata)) as Record<string, unknown>)
       : undefined;
