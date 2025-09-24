@@ -105,7 +105,7 @@ type ProviderConfig =
       baseUrl: string;
     };
 
-let groqClient: Groq | null = null;
+let groqClient: any = null;
 
 function buildProviderConfig(): ProviderConfig {
   const provider = config.PLANNER_PROVIDER;
@@ -125,7 +125,7 @@ function buildProviderConfig(): ProviderConfig {
   };
 }
 
-function getGroqClient(apiKey: string): Groq {
+function getGroqClient(apiKey: string): any {
   if (!apiKey) {
     throw new Error('GROQ_API_KEY is required when PLANNER_PROVIDER is set to groq');
   }
