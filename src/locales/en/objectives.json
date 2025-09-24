@@ -16,9 +16,19 @@
   "sprint": {
     "generated": "Sprint generated successfully.",
     "retrieved": "Sprint retrieved successfully.",
+    "evidenceSaved": "Sprint evidence submitted successfully.",
+    "reviewCompleted": "Sprint reviewed successfully.",
+    "reviewRetrieved": "Sprint review retrieved successfully.",
     "errors": {
       "profileRequired": "You need a learner profile snapshot before generating a sprint.",
       "notFound": "Sprint not found."
+    }
+  },
+  "planLimits": {
+    "objectiveLimitReached": "You've reached the objective limit for your current plan. Upgrade to create more objectives.",
+    "sprintLimitReached": "You've reached the sprint limit for this objective on your current plan. Upgrade to unlock more sprints.",
+    "errors": {
+      "freePlanMissing": "Subscription configuration for the free plan is missing. Please contact support."
     }
   }
 }

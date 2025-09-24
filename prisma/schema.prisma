@@ -394,6 +394,9 @@ model Sprint {
   completedAt         DateTime?
   score               Float?
   reviewerSummary     Json?
+  selfEvaluationConfidence Int?
+  selfEvaluationReflection String?
+  artifacts          SprintArtifact[]
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
   objective           Objective        @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
@@ -402,6 +405,39 @@ model Sprint {
 
   @@index([objectiveId, status])
   @@index([profileSnapshotId])
+}
+
+enum ArtifactType {
+  repository
+  deployment
+  video
+  screenshot
+}
+
+enum ArtifactStatus {
+  ok
+  broken
+  missing
+  unknown
+}
+
+model SprintArtifact {
+  id          String         @id @default(uuid())
+  sprintId    String
+  projectId   String
+  artifactId  String
+  title       String?
+  type        ArtifactType
+  url         String?
+  status      ArtifactStatus @default(unknown)
+  notes       String?
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  sprint      Sprint         @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+
+  @@unique([sprintId, artifactId])
+  @@index([sprintId, projectId])
 }
 
 // Subscription models
