@@ -24,11 +24,11 @@ export class RoadmapController {
       roadmapType: req.body.roadmapType as RoadmapType
     };
     
-    const roadmap = await roadmapService.generateRoadmap(request);
+    const result = await roadmapService.generateRoadmap(request);
     
     res.status(201).json({
       success: true,
-      data: roadmap,
+      data: result,
       timestamp: new Date().toISOString()
     });
   });

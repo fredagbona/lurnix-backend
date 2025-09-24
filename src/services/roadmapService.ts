@@ -2,7 +2,18 @@ import { Prisma } from '@prisma/client';
 import { AppError } from '../errors/AppError';
 import { quizService } from './quizService';
 import { db } from '../prisma/prismaWrapper';
-import { RoadmapType, ObjectiveStatus, Roadmap, Objective, Progress, QuizResult } from '../types/prisma';
+import {
+  RoadmapType,
+  ObjectiveStatus,
+  Roadmap,
+  Objective,
+  Progress,
+  QuizResult,
+  SprintStatus,
+  SprintDifficulty
+} from '../types/prisma';
+import { profileContextBuilder } from './profileContextBuilder.js';
+import { objectiveService } from './objectiveService.js';
 
 // Re-export enums for use in other files
 export { RoadmapType, ObjectiveStatus };
@@ -29,28 +40,71 @@ export class RoadmapService {
     if (quizResult.userId !== request.userId) {
       throw new AppError('You do not have permission to use this quiz result', 403);
     }
-    
-    // Generate roadmap based on the computed profile
-    const jsonRoadmap = await this.buildRoadmap(quizResult.computedProfile, request.roadmapType);
-    
-    // Save the roadmap
+
+    const learnerProfileSnapshot = await profileContextBuilder.recordSnapshotFromComputedProfile({
+      userId: request.userId,
+      computedProfile: quizResult.computedProfile as Record<string, unknown>,
+      quizResultId: quizResult.id
+    });
+
+    const objectiveSpec = this.buildPrimaryObjectiveSpec(
+      quizResult.computedProfile,
+      request.roadmapType
+    );
+
+    const { objective, sprint, plan } = await objectiveService.createObjective({
+      userId: request.userId,
+      title: objectiveSpec.title,
+      description: objectiveSpec.description,
+      learnerProfileId: learnerProfileSnapshot.id,
+      successCriteria: objectiveSpec.successCriteria,
+      requiredSkills: objectiveSpec.requiredSkills,
+      priority: 1,
+      roadmapType: request.roadmapType
+    });
+
+    const roadmapPlanPayload = {
+      version: 'planner.v1',
+      plannerVersion: plan.metadata.plannerVersion,
+      objective: {
+        id: objective.id,
+        title: objective.title
+      },
+      sprint: {
+        id: sprint.id,
+        lengthDays: sprint.lengthDays,
+        totalEstimatedHours: sprint.totalEstimatedHours,
+        difficulty: sprint.difficulty,
+        metadata: plan.metadata,
+        plan: plan.plannerOutput
+      }
+    };
+
+    const roadmapPlanJson = JSON.parse(JSON.stringify(roadmapPlanPayload)) as Prisma.JsonValue;
+
     const roadmap = await db.roadmap.create({
       data: {
         userId: request.userId,
         roadmap_type: request.roadmapType,
         profileSnapshot: quizResult.computedProfile,
-        jsonRoadmap,
-        // Create default objectives based on roadmap type
+        jsonRoadmap: roadmapPlanJson,
+        objectiveId: objective.id,
         objectives: {
-          create: this.generateDefaultObjectives(request.roadmapType)
+          connect: { id: objective.id }
         }
-      },
-      include: {
-        objectives: true
       }
     });
-    
-    // Initialize progress tracking
+
+    await db.objective.update({
+      where: { id: objective.id },
+      data: {
+        roadmapId: roadmap.id,
+        primaryRoadmap: {
+          connect: { id: roadmap.id }
+        }
+      }
+    });
+
     await db.progress.create({
       data: {
         userId: request.userId,
@@ -60,223 +114,90 @@ export class RoadmapService {
         streak: 0
       }
     });
-    
-    return roadmap;
-  }
-  
-  // Generate default objectives based on roadmap type
-  private generateDefaultObjectives(roadmapType: RoadmapType): any[] {
-    const objectives = [];
-    const numDays = roadmapType === RoadmapType.seven_day ? 7 : 30;
-    
-    // Create milestone objectives based on roadmap type
-    if (roadmapType === RoadmapType.seven_day) {
-      objectives.push(
-        {
-          title: 'Complete Day 1-2 tasks',
-          description: 'Finish all tasks for the first two days of your learning journey',
-          dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
-          status: ObjectiveStatus.todo
-        },
-        {
-          title: 'Complete Day 3-5 tasks',
-          description: 'Finish all tasks for days 3-5 of your learning journey',
-          dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
-          status: ObjectiveStatus.todo
-        },
-        {
-          title: 'Complete all 7-day roadmap tasks',
-          description: 'Finish your entire 7-day learning journey',
-          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-          status: ObjectiveStatus.todo
-        }
-      );
-    } else {
-      objectives.push(
-        {
-          title: 'Complete Week 1 tasks',
-          description: 'Finish all tasks for the first week of your learning journey',
-          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-          status: ObjectiveStatus.todo
-        },
-        {
-          title: 'Complete Week 2 tasks',
-          description: 'Finish all tasks for the second week of your learning journey',
-          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
-          status: ObjectiveStatus.todo
-        },
-        {
-          title: 'Complete Week 3 tasks',
-          description: 'Finish all tasks for the third week of your learning journey',
-          dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000), // 21 days from now
-          status: ObjectiveStatus.todo
-        },
-        {
-          title: 'Complete all 30-day roadmap tasks',
-          description: 'Finish your entire 30-day learning journey',
-          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-          status: ObjectiveStatus.todo
-        }
-      );
-    }
-    
-    return objectives;
-  }
-  
-  // Build roadmap content based on user profile
-  private async buildRoadmap(profile: any, roadmapType: RoadmapType): Promise<any> {
-    // This would typically involve AI or rule-based generation
-    // For now, we'll use a simple template approach
-    
-    const days = [];
-    const numDays = roadmapType === RoadmapType.seven_day ? 7 : 30;
-    const preferredStack = profile.preferredStack || ['javascript'];
-    const learningStyle = profile.style || 'balanced';
-    
-    // Generate days and tasks
-    for (let day = 1; day <= numDays; day++) {
-      const tasks = [];
-      
-      // Generate 2-3 tasks per day
-      const tasksPerDay = Math.floor(Math.random() * 2) + 2;
-      
-      for (let taskNum = 1; taskNum <= tasksPerDay; taskNum++) {
-        // Generate task based on learning style and preferred stack
-        const task = this.generateTask(day, taskNum, learningStyle, preferredStack);
-        tasks.push(task);
+
+    const hydratedRoadmap = await db.roadmap.findUnique({
+      where: { id: roadmap.id },
+      include: {
+        objective: true
       }
-      
-      days.push({
-        day,
-        tasks
-      });
-    }
-    
-    // Add resources based on preferred stack
-    const resources = this.generateResources(preferredStack);
-    
+    });
+
     return {
-      title: `${numDays}-Day ${preferredStack[0].charAt(0).toUpperCase() + preferredStack[0].slice(1)} Learning Path`,
-      days,
-      resources
+      roadmap: hydratedRoadmap,
+      learnerProfile: learnerProfileSnapshot,
+      initialSprint: {
+        ...sprint,
+        plan
+      }
     };
   }
   
-  // Generate a single task
-  private generateTask(day: number, taskNum: number, learningStyle: string, stack: string[]): any {
-    const taskId = `d${day}-t${taskNum}`;
-    const primaryStack = stack[0];
-    
-    // Task types based on learning style
-    let taskTypes;
-    switch (learningStyle) {
-      case 'hands_on':
-        taskTypes = ['code', 'project', 'quiz'];
-        break;
-      case 'visual':
-        taskTypes = ['video', 'demo', 'code'];
-        break;
-      case 'reading':
-        taskTypes = ['read', 'research', 'quiz'];
-        break;
-      default:
-        taskTypes = ['code', 'read', 'video', 'quiz'];
+  private ensureStringArray(value: unknown): string[] {
+    if (!value) {
+      return [];
     }
-    
-    // Select a task type
-    const taskType = taskTypes[Math.floor(Math.random() * taskTypes.length)];
-    
-    // Generate task content based on day, stack, and type
-    let title, est;
-    
-    switch (primaryStack) {
-      case 'javascript':
-        if (day <= 3) {
-          // Beginner JS topics
-          const topics = ['variables and types', 'functions and scope', 'arrays and objects', 'DOM manipulation'];
-          title = `${taskType === 'code' ? 'Practice' : taskType === 'read' ? 'Learn about' : 'Watch tutorial on'} ${topics[Math.floor(Math.random() * topics.length)]}`;
-        } else {
-          // More advanced JS topics
-          const topics = ['async/await', 'promises', 'ES6 features', 'error handling', 'design patterns'];
-          title = `${taskType === 'code' ? 'Implement' : taskType === 'read' ? 'Study' : 'Watch advanced tutorial on'} ${topics[Math.floor(Math.random() * topics.length)]}`;
-        }
-        break;
-        
-      case 'react':
-        if (day <= 3) {
-          // Beginner React topics
-          const topics = ['components', 'props', 'state', 'hooks basics'];
-          title = `${taskType === 'code' ? 'Create' : taskType === 'read' ? 'Learn about' : 'Watch tutorial on'} React ${topics[Math.floor(Math.random() * topics.length)]}`;
-        } else {
-          // More advanced React topics
-          const topics = ['context API', 'custom hooks', 'performance optimization', 'state management'];
-          title = `${taskType === 'code' ? 'Implement' : taskType === 'read' ? 'Study' : 'Watch advanced tutorial on'} React ${topics[Math.floor(Math.random() * topics.length)]}`;
-        }
-        break;
-        
-      default:
-        title = `${taskType === 'code' ? 'Practice' : taskType === 'read' ? 'Learn about' : 'Watch tutorial on'} programming fundamentals`;
+
+    if (Array.isArray(value)) {
+      return value
+        .map((entry) => (typeof entry === 'string' ? entry : typeof entry === 'number' ? String(entry) : null))
+        .filter((entry): entry is string => Boolean(entry));
     }
-    
-    // Estimated time (minutes)
-    est = taskType === 'code' ? 30 : taskType === 'video' ? 15 : 20;
-    
+
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return [value.trim()];
+    }
+
+    return [];
+  }
+
+  private buildPrimaryObjectiveSpec(profile: any, roadmapType: RoadmapType) {
+    const normalizedGoal = typeof profile?.goal === 'string'
+      ? profile.goal.trim()
+      : typeof profile?.primaryGoal === 'string'
+        ? profile.primaryGoal.trim()
+        : '';
+    const passionTags = this.ensureStringArray(profile?.passionTags ?? profile?.passions ?? []);
+    const focusArea = passionTags[0];
+
+    const defaultTitle =
+      roadmapType === RoadmapType.thirty_day
+        ? 'Launch your personalized milestone sprint'
+        : 'Kick off your personalized sprint';
+
+    const title = normalizedGoal.length > 0 ? `Move forward on ${normalizedGoal}` : defaultTitle;
+
+    const descriptionParts = [
+      'Personalized sprint plan generated from your latest learner profile snapshot.'
+    ];
+
+    if (focusArea) {
+      descriptionParts.push(`Lean into your interest in ${focusArea} to keep momentum high.`);
+    }
+
+    if (normalizedGoal.length > 0) {
+      descriptionParts.push(`Deliver tangible progress toward "${normalizedGoal}" and capture evidence along the way.`);
+    }
+
+    const successCriteria = [
+      'Complete all planner microtasks within the sprint timeline.',
+      'Publish portfolio-ready evidence and reflections for mentor review.'
+    ];
+
+    if (normalizedGoal.length > 0) {
+      successCriteria.push(`Show measurable progress toward "${normalizedGoal}".`);
+    }
+
+    const requiredSkills = this.ensureStringArray(profile?.requiredSkills ?? profile?.skills ?? []);
+
     return {
-      id: taskId,
-      type: taskType,
       title,
-      est,
-      acceptance: taskType === 'code' ? ['Completes the task', 'Uses proper syntax'] : undefined
+      description: descriptionParts.join(' '),
+      successCriteria,
+      requiredSkills
     };
   }
-  
-  // Generate resources based on stack
-  private generateResources(stack: string[]): any[] {
-    const resources = [];
-    
-    for (const tech of stack) {
-      switch (tech) {
-        case 'javascript':
-          resources.push(
-            { label: 'MDN JavaScript Guide', url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide' },
-            { label: 'JavaScript.info', url: 'https://javascript.info/' }
-          );
-          break;
-          
-        case 'react':
-          resources.push(
-            { label: 'React Documentation', url: 'https://reactjs.org/docs/getting-started.html' },
-            { label: 'React Hooks Guide', url: 'https://reactjs.org/docs/hooks-intro.html' }
-          );
-          break;
-          
-        case 'node':
-          resources.push(
-            { label: 'Node.js Documentation', url: 'https://nodejs.org/en/docs/' },
-            { label: 'Express.js Guide', url: 'https://expressjs.com/en/guide/routing.html' }
-          );
-          break;
-          
-        case 'python':
-          resources.push(
-            { label: 'Python Documentation', url: 'https://docs.python.org/3/' },
-            { label: 'Real Python Tutorials', url: 'https://realpython.com/' }
-          );
-          break;
-          
-        default:
-          resources.push(
-            { label: 'freeCodeCamp', url: 'https://www.freecodecamp.org/' },
-            { label: 'MDN Web Docs', url: 'https://developer.mozilla.org/' }
-          );
-      }
-    }
-    
-    return resources;
-  }
-  
-  // Get a specific roadmap
-  async getRoadmap(roadmapId: string, userId: string): Promise<any> {
+
+  async getRoadmap(roadmapId: string, userId: string): Promise<Roadmap> {
     const roadmap = await db.roadmap.findUnique({
       where: { id: roadmapId },
       include: {
@@ -286,21 +207,19 @@ export class RoadmapService {
         }
       }
     });
-    
+
     if (!roadmap) {
       throw new AppError('Roadmap not found', 404);
     }
-    
-    // Check if the roadmap belongs to the requesting user
+
     if (roadmap.userId !== userId) {
       throw new AppError('You do not have permission to access this roadmap', 403);
     }
-    
-    return roadmap;
+
+    return roadmap as Roadmap;
   }
-  
-  // Get all roadmaps for a user
-  async getUserRoadmaps(userId: string): Promise<any> {
+
+  async getUserRoadmaps(userId: string): Promise<Roadmap[]> {
     const roadmaps = await db.roadmap.findMany({
       where: { userId },
       include: {
@@ -311,11 +230,10 @@ export class RoadmapService {
       },
       orderBy: { createdAt: 'desc' }
     });
-    
-    return roadmaps;
+
+    return roadmaps as Roadmap[];
   }
-  
-  // Update progress for a roadmap
+
   async updateProgress(request: ProgressUpdateRequest): Promise<any> {
     // Verify the roadmap exists and belongs to the user
     const roadmap = await this.getRoadmap(request.roadmapId, request.userId);
@@ -425,36 +343,47 @@ export class RoadmapService {
     // Update objectives based on completion percentage
     for (const objective of roadmap.objectives) {
       let newStatus = objective.status;
-      
-      // Simple logic: update objective status based on title and completion percentage
-      if (objective.title.includes('Day 1-2') && completionPercentage >= 20) {
-        newStatus = ObjectiveStatus.done;
-      } else if (objective.title.includes('Day 3-5') && completionPercentage >= 50) {
-        newStatus = ObjectiveStatus.done;
-      } else if (objective.title.includes('Week 1') && completionPercentage >= 25) {
-        newStatus = ObjectiveStatus.done;
-      } else if (objective.title.includes('Week 2') && completionPercentage >= 50) {
-        newStatus = ObjectiveStatus.done;
-      } else if (objective.title.includes('Week 3') && completionPercentage >= 75) {
-        newStatus = ObjectiveStatus.done;
-      } else if ((objective.title.includes('all 7-day') || objective.title.includes('all 30-day')) && completionPercentage >= 90) {
-        newStatus = ObjectiveStatus.done;
-      } else if (completionPercentage > 0 && objective.status === ObjectiveStatus.todo) {
-        newStatus = ObjectiveStatus.doing;
+
+      const completionTargets: Array<{ match: (title: string) => boolean; threshold: number }> = [
+        { match: (title) => title.includes('Day 1-2'), threshold: 20 },
+        { match: (title) => title.includes('Day 3-5'), threshold: 50 },
+        { match: (title) => title.includes('Week 1'), threshold: 25 },
+        { match: (title) => title.includes('Week 2'), threshold: 50 },
+        { match: (title) => title.includes('Week 3'), threshold: 75 },
+        { match: (title) => title.includes('all 7-day') || title.includes('all 30-day'), threshold: 90 }
+      ];
+
+      const matchedTarget = completionTargets.find(({ match }) => match(objective.title));
+
+      if (matchedTarget && completionPercentage >= matchedTarget.threshold) {
+        newStatus = ObjectiveStatus.completed;
+      } else if (completionPercentage > 0) {
+        newStatus = ObjectiveStatus.active;
+      } else {
+        newStatus = ObjectiveStatus.draft;
       }
-      
+
+      // normalize legacy statuses to new enum values
+      if (newStatus === ObjectiveStatus.todo || newStatus === ObjectiveStatus.doing) {
+        newStatus = completionPercentage > 0 ? ObjectiveStatus.active : ObjectiveStatus.draft;
+      }
+      if (newStatus === ObjectiveStatus.done) {
+        newStatus = ObjectiveStatus.completed;
+      }
+
       // Update the objective if status changed
       if (newStatus !== objective.status) {
         await db.objective.update({
           where: { id: objective.id },
           data: { status: newStatus }
         });
+        objective.status = newStatus;
       }
     }
-    
+
     // Count completed objectives
     const completedObjectives = roadmap.objectives.filter(
-      (obj: any) => obj.status === ObjectiveStatus.done
+      (obj: any) => obj.status === ObjectiveStatus.completed || obj.status === ObjectiveStatus.done
     ).length;
     
     // Update the progress record with completed objectives count

@@ -5,3 +5,7 @@ export * from './errorMonitoringService.js';
 export * from './emailService.js';
 export * from './featureGateService.js';
 export * from './featureRequestService.js';
+export * from './learnerProfileService.js';
+export * from './sprintService.js';
+export * from './plannerService.js';
+export * from './objectiveService.js';

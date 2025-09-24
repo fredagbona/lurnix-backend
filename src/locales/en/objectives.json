@@ -1,0 +1,24 @@
+{
+  "create": {
+    "success": "Objective created successfully."
+  },
+  "list": {
+    "success": "Objectives retrieved successfully."
+  },
+  "detail": {
+    "success": "Objective retrieved successfully."
+  },
+  "errors": {
+    "profileRequired": "You need a learner profile snapshot before creating an objective.",
+    "profileNotFound": "Learner profile snapshot not found.",
+    "notFound": "Objective not found."
+  },
+  "sprint": {
+    "generated": "Sprint generated successfully.",
+    "retrieved": "Sprint retrieved successfully.",
+    "errors": {
+      "profileRequired": "You need a learner profile snapshot before generating a sprint.",
+      "notFound": "Sprint not found."
+    }
+  }
+}

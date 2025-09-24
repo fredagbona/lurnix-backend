@@ -1,0 +1,287 @@
+import { Prisma } from '@prisma/client';
+import { db } from '../prisma/prismaWrapper';
+import { AppError } from '../errors/AppError';
+import { learnerProfileService } from './learnerProfileService.js';
+import { plannerService } from './plannerService.js';
+import { sprintService } from './sprintService.js';
+import { profileContextBuilder, ProfileContext } from './profileContextBuilder.js';
+import { config } from '../config/environment.js';
+import {
+  ObjectiveStatus,
+  LearnerProfile,
+  RoadmapType,
+  SprintStatus,
+  SprintDifficulty
+} from '../types/prisma';
+
+export interface CreateObjectiveRequest {
+  userId: string;
+  title: string;
+  description?: string;
+  learnerProfileId?: string;
+  successCriteria?: string[];
+  requiredSkills?: string[];
+  priority?: number;
+  roadmapType?: RoadmapType;
+}
+
+export interface GenerateSprintRequest {
+  userId: string;
+  objectiveId: string;
+  learnerProfileId?: string;
+  preferLength?: number;
+}
+
+export class ObjectiveService {
+  async listObjectives(userId: string) {
+    const objectives = await db.objective.findMany({
+      where: {
+        profileSnapshot: { userId }
+      },
+      include: {
+        sprints: {
+          orderBy: { createdAt: 'desc' }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return objectives.map((objective) => {
+      const [latestSprint, ...restSprints] = objective.sprints;
+      return {
+        ...objective,
+        latestSprint: latestSprint ?? null,
+        pastSprints: restSprints,
+        totalSprints: objective.sprints.length
+      };
+    });
+  }
+
+  async getObjective(userId: string, objectiveId: string) {
+    const objective = await db.objective.findFirst({
+      where: {
+        id: objectiveId,
+        profileSnapshot: { userId }
+      },
+      include: {
+        sprints: {
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    if (!objective) {
+      throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
+    }
+
+    return {
+      ...objective,
+      latestSprint: objective.sprints[0] ?? null,
+      pastSprints: objective.sprints.slice(1)
+    };
+  }
+
+  async createObjective(request: CreateObjectiveRequest) {
+    const learnerProfile = await this.resolveLearnerProfile(request.userId, request.learnerProfileId);
+
+    if (!learnerProfile) {
+      throw new AppError('objectives.errors.profileRequired', 400, 'LEARNER_PROFILE_REQUIRED');
+    }
+
+    const objective = await db.objective.create({
+      data: {
+        title: request.title,
+        description: request.description ?? null,
+        profileSnapshotId: learnerProfile.id,
+        status: ObjectiveStatus.active,
+        priority: request.priority ?? 2,
+        successCriteria: request.successCriteria ?? [],
+        requiredSkills: request.requiredSkills ?? [],
+        estimatedWeeksMin: request.roadmapType === RoadmapType.thirty_day ? 3 : 1,
+        estimatedWeeksMax: request.roadmapType === RoadmapType.thirty_day ? 6 : 2
+      }
+    });
+
+    const profileContext = await profileContextBuilder.build({
+      userId: request.userId,
+      learnerProfileId: learnerProfile.id,
+      objectiveId: objective.id
+    });
+
+    const { sprint, plan } = await this.generateAndPersistSprint({
+      userId: request.userId,
+      objectiveId: objective.id,
+      learnerProfile,
+      profileContext,
+      preferLength: request.roadmapType === RoadmapType.thirty_day ? 14 : undefined
+    });
+
+    return {
+      objective,
+      sprint,
+      plan
+    };
+  }
+
+  async generateSprint(request: GenerateSprintRequest) {
+    const [objective, learnerProfile] = await Promise.all([
+      db.objective.findFirst({
+        where: {
+          id: request.objectiveId,
+          OR: [
+            { roadmap: { userId: request.userId } },
+            { profileSnapshot: { userId: request.userId } }
+          ]
+        }
+      }),
+      this.resolveLearnerProfile(request.userId, request.learnerProfileId)
+    ]);
+
+    if (!objective) {
+      throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
+    }
+
+    if (!learnerProfile) {
+      throw new AppError('objectives.sprint.errors.profileRequired', 400, 'LEARNER_PROFILE_REQUIRED');
+    }
+
+    const profileContext = await profileContextBuilder.build({
+      userId: request.userId,
+      learnerProfileId: learnerProfile.id,
+      objectiveId: objective.id
+    });
+
+    return this.generateAndPersistSprint({
+      userId: request.userId,
+      objectiveId: objective.id,
+      learnerProfile,
+      profileContext,
+      preferLength: request.preferLength,
+      objective
+    });
+  }
+
+  async getSprint(userId: string, objectiveId: string, sprintId: string) {
+    const sprint = await db.sprint.findFirst({
+      where: {
+        id: sprintId,
+        objective: {
+          id: objectiveId,
+          profileSnapshot: { userId }
+        }
+      }
+    });
+
+    if (!sprint) {
+      throw new AppError('objectives.sprint.errors.notFound', 404, 'SPRINT_NOT_FOUND');
+    }
+
+    const plannerOutput = sprint.plannerOutput as Prisma.JsonValue;
+    const plan = (plannerOutput as any)?.plan ?? plannerOutput;
+
+    return {
+      ...sprint,
+      plan
+    };
+  }
+
+  private async resolveLearnerProfile(userId: string, learnerProfileId?: string): Promise<LearnerProfile | null> {
+    if (learnerProfileId) {
+      const profile = await learnerProfileService.getProfileById(learnerProfileId);
+      if (profile && profile.userId === userId) {
+        return profile;
+      }
+      throw new AppError('objectives.errors.profileNotFound', 404, 'LEARNER_PROFILE_NOT_FOUND');
+    }
+
+    return learnerProfileService.getLatestProfileForUser(userId);
+  }
+
+  private async generateAndPersistSprint(params: {
+    userId: string;
+    objectiveId: string;
+    learnerProfile: LearnerProfile;
+    profileContext: ProfileContext;
+    preferLength?: number;
+    objective?: { title: string; description?: string | null; successCriteria: string[]; requiredSkills: string[]; priority?: number; status?: ObjectiveStatus } | null;
+  }) {
+    const objective = params.objective ?? (await db.objective.findUnique({ where: { id: params.objectiveId } }));
+    if (!objective) {
+      throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
+    }
+
+    const plannerVersion = config.PLANNER_VERSION ?? 'unversioned';
+    const requestedAt = new Date();
+
+    const plan = await plannerService.generateSprintPlan({
+      objectiveId: params.objectiveId,
+      objectiveTitle: objective.title,
+      objectiveDescription: objective.description,
+      successCriteria: objective.successCriteria,
+      requiredSkills: objective.requiredSkills,
+      learnerProfile: params.learnerProfile,
+      profileContext: params.profileContext,
+      preferLength: params.preferLength,
+      objectivePriority: objective.priority,
+      objectiveStatus: objective.status,
+      plannerVersion,
+      requestedAt
+    });
+
+    const plannerInputPayload = {
+      objectiveContext: {
+        id: objective.id,
+        title: objective.title,
+        description: objective.description,
+        priority: objective.priority,
+        status: objective.status,
+        successCriteria: objective.successCriteria,
+        requiredSkills: objective.requiredSkills
+      },
+      learnerProfileId: params.learnerProfile.id,
+      profileContext: params.profileContext,
+      plannerVersion,
+      requestedAt: requestedAt.toISOString(),
+      preferLength: params.preferLength ?? null
+    };
+
+    const plannerInputJson = JSON.parse(JSON.stringify(plannerInputPayload)) as unknown as Prisma.JsonValue;
+    const plannerOutputJson = JSON.parse(JSON.stringify(plan.plannerOutput ?? {})) as unknown as Prisma.JsonValue;
+
+    const sprint = await sprintService.createSprint({
+      objectiveId: params.objectiveId,
+      profileSnapshotId: params.learnerProfile.id,
+      plannerInput: plannerInputJson,
+      plannerOutput: plannerOutputJson,
+      lengthDays: plan.lengthDays,
+      totalEstimatedHours: plan.totalEstimatedHours,
+      difficulty: plan.difficulty as SprintDifficulty,
+      status: SprintStatus.planned
+    });
+
+    await db.progress.create({
+      data: {
+        userId: params.userId,
+        sprintId: sprint.id,
+        completedTasks: [],
+        completedObjectives: 0,
+        streak: 0
+      }
+    });
+
+    console.info('[objectiveService] sprint_generated', {
+      objectiveId: params.objectiveId,
+      sprintId: sprint.id,
+      plannerVersion,
+      learnerProfileId: params.learnerProfile.id,
+      profileHash: params.profileContext.learnerProfile.profileHash,
+      provider: plan.metadata.provider,
+      lengthDays: plan.lengthDays,
+      requestedAt: requestedAt.toISOString()
+    });
+
+    return { sprint, plan };
+  }
+}
+
+export const objectiveService = new ObjectiveService();

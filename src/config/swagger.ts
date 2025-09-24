@@ -219,6 +219,199 @@ const swaggerOptions: swaggerJsDoc.Options = {
               format: 'date-time'
             }
           }
+        },
+        Objective: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            title: { type: 'string' },
+            description: { type: 'string', nullable: true },
+            priority: { type: 'integer' },
+            status: { type: 'string' },
+            successCriteria: { type: 'array', items: { type: 'string' } },
+            requiredSkills: { type: 'array', items: { type: 'string' } },
+            profileSnapshotId: { type: 'string', format: 'uuid', nullable: true },
+            createdAt: { type: 'string', format: 'date-time' }
+          }
+        },
+        Sprint: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            objectiveId: { type: 'string', format: 'uuid' },
+            profileSnapshotId: { type: 'string', format: 'uuid', nullable: true },
+            plannerInput: { type: 'object' },
+            plannerOutput: { type: 'object' },
+            lengthDays: { type: 'integer' },
+            totalEstimatedHours: { type: 'number' },
+            difficulty: { type: 'string', enum: ['beginner', 'intermediate', 'advanced'] },
+            status: { type: 'string', enum: ['planned', 'in_progress', 'submitted', 'reviewed'] },
+            startedAt: { type: 'string', format: 'date-time', nullable: true },
+            completedAt: { type: 'string', format: 'date-time', nullable: true },
+            score: { type: 'number', nullable: true },
+            reviewerSummary: { type: 'object', nullable: true },
+            createdAt: { type: 'string', format: 'date-time' }
+          }
+        },
+        SprintPlan: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            title: { type: 'string' },
+            description: { type: 'string' },
+            lengthDays: { type: 'integer', enum: [3, 7, 14] },
+            totalEstimatedHours: { type: 'number' },
+            difficulty: { type: 'string', enum: ['beginner', 'intermediate', 'advanced'] },
+            projects: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  title: { type: 'string' },
+                  brief: { type: 'string' },
+                  requirements: { type: 'array', items: { type: 'string' } },
+                  acceptanceCriteria: { type: 'array', items: { type: 'string' } },
+                  deliverables: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        type: { type: 'string', enum: ['repository', 'deployment', 'video', 'screenshot'] },
+                        title: { type: 'string' },
+                        artifactId: { type: 'string' }
+                      }
+                    }
+                  },
+                  evidenceRubric: {
+                    type: 'object',
+                    properties: {
+                      dimensions: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            name: { type: 'string' },
+                            weight: { type: 'number' },
+                            levels: { type: 'array', items: { type: 'string' }, nullable: true }
+                          }
+                        }
+                      },
+                      passThreshold: { type: 'number' }
+                    }
+                  },
+                  checkpoints: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        title: { type: 'string' },
+                        type: { type: 'string', enum: ['assessment', 'quiz', 'demo'] },
+                        spec: { type: 'string' }
+                      }
+                    },
+                    nullable: true
+                  },
+                  support: {
+                    type: 'object',
+                    properties: {
+                      concepts: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'string' },
+                            title: { type: 'string' },
+                            summary: { type: 'string' }
+                          }
+                        },
+                        nullable: true
+                      },
+                      practiceKatas: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'string' },
+                            title: { type: 'string' },
+                            estimateMin: { type: 'number' }
+                          }
+                        },
+                        nullable: true
+                      },
+                      allowedResources: { type: 'array', items: { type: 'string' }, nullable: true }
+                    },
+                    nullable: true
+                  },
+                  reflection: {
+                    type: 'object',
+                    properties: {
+                      prompt: { type: 'string' },
+                      moodCheck: { type: 'boolean' }
+                    },
+                    nullable: true
+                  }
+                }
+              }
+            },
+            microTasks: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  projectId: { type: 'string' },
+                  title: { type: 'string' },
+                  type: { type: 'string', enum: ['concept', 'practice', 'project', 'assessment', 'reflection'] },
+                  estimatedMinutes: { type: 'integer' },
+                  instructions: { type: 'string' },
+                  acceptanceTest: {
+                    type: 'object',
+                    properties: {
+                      type: { type: 'string', enum: ['checklist', 'unit_tests', 'quiz', 'demo'] },
+                      spec: {
+                        oneOf: [
+                          { type: 'string' },
+                          { type: 'array', items: { type: 'string' } }
+                        ]
+                      }
+                    }
+                  },
+                  resources: { type: 'array', items: { type: 'string' }, nullable: true }
+                }
+              }
+            },
+            portfolioCards: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  projectId: { type: 'string' },
+                  cover: { type: 'string', nullable: true },
+                  headline: { type: 'string' },
+                  badges: { type: 'array', items: { type: 'string' }, nullable: true },
+                  links: {
+                    type: 'object',
+                    properties: {
+                      repo: { type: 'string', nullable: true },
+                      demo: { type: 'string', nullable: true },
+                      video: { type: 'string', nullable: true }
+                    }
+                  }
+                }
+              },
+              nullable: true
+            },
+            adaptationNotes: { type: 'string' }
+          }
+        },
+        SprintPlanResponse: {
+          type: 'object',
+          properties: {
+            sprint: { $ref: '#/components/schemas/Sprint' },
+            plan: { $ref: '#/components/schemas/SprintPlan' }
+          }
         }
       },
       responses: {
@@ -305,6 +498,10 @@ const swaggerOptions: swaggerJsDoc.Options = {
       {
         name: 'Admin',
         description: 'Administrative endpoints (requires admin privileges)'
+      },
+      {
+        name: 'Objectives',
+        description: 'Objective and sprint planning endpoints'
       }
     ]
   },

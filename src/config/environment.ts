@@ -64,9 +64,14 @@ export interface EnvironmentConfig {
   ENABLE_REQUEST_LOGGING: boolean;
   ENABLE_ERROR_MONITORING: boolean;
 
-  // OpenAI Configuration
-  OPENAI_API_KEY: string;
-  OPENAI_MODEL: string;
+  // Planner / AI Configuration
+  PLANNER_PROVIDER: 'lmstudio' | 'groq';
+  LMSTUDIO_BASE_URL: string;
+  LMSTUDIO_MODEL: string;
+  GROQ_BASE_URL: string;
+  GROQ_API_KEY: string;
+  GROQ_MODEL: string;
+  PLANNER_VERSION: string;
 
   // Feature Requests Configuration
   FEATURE_REQUESTS_MAX_PER_DAY: number;
@@ -77,8 +82,7 @@ export interface EnvironmentConfig {
 // Validate required environment variables
 const requiredEnvVars = [
   'DATABASE_URL',
-  'JWT_SECRET',
-  'OPENAI_API_KEY'
+  'JWT_SECRET'
 ];
 
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
@@ -143,9 +147,15 @@ export const config: EnvironmentConfig = {
   ENABLE_REQUEST_LOGGING: process.env.ENABLE_REQUEST_LOGGING !== 'false',
   ENABLE_ERROR_MONITORING: process.env.ENABLE_ERROR_MONITORING !== 'false',
 
-  // OpenAI Configuration
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
-  OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4o',
+  // Planner / AI Configuration
+  PLANNER_PROVIDER: (process.env.PLANNER_PROVIDER as 'lmstudio' | 'groq')
+    || (env === 'production' ? 'groq' : 'lmstudio'),
+  LMSTUDIO_BASE_URL: process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234',
+  LMSTUDIO_MODEL: process.env.LMSTUDIO_MODEL || 'llama-3.1-8b-instruct',
+  GROQ_BASE_URL: process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1/chat/completions',
+  GROQ_API_KEY: process.env.GROQ_API_KEY || '',
+  GROQ_MODEL: process.env.GROQ_MODEL || 'llama-3.1-70b',
+  PLANNER_VERSION: process.env.PLANNER_VERSION || '2024-09-profile-context',
 
   // Feature Requests Configuration
   FEATURE_REQUESTS_MAX_PER_DAY: parseInt(process.env.FEATURE_REQUESTS_MAX_PER_DAY || '1', 10),
@@ -209,6 +219,10 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
   // Validate bcrypt rounds
   if (config.BCRYPT_ROUNDS < 10 || config.BCRYPT_ROUNDS > 15) {
     errors.push('BCRYPT_ROUNDS should be between 10 and 15');
+  }
+
+  if (config.PLANNER_PROVIDER === 'groq' && !config.GROQ_API_KEY) {
+    errors.push('GROQ_API_KEY is required when PLANNER_PROVIDER is set to groq');
   }
   
   return {
@@ -300,5 +314,12 @@ export const {
   ADMIN_SEED_NAME,
   LOG_LEVEL,
   ENABLE_REQUEST_LOGGING,
-  ENABLE_ERROR_MONITORING
+  ENABLE_ERROR_MONITORING,
+  PLANNER_PROVIDER,
+  LMSTUDIO_BASE_URL,
+  LMSTUDIO_MODEL,
+  GROQ_BASE_URL,
+  GROQ_API_KEY,
+  GROQ_MODEL,
+  PLANNER_VERSION
 } = config;

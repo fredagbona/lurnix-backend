@@ -1,0 +1,223 @@
+import express from 'express';
+import { authenticate as authMiddleware } from '../middlewares/authMiddleware.js';
+import { objectiveController } from '../controllers/objectiveController.js';
+
+const router = express.Router();
+
+/**
+ * @swagger
+ * tags:
+ *   name: Objectives
+ *   description: Manage learner objectives and sprint planning
+ */
+
+/**
+ * @swagger
+ * /api/objectives:
+ *   post:
+ *     summary: Create an objective and generate the initial sprint
+ *     description: Creates a learner objective linked to a profile snapshot, then generates the first sprint plan.
+ *     tags: [Objectives]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: "Build portfolio-ready landing page"
+ *               description:
+ *                 type: string
+ *                 example: "Ship a responsive landing page with deployable demo."
+ *               learnerProfileId:
+ *                 type: string
+ *                 format: uuid
+ *               successCriteria:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               requiredSkills:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               priority:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 5
+ *               roadmapType:
+ *                 type: string
+ *                 enum: [seven_day, thirty_day]
+ *     responses:
+ *       201:
+ *         description: Objective created with initial sprint
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                   description: Localized success message using `objectives.create.success`
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     objective:
+ *                       $ref: '#/components/schemas/Objective'
+ *                     sprint:
+ *                       $ref: '#/components/schemas/Sprint'
+ *                     plan:
+ *                       $ref: '#/components/schemas/SprintPlan'
+ *                 timestamp:
+ *                   type: string
+ *       400:
+ *         description: Invalid payload
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/', authMiddleware, objectiveController.createObjective.bind(objectiveController));
+
+/**
+ * @swagger
+ * /api/objectives:
+ *   get:
+ *     summary: List objectives for the authenticated learner
+ *     description: Returns objectives with their latest sprint metadata so the UI can render the planning dashboard.
+ *     tags: [Objectives]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Objectives retrieved successfully
+ */
+router.get('/', authMiddleware, objectiveController.listObjectives.bind(objectiveController));
+
+/**
+ * @swagger
+ * /api/objectives/{objectiveId}:
+ *   get:
+ *     summary: Retrieve a single objective with its sprints
+ *     description: Returns detailed objective context including historical sprints for timeline/progress views.
+ *     tags: [Objectives]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: objectiveId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Objective retrieved successfully
+ *       404:
+ *         description: Objective not found
+ */
+router.get('/:objectiveId', authMiddleware, objectiveController.getObjective.bind(objectiveController));
+
+/**
+ * @swagger
+ * /api/objectives/{objectiveId}/sprints/generate:
+ *   post:
+ *     summary: Generate a new sprint for an objective
+ *     description: Uses the learner profile context to create the next sprint plan for a given objective.
+ *     tags: [Objectives]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: objectiveId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               learnerProfileId:
+ *                 type: string
+ *                 format: uuid
+ *               preferLength:
+ *                 type: integer
+ *                 enum: [3, 7, 14]
+ *     responses:
+ *       201:
+ *         description: Sprint generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                   description: Localized success message using `objectives.sprint.generated`
+ *                 data:
+ *                   $ref: '#/components/schemas/SprintPlanResponse'
+ *                 timestamp:
+ *                   type: string
+ *       400:
+ *         description: Invalid payload
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/:objectiveId/sprints/generate', authMiddleware, objectiveController.generateSprint.bind(objectiveController));
+
+/**
+ * @swagger
+ * /api/objectives/{objectiveId}/sprints/{sprintId}:
+ *   get:
+ *     summary: Retrieve a sprint details
+ *     description: Returns sprint metadata and planner output for a given objective.
+ *     tags: [Objectives]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: objectiveId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: sprintId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Sprint retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                   description: Localized message using `objectives.sprint.retrieved`
+ *                 data:
+ *                   $ref: '#/components/schemas/SprintPlanResponse'
+ *                 timestamp:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Sprint not found
+ */
+router.get('/:objectiveId/sprints/:sprintId', authMiddleware, objectiveController.getSprint.bind(objectiveController));
+
+export default router;
