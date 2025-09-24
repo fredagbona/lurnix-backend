@@ -12,7 +12,6 @@ import {
 } from '../types/prisma';
 import type { ObjectiveSprintLimitPayload } from '../types/planLimits.js';
 
-
 type JsonValue = Prisma.JsonValue;
 
 export interface SprintProgressPayload {
@@ -194,13 +193,11 @@ export function serializeObjective(
 
 export function serializeSprint(
   sprint: Sprint & { progresses?: Progress[]; artifacts?: SprintArtifact[] },
-
   userId: string,
   objective?: Objective | null,
   planOverride?: SprintPlanOverride
 ): SprintUiPayload {
   const planDetailsFromOutput = extractSprintPlanDetails(sprint.plannerOutput);
-
   const planDetails = mergePlanDetails(planDetailsFromOutput, planOverride);
 
   const title = planDetails.title ?? buildFallbackTitle(objective);
@@ -528,4 +525,4 @@ function toReviewSummary(value: Record<string, unknown>): SprintReviewSummaryPay
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
-}
+

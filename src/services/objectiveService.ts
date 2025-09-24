@@ -166,7 +166,9 @@ export class ObjectiveService {
         }
       })
     ]);
+
     const objectiveRecord = objective as ObjectiveWithRelations | null;
+
 
     if (!objectiveRecord) {
       throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
@@ -391,6 +393,7 @@ export class ObjectiveService {
     if (hasUpdates) {
       await sprintService.updateSprint(request.sprintId, updates);
     }
+
 
     const refreshed = await this.loadSprintForUser({
       userId: request.userId,
