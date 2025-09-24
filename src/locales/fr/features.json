@@ -1,0 +1,86 @@
+{
+  "nav": {
+    "askFeatures": "Demander des fonctionnalités"
+  },
+  "status": {
+    "open": "Ouverte",
+    "under_review": "En cours d'examen",
+    "in_progress": "En cours",
+    "released": "Publiée",
+    "declined": "Refusée"
+  },
+  "list": {
+    "title": "Demandes de fonctionnalités",
+    "subtitle": "Votez pour des idées ou partagez ce qui améliorerait votre expérience Lurnix.",
+    "empty": "Aucune demande ne correspond à vos filtres pour le moment.",
+    "loadMore": "Charger plus de demandes"
+  },
+  "filters": {
+    "searchPlaceholder": "Rechercher des demandes",
+    "status": "Statut",
+    "category": "Catégorie",
+    "sort": {
+      "label": "Trier par",
+      "top": "Populaires",
+      "new": "Récentes",
+      "trending": "Tendance"
+    },
+    "tags": "Étiquettes"
+  },
+  "categories": {
+    "Roadmaps": "Feuilles de route",
+    "AI_Mentor": "Mentor IA",
+    "Community": "Communauté",
+    "Integrations": "Intégrations",
+    "Payments": "Paiements",
+    "UX": "Expérience utilisateur",
+    "Other": "Autre"
+  },
+  "form": {
+    "title": "Soumettre une demande",
+    "success": "Demande envoyée",
+    "duplicateHint": "Nous avons trouvé des demandes similaires. Pensez à voter pour l'une d'elles.",
+    "fields": {
+      "title": {
+        "label": "Titre",
+        "help": "Résumez la demande en 6 à 100 caractères."
+      },
+      "description": {
+        "label": "Description",
+        "help": "Décrivez le problème et son impact en 20 à 1000 caractères."
+      },
+      "category": {
+        "label": "Catégorie"
+      },
+      "tags": {
+        "label": "Étiquettes",
+        "help": "Mots-clés facultatifs pour aider les autres à trouver la demande."
+      }
+    },
+    "submit": "Envoyer la demande"
+  },
+  "detail": {
+    "statusHistory": "Historique des statuts",
+    "votes": "Votes",
+    "vote": {
+      "add": "Voter",
+      "remove": "Retirer mon vote"
+    },
+    "duplicateOf": "Fusionnée avec la demande nº {{featureId}}"
+  },
+  "admin": {
+    "panelTitle": "Outils de modération",
+    "edit": "Modifier la demande",
+    "merge": "Fusionner avec une autre demande",
+    "modNotes": "Notes internes",
+    "addNote": "Ajouter une note",
+    "notePlaceholder": "Écrire une note pour l'équipe",
+    "statusChanged": "Statut mis à jour sur {{status}}",
+    "mergeSuccess": "Demande fusionnée avec succès"
+  },
+  "errors": {
+    "limit": "Vous avez atteint la limite d'envoi. Réessayez plus tard.",
+    "duplicate": "Une demande avec ce titre existe déjà.",
+    "notFound": "Demande introuvable."
+  }
+}

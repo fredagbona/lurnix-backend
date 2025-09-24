@@ -4,6 +4,8 @@ import type {
   CouponDiscountType as PrismaCouponDiscountType,
   InvoiceStatus as PrismaInvoiceStatus,
   PlanType as PrismaPlanType,
+  FeatureStatus as PrismaFeatureStatus,
+  FeatureCategory as PrismaFeatureCategory,
   UserSubscriptionStatus as PrismaUserSubscriptionStatus,
 } from '@prisma/client';
 import { PrismaClient as GeneratedPrismaClient } from '@prisma/client';
@@ -20,6 +22,8 @@ export type UserSubscriptionStatus = PrismaUserSubscriptionStatus;
 export type CouponDiscountType = PrismaCouponDiscountType;
 export type CouponAppliesTo = PrismaCouponAppliesTo;
 export type InvoiceStatus = PrismaInvoiceStatus;
+export type FeatureStatus = PrismaFeatureStatus;
+export type FeatureCategory = PrismaFeatureCategory;
 
 // Define a type that includes all model delegates
 type PrismaModels = {
@@ -37,6 +41,10 @@ type PrismaModels = {
   couponRedemption: GeneratedPrismaClient['couponRedemption'];
   billingInvoice: GeneratedPrismaClient['billingInvoice'];
   featureUsage: GeneratedPrismaClient['featureUsage'];
+  featureRequest: GeneratedPrismaClient['featureRequest'];
+  featureVote: GeneratedPrismaClient['featureVote'];
+  featureStatusChange: GeneratedPrismaClient['featureStatusChange'];
+  featureModNote: GeneratedPrismaClient['featureModNote'];
 };
 
 // Extended PrismaClient type with model delegates
