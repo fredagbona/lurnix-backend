@@ -24,6 +24,10 @@ import {
   serializeSprint
 } from '../serializers/objectiveSerializer.js';
 
+type ObjectiveWithSprints = {
+  sprints: Record<string, unknown>[];
+} & Record<string, unknown>;
+
 export interface CreateObjectiveRequest {
   userId: string;
   title: string;
@@ -44,6 +48,7 @@ export interface GenerateSprintRequest {
 
 export class ObjectiveService {
   async listObjectives(userId: string): Promise<ObjectiveUiPayload[]> {
+
     const objectives = (await db.objective.findMany({
       where: {
         profileSnapshot: { userId }
@@ -61,6 +66,18 @@ export class ObjectiveService {
     })) as ObjectiveWithRelations[];
 
     return objectives.map((objective) => serializeObjective(objective, { userId }));
+
+
+    return objectives.map((objective: ObjectiveWithSprints) => {
+      const [latestSprint, ...restSprints] = objective.sprints;
+      return {
+        ...objective,
+        latestSprint: latestSprint ?? null,
+        pastSprints: restSprints,
+        totalSprints: objective.sprints.length
+      };
+    });
+
   }
 
   async getObjective(userId: string, objectiveId: string): Promise<ObjectiveUiPayload> {
