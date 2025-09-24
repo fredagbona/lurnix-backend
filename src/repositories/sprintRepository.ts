@@ -15,6 +15,8 @@ export interface SprintCreateInput {
   completedAt?: Date | null;
   score?: number | null;
   reviewerSummary?: Prisma.JsonValue | null;
+  selfEvaluationConfidence?: number | null;
+  selfEvaluationReflection?: string | null;
 }
 
 export interface SprintUpdateInput {
@@ -27,6 +29,8 @@ export interface SprintUpdateInput {
   totalEstimatedHours?: number;
   lengthDays?: number;
   difficulty?: SprintDifficulty;
+  selfEvaluationConfidence?: number | null;
+  selfEvaluationReflection?: string | null;
 }
 
 export class SprintRepository {
@@ -44,7 +48,9 @@ export class SprintRepository {
         startedAt: input.startedAt ?? null,
         completedAt: input.completedAt ?? null,
         score: input.score ?? null,
-        reviewerSummary: input.reviewerSummary ?? null
+        reviewerSummary: input.reviewerSummary ?? null,
+        selfEvaluationConfidence: input.selfEvaluationConfidence ?? null,
+        selfEvaluationReflection: input.selfEvaluationReflection ?? null
       }
     });
 

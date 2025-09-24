@@ -220,4 +220,132 @@ router.post('/:objectiveId/sprints/generate', authMiddleware, objectiveControlle
  */
 router.get('/:objectiveId/sprints/:sprintId', authMiddleware, objectiveController.getSprint.bind(objectiveController));
 
+/**
+ * @swagger
+ * /api/objectives/{objectiveId}/sprints/{sprintId}/evidence:
+ *   post:
+ *     summary: Submit sprint evidence artifacts
+ *     description: Stores sprint deliverable artifacts and optional self-evaluation notes before triggering a review.
+ *     tags: [Objectives]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: objectiveId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: sprintId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               artifacts:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     artifactId:
+ *                       type: string
+ *                     projectId:
+ *                       type: string
+ *                     type:
+ *                       type: string
+ *                       enum: [repository, deployment, video, screenshot]
+ *                     url:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       enum: [ok, broken, missing, unknown]
+ *                     notes:
+ *                       type: string
+ *               selfEvaluation:
+ *                 type: object
+ *                 properties:
+ *                   confidence:
+ *                     type: number
+ *                     minimum: 0
+ *                     maximum: 10
+ *                   reflection:
+ *                     type: string
+ *               markSubmitted:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Sprint evidence stored successfully
+ */
+router.post(
+  '/:objectiveId/sprints/:sprintId/evidence',
+  authMiddleware,
+  objectiveController.submitSprintEvidence.bind(objectiveController)
+);
+
+/**
+ * @swagger
+ * /api/objectives/{objectiveId}/sprints/{sprintId}/review:
+ *   post:
+ *     summary: Trigger an automated sprint review
+ *     description: Runs the reviewer engine on submitted evidence and returns the structured review summary.
+ *     tags: [Objectives]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: objectiveId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: sprintId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Sprint reviewed successfully
+ *   get:
+ *     summary: Retrieve the latest review summary
+ *     description: Returns the stored reviewer output for a sprint, if available.
+ *     tags: [Objectives]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: objectiveId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: sprintId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Review summary retrieved
+ */
+router.post(
+  '/:objectiveId/sprints/:sprintId/review',
+  authMiddleware,
+  objectiveController.reviewSprint.bind(objectiveController)
+);
+router.get(
+  '/:objectiveId/sprints/:sprintId/review',
+  authMiddleware,
+  objectiveController.getSprintReview.bind(objectiveController)
+);
+
 export default router;

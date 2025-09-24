@@ -16,9 +16,19 @@
   "sprint": {
     "generated": "Sprint généré avec succès.",
     "retrieved": "Sprint récupéré avec succès.",
+    "evidenceSaved": "Preuves du sprint enregistrées avec succès.",
+    "reviewCompleted": "Sprint évalué avec succès.",
+    "reviewRetrieved": "Évaluation du sprint récupérée avec succès.",
     "errors": {
       "profileRequired": "Vous devez disposer d'un profil apprenant avant de générer un sprint.",
       "notFound": "Sprint introuvable."
+    }
+  },
+  "planLimits": {
+    "objectiveLimitReached": "Vous avez atteint la limite d'objectifs pour votre offre actuelle. Passez à l'offre supérieure pour en créer davantage.",
+    "sprintLimitReached": "Vous avez atteint la limite de sprints pour cet objectif avec votre offre actuelle. Passez à l'offre supérieure pour en débloquer davantage.",
+    "errors": {
+      "freePlanMissing": "La configuration de l'offre gratuite est manquante. Veuillez contacter le support."
     }
   }
 }

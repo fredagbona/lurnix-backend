@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { LearnerProfile, SprintDifficulty } from '../types/prisma';
-import { PlannerRequestPayload, requestPlannerPlan } from './plannerClient.js';
+import {
+  PlannerClientResult,
+  PlannerRequestError,
+  PlannerRequestPayload,
+  PlannerRequestTelemetry,
+  requestPlannerPlan
+} from './plannerClient.js';
 import { ProfileContext } from './profileContextBuilder.js';
 import { config } from '../config/environment.js';
 
@@ -145,47 +151,170 @@ export interface SprintPlan extends SprintPlanCore {
   metadata: PlannerPlanMetadata;
 }
 
+class PlannerSchemaValidationError extends Error {
+  readonly issues: z.ZodIssue[];
+
+  constructor(issues: z.ZodIssue[]) {
+    super('Planner response failed schema validation');
+    this.name = 'PlannerSchemaValidationError';
+    this.issues = issues;
+  }
+}
+
+const MAX_REMOTE_ATTEMPTS = 3;
+const RETRY_DELAYS_MS = [500, 1500, 3000];
+
 class PlannerService {
   async generateSprintPlan(input: GenerateSprintPlanInput): Promise<SprintPlan> {
     const requestedAt = input.requestedAt ?? new Date();
     const plannerVersion = input.plannerVersion ?? config.PLANNER_VERSION ?? 'unversioned';
     const planId = this.buildPlanId(input.objectiveId, requestedAt);
+    let attempt = 0;
+    let lastError: unknown = null;
 
-    try {
-      const remotePlan = await requestPlannerPlan(
-        this.buildPlannerPayload(input, plannerVersion, requestedAt, planId)
-      );
-      const corePlan = this.validateRemotePlan(remotePlan, input, planId);
-      const metadata = this.buildPlanMetadata({
-        plannerVersion,
-        requestedAt,
-        provider: 'remote',
-        objectiveId: input.objectiveId,
-        learnerProfileId: input.learnerProfile?.id ?? null,
-        preferLength: input.preferLength ?? null
-      });
-      return {
-        ...corePlan,
-        id: planId,
-        plannerOutput: this.enrichPlannerOutput(remotePlan, metadata, input.profileContext),
-        metadata
-      };
-    } catch (error) {
-      console.error('[plannerService] Remote planner unavailable, falling back to heuristic plan:', error);
-      return this.buildFallbackPlan(input, planId, requestedAt, plannerVersion);
+    while (attempt < MAX_REMOTE_ATTEMPTS) {
+      attempt += 1;
+      let attemptTelemetry: PlannerRequestTelemetry | undefined;
+
+      try {
+        const remoteResult = await requestPlannerPlan(
+          this.buildPlannerPayload(input, plannerVersion, requestedAt, planId)
+        );
+        attemptTelemetry = remoteResult.telemetry;
+        const corePlan = this.validateRemotePlan(remoteResult.plan, input, planId);
+        const metadata = this.buildPlanMetadata({
+          plannerVersion,
+          requestedAt,
+          provider: 'remote',
+          objectiveId: input.objectiveId,
+          learnerProfileId: input.learnerProfile?.id ?? null,
+          preferLength: input.preferLength ?? null
+        });
+
+        this.logRemoteAttemptSuccess(attempt, planId, input.objectiveId, remoteResult);
+
+        return {
+          ...corePlan,
+          id: planId,
+          plannerOutput: this.enrichPlannerOutput(remoteResult.plan, metadata, input.profileContext),
+          metadata
+        };
+      } catch (error) {
+        lastError = error;
+        this.logRemoteAttemptFailure({
+          attempt,
+          error,
+          planId,
+          objectiveId: input.objectiveId,
+          telemetry: attemptTelemetry
+        });
+
+        if (attempt < MAX_REMOTE_ATTEMPTS && this.shouldRetry(error)) {
+          const delayMs = this.resolveRetryDelay(attempt);
+          await this.wait(delayMs);
+          continue;
+        }
+
+        break;
+      }
     }
+
+    this.logFallback(planId, input.objectiveId, attempt, lastError);
+    return this.buildFallbackPlan(input, planId, requestedAt, plannerVersion);
   }
 
-  private validateRemotePlan(rawPlan: unknown, input: GenerateSprintPlanInput, planId: string): SprintPlanCore {
+  private validateRemotePlan(
+    rawPlan: unknown,
+    input: GenerateSprintPlanInput,
+    planId: string
+  ): SprintPlanCore {
     const parsed = sprintPlanCoreSchema.safeParse(rawPlan);
     if (!parsed.success) {
-      throw new Error(parsed.error.message);
+      throw new PlannerSchemaValidationError(parsed.error.issues);
     }
 
     const plan = parsed.data;
     plan.id = planId;
 
     return plan;
+  }
+
+  private shouldRetry(error: unknown): boolean {
+    if (error instanceof PlannerSchemaValidationError) {
+      return true;
+    }
+
+    if (error instanceof PlannerRequestError) {
+      return error.reason === 'invalid_json';
+    }
+
+    return false;
+  }
+
+  private resolveRetryDelay(attempt: number): number {
+    const index = Math.min(attempt - 1, RETRY_DELAYS_MS.length - 1);
+    return RETRY_DELAYS_MS[index];
+  }
+
+  private async wait(ms: number): Promise<void> {
+    if (ms <= 0) {
+      return;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private logRemoteAttemptSuccess(
+    attempt: number,
+    planId: string,
+    objectiveId: string,
+    result: PlannerClientResult
+  ): void {
+    console.info('[plannerService] Remote planner attempt succeeded', {
+      attempt,
+      planId,
+      objectiveId,
+      provider: result.telemetry.provider,
+      model: result.telemetry.model,
+      latencyMs: result.telemetry.latencyMs,
+      promptHash: result.telemetry.promptHash
+    });
+  }
+
+  private logRemoteAttemptFailure(params: {
+    attempt: number;
+    error: unknown;
+    planId: string;
+    objectiveId: string;
+    telemetry?: PlannerRequestTelemetry;
+  }): void {
+    const { attempt, error, planId, objectiveId, telemetry } = params;
+    const resolvedTelemetry =
+      telemetry ?? (error instanceof PlannerRequestError ? error.telemetry : undefined);
+    console.error('[plannerService] Remote planner attempt failed', {
+      attempt,
+      planId,
+      objectiveId,
+      provider: resolvedTelemetry?.provider,
+      model: resolvedTelemetry?.model,
+      latencyMs: resolvedTelemetry?.latencyMs,
+      promptHash: resolvedTelemetry?.promptHash,
+      error: error instanceof Error ? error.message : error
+    });
+  }
+
+  private logFallback(
+    planId: string,
+    objectiveId: string,
+    attempts: number,
+    error: unknown
+  ): void {
+    console.warn('[plannerService] Falling back to heuristic planner', {
+      planId,
+      objectiveId,
+      attempts,
+      error: error instanceof Error ? error.message : error
+    });
   }
 
   private buildPlannerPayload(
