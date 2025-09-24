@@ -72,8 +72,7 @@ export class ObjectiveController {
       learnerProfileId: validation.data.learnerProfileId,
       successCriteria: validation.data.successCriteria,
       requiredSkills: validation.data.requiredSkills,
-      priority: validation.data.priority,
-      roadmapType: validation.data.roadmapType
+      priority: validation.data.priority
     });
 
     sendTranslatedResponse(res, 'objectives.create.success', {

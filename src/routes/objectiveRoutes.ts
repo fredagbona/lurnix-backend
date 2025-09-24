@@ -48,9 +48,6 @@ const router = express.Router();
  *                 type: integer
  *                 minimum: 1
  *                 maximum: 5
- *               roadmapType:
- *                 type: string
- *                 enum: [seven_day, thirty_day]
  *     responses:
  *       201:
  *         description: Objective created with initial sprint

@@ -11,7 +11,6 @@ import { config } from '../config/environment.js';
 import {
   ObjectiveStatus,
   LearnerProfile,
-  RoadmapType,
   SprintStatus,
   SprintDifficulty,
   Objective,
@@ -33,7 +32,6 @@ import { evidenceService, SubmittedArtifactInput } from './evidenceService.js';
 import { reviewerService } from './reviewerService.js';
 import { ReviewerSummary, zReviewerSummary } from '../types/reviewer.js';
 
-
 export interface CreateObjectiveRequest {
   userId: string;
   title: string;
@@ -42,7 +40,6 @@ export interface CreateObjectiveRequest {
   successCriteria?: string[];
   requiredSkills?: string[];
   priority?: number;
-  roadmapType?: RoadmapType;
 }
 
 export interface GenerateSprintRequest {
@@ -206,9 +203,7 @@ export class ObjectiveService {
         status: ObjectiveStatus.active,
         priority: request.priority ?? 2,
         successCriteria: request.successCriteria ?? [],
-        requiredSkills: request.requiredSkills ?? [],
-        estimatedWeeksMin: request.roadmapType === RoadmapType.thirty_day ? 3 : 1,
-        estimatedWeeksMax: request.roadmapType === RoadmapType.thirty_day ? 6 : 2
+        requiredSkills: request.requiredSkills ?? []
       }
     });
 
@@ -222,9 +217,62 @@ export class ObjectiveService {
       userId: request.userId,
       objectiveId: objective.id,
       learnerProfile,
-      profileContext,
-      preferLength: request.roadmapType === RoadmapType.thirty_day ? 14 : undefined
+      profileContext
     });
+
+    await this.applyPlanEstimates(objective.id, plan.lengthDays, {
+      estimatedWeeksMin: objective.estimatedWeeksMin ?? null,
+      estimatedWeeksMax: objective.estimatedWeeksMax ?? null
+    });
+
+    const objectiveWithRelations = (await db.objective.findFirst({
+      where: { id: objective.id },
+      include: {
+        profileSnapshot: true,
+        sprints: {
+          orderBy: { createdAt: 'desc' },
+          include: { progresses: true, artifacts: true }
+        }
+      }
+    })) as ObjectiveWithRelations | null;
+
+    if (!objectiveWithRelations) {
+      throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
+    }
+
+    const updatedSummary: PlanLimitsSummary = {
+      ...summary,
+      objectiveCount: summary.objectiveCount + 1
+    };
+    const planLimits = planLimitationService.buildPlanPayload(updatedSummary);
+    const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(
+      updatedSummary,
+      objectiveWithRelations.sprints?.length ?? 0
+    );
+    const objectivePayload = serializeObjective(objectiveWithRelations, {
+      userId: request.userId,
+      limits: objectiveLimits
+    });
+    const metadataOverride = plan.metadata
+      ? (JSON.parse(JSON.stringify(plan.metadata)) as Record<string, unknown>)
+      : undefined;
+    const sprintPayload = serializeSprint(
+      { ...sprint, progresses: [], artifacts: [] },
+      request.userId,
+      objectiveWithRelations,
+      {
+        title: plan.title,
+        description: plan.description,
+        projects: plan.projects,
+        microTasks: plan.microTasks,
+        portfolioCards: plan.portfolioCards,
+        adaptationNotes: plan.adaptationNotes,
+        metadata: metadataOverride,
+        lengthDays: plan.lengthDays,
+        totalEstimatedHours: plan.totalEstimatedHours,
+        difficulty: plan.difficulty as SprintDifficulty
+      }
+    );
 
     const objectiveWithRelations = (await db.objective.findFirst({
       where: { id: objective.id },
@@ -290,10 +338,7 @@ export class ObjectiveService {
       db.objective.findFirst({
         where: {
           id: request.objectiveId,
-          OR: [
-            { roadmap: { userId: request.userId } },
-            { profileSnapshot: { userId: request.userId } }
-          ]
+          profileSnapshot: { userId: request.userId }
         }
       }),
       this.resolveLearnerProfile(request.userId, request.learnerProfileId)
@@ -326,6 +371,18 @@ export class ObjectiveService {
       preferLength: request.preferLength,
       objective
     });
+
+    await this.applyPlanEstimates(objective.id, plan.lengthDays, {
+      estimatedWeeksMin: objective.estimatedWeeksMin ?? null,
+      estimatedWeeksMax: objective.estimatedWeeksMax ?? null
+    });
+
+    if (plan.lengthDays) {
+      const estimates = this.deriveEstimatedWeeks(plan.lengthDays);
+      objective.estimatedWeeksMin = estimates.min;
+      objective.estimatedWeeksMax = estimates.max;
+    }
+
 
     const metadataOverride = plan.metadata
       ? (JSON.parse(JSON.stringify(plan.metadata)) as Record<string, unknown>)
@@ -553,6 +610,43 @@ export class ObjectiveService {
       return null;
     }
   }
+
+  private deriveEstimatedWeeks(lengthDays?: number | null): { min: number | null; max: number | null } {
+    if (!lengthDays || lengthDays <= 0) {
+      return { min: null, max: null };
+    }
+
+    if (lengthDays <= 7) {
+      return { min: 1, max: 2 };
+    }
+
+    if (lengthDays <= 14) {
+      return { min: 2, max: 4 };
+    }
+
+    return { min: 3, max: 6 };
+  }
+
+  private async applyPlanEstimates(
+    objectiveId: string,
+    lengthDays?: number | null,
+    current?: { estimatedWeeksMin: number | null; estimatedWeeksMax: number | null }
+  ): Promise<void> {
+    const { min, max } = this.deriveEstimatedWeeks(lengthDays);
+
+    if (min === current?.estimatedWeeksMin && max === current?.estimatedWeeksMax) {
+      return;
+    }
+
+    await db.objective.update({
+      where: { id: objectiveId },
+      data: {
+        estimatedWeeksMin: min,
+        estimatedWeeksMax: max
+      }
+    });
+  }
+
 
   private async generateAndPersistSprint(params: {
     userId: string;

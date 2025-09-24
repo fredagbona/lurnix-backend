@@ -141,7 +141,6 @@ const ACTIVE_STATUS_PRIORITY: SprintStatus[] = [
 export function serializeObjective(
   objective: ObjectiveWithRelations,
   options: { userId: string; limits: ObjectiveSprintLimitPayload }
-
 ): ObjectiveUiPayload {
   const sprints = [...(objective.sprints ?? [])].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -229,7 +228,6 @@ export function serializeSprint(
   const selfEvaluation = buildSelfEvaluationPayload(sprint);
   const review = buildReviewPayload(sprint, planDetails.metadata);
 
-
   return {
     id: sprint.id,
     objectiveId: sprint.objectiveId,
@@ -257,7 +255,6 @@ export function serializeSprint(
       selfEvaluation
     },
     review
-
   };
 }
 
@@ -272,7 +269,7 @@ function findCurrentSprint(sprints: Sprint[]): Sprint | null {
 }
 
 export function extractSprintPlanDetails(plannerOutput: JsonValue | null | undefined): SprintPlanDetails {
-
+  
   if (!plannerOutput || typeof plannerOutput !== 'object') {
     return {};
   }
