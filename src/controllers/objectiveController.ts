@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { createObjectiveSchema, generateSprintSchema } from '../validation/objectiveSchemas.js';
+import { submitSprintEvidenceSchema, reviewSprintSchema } from '../validation/reviewerSchemas.js';
 import { objectiveService } from '../services/objectiveService.js';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { sendTranslatedResponse } from '../utils/translationUtils.js';
@@ -136,6 +137,127 @@ export class ObjectiveController {
     sendTranslatedResponse(res, 'objectives.sprint.retrieved', {
       statusCode: 200,
       data: sprint
+    });
+  }
+
+  async submitSprintEvidence(req: AuthRequest, res: Response): Promise<void> {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
+
+    const validation = submitSprintEvidenceSchema.safeParse({
+      ...req.body,
+      objectiveId: req.params.objectiveId,
+      sprintId: req.params.sprintId
+    });
+
+    if (!validation.success) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_EVIDENCE_PAYLOAD',
+          message: validation.error.message
+        },
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
+
+    const result = await objectiveService.submitSprintEvidence({
+      userId: req.userId,
+      objectiveId: validation.data.objectiveId,
+      sprintId: validation.data.sprintId,
+      artifacts: validation.data.artifacts,
+      selfEvaluation: validation.data.selfEvaluation,
+      markSubmitted: validation.data.markSubmitted ?? false
+    });
+
+    sendTranslatedResponse(res, 'objectives.sprint.evidenceSaved', {
+      statusCode: 200,
+      data: result
+    });
+  }
+
+  async reviewSprint(req: AuthRequest, res: Response): Promise<void> {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
+
+    const validation = reviewSprintSchema.safeParse({
+      objectiveId: req.params.objectiveId,
+      sprintId: req.params.sprintId
+    });
+
+    if (!validation.success) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_REVIEW_REQUEST',
+          message: validation.error.message
+        },
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
+
+    const result = await objectiveService.reviewSprint({
+      userId: req.userId,
+      objectiveId: validation.data.objectiveId,
+      sprintId: validation.data.sprintId
+    });
+
+    sendTranslatedResponse(res, 'objectives.sprint.reviewCompleted', {
+      statusCode: 200,
+      data: result
+    });
+  }
+
+  async getSprintReview(req: AuthRequest, res: Response): Promise<void> {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
+
+    const validation = reviewSprintSchema.safeParse({
+      objectiveId: req.params.objectiveId,
+      sprintId: req.params.sprintId
+    });
+
+    if (!validation.success) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_REVIEW_REQUEST',
+          message: validation.error.message
+        },
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
+
+    const result = await objectiveService.getSprintReview({
+      userId: req.userId,
+      objectiveId: validation.data.objectiveId,
+      sprintId: validation.data.sprintId
+    });
+
+    sendTranslatedResponse(res, 'objectives.sprint.reviewRetrieved', {
+      statusCode: 200,
+      data: result
     });
   }
 }

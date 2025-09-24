@@ -3,11 +3,13 @@ import {
   Objective,
   Progress,
   Sprint,
+  SprintArtifact,
   SprintDifficulty,
   SprintStatus,
+  ArtifactStatus,
+  ArtifactType,
   LearnerProfile
 } from '../types/prisma';
-
 import type { ObjectiveSprintLimitPayload } from '../types/planLimits.js';
 
 
@@ -18,6 +20,41 @@ export interface SprintProgressPayload {
   completedDays: number;
   scoreEstimate: number | null;
 }
+
+export interface SprintArtifactPayload {
+  artifactId: string;
+  projectId: string;
+  type: ArtifactType;
+  status: ArtifactStatus;
+  title: string | null;
+  url: string | null;
+  notes: string | null;
+  updatedAt: string;
+}
+
+export interface SprintReviewSummaryPayload {
+  score: number;
+  pass: boolean;
+  achieved: string[];
+  missing: string[];
+  nextRecommendations: string[];
+}
+
+export interface SprintReviewProjectPayload {
+  projectId: string;
+  projectTitle?: string;
+  review: SprintReviewSummaryPayload;
+}
+
+export interface SprintReviewPayload {
+  status: 'not_requested' | 'pending' | 'completed';
+  reviewedAt: string | null;
+  score: number | null;
+  summary: SprintReviewSummaryPayload | null;
+  projectSummaries: SprintReviewProjectPayload[];
+  metadata: Record<string, unknown> | null;
+}
+
 
 export interface SprintUiPayload {
   id: string;
@@ -37,6 +74,11 @@ export interface SprintUiPayload {
   completedAt: string | null;
   score: number | null;
   metadata: Record<string, unknown> | null;
+  evidence: {
+    artifacts: SprintArtifactPayload[];
+    selfEvaluation: { confidence?: number | null; reflection?: string | null } | null;
+  };
+  review: SprintReviewPayload;
 }
 
 export interface ObjectiveProgressPayload {
@@ -62,13 +104,12 @@ export interface ObjectiveUiPayload {
   totalSprints: number;
   createdAt: string;
   updatedAt: string;
-
   limits: ObjectiveSprintLimitPayload;
-
 }
 
 export interface ObjectiveWithRelations extends Objective {
-  sprints: (Sprint & { progresses?: Progress[] })[];
+  sprints: (Sprint & { progresses?: Progress[]; artifacts?: SprintArtifact[] })[];
+
   profileSnapshot?: LearnerProfile | null;
 }
 
@@ -148,17 +189,18 @@ export function serializeObjective(
     createdAt: objective.createdAt.toISOString(),
     updatedAt: objective.updatedAt.toISOString(),
     limits: options.limits
-
   };
 }
 
 export function serializeSprint(
-  sprint: Sprint & { progresses?: Progress[] },
+  sprint: Sprint & { progresses?: Progress[]; artifacts?: SprintArtifact[] },
+
   userId: string,
   objective?: Objective | null,
   planOverride?: SprintPlanOverride
 ): SprintUiPayload {
-  const planDetailsFromOutput = extractPlanDetails(sprint.plannerOutput);
+  const planDetailsFromOutput = extractSprintPlanDetails(sprint.plannerOutput);
+
   const planDetails = mergePlanDetails(planDetailsFromOutput, planOverride);
 
   const title = planDetails.title ?? buildFallbackTitle(objective);
@@ -185,6 +227,12 @@ export function serializeSprint(
       ? progressEstimate.scoreEstimate
       : sprint.score ?? null;
 
+  const artifacts = Array.isArray(sprint.artifacts) ? sprint.artifacts : [];
+  const artifactPayloads = artifacts.map(mapSprintArtifact);
+  const selfEvaluation = buildSelfEvaluationPayload(sprint);
+  const review = buildReviewPayload(sprint, planDetails.metadata);
+
+
   return {
     id: sprint.id,
     objectiveId: sprint.objectiveId,
@@ -206,7 +254,13 @@ export function serializeSprint(
     startedAt: sprint.startedAt ? sprint.startedAt.toISOString() : null,
     completedAt: sprint.completedAt ? sprint.completedAt.toISOString() : null,
     score: sprint.score ?? null,
-    metadata: cloneMetadata(planDetails.metadata)
+    metadata: cloneMetadata(planDetails.metadata),
+    evidence: {
+      artifacts: artifactPayloads,
+      selfEvaluation
+    },
+    review
+
   };
 }
 
@@ -220,7 +274,8 @@ function findCurrentSprint(sprints: Sprint[]): Sprint | null {
   return sprints[0] ?? null;
 }
 
-function extractPlanDetails(plannerOutput: JsonValue | null | undefined): SprintPlanDetails {
+export function extractSprintPlanDetails(plannerOutput: JsonValue | null | undefined): SprintPlanDetails {
+
   if (!plannerOutput || typeof plannerOutput !== 'object') {
     return {};
   }
@@ -340,4 +395,137 @@ function buildFallbackTitle(objective?: Objective | null): string {
     return 'Sprint';
   }
   return `${objective.title} — Sprint`;
+}
+
+function mapSprintArtifact(artifact: SprintArtifact): SprintArtifactPayload {
+  return {
+    artifactId: artifact.artifactId,
+    projectId: artifact.projectId,
+    type: artifact.type,
+    status: artifact.status,
+    title: artifact.title ?? null,
+    url: artifact.url ?? null,
+    notes: artifact.notes ?? null,
+    updatedAt: artifact.updatedAt.toISOString()
+  };
+}
+
+function buildSelfEvaluationPayload(
+  sprint: Sprint
+): { confidence?: number | null; reflection?: string | null } | null {
+  const payload: { confidence?: number | null; reflection?: string | null } = {};
+
+  if (typeof sprint.selfEvaluationConfidence === 'number' && !Number.isNaN(sprint.selfEvaluationConfidence)) {
+    payload.confidence = sprint.selfEvaluationConfidence;
+  }
+
+  if (typeof sprint.selfEvaluationReflection === 'string' && sprint.selfEvaluationReflection.trim().length > 0) {
+    payload.reflection = sprint.selfEvaluationReflection;
+  }
+
+  return Object.keys(payload).length > 0 ? payload : null;
+}
+
+function buildReviewPayload(
+  sprint: Sprint,
+  plannerMetadata: Record<string, unknown> | null | undefined
+): SprintReviewPayload {
+  const parsed = normalizeReviewerSummary(sprint.reviewerSummary);
+
+  if (!parsed) {
+    const status = sprint.status === SprintStatus.submitted ? 'pending' : 'not_requested';
+    return {
+      status,
+      reviewedAt: null,
+      score: sprint.score ?? null,
+      summary: null,
+      projectSummaries: [],
+      metadata: plannerMetadata ? cloneMetadata(plannerMetadata) : null
+    };
+  }
+
+  return {
+    status: 'completed',
+    reviewedAt: parsed.reviewedAt ?? sprint.completedAt?.toISOString() ?? null,
+    score: parsed.overall?.score ?? sprint.score ?? null,
+    summary: parsed.overall ?? null,
+    projectSummaries: parsed.projects,
+    metadata: parsed.metadata
+  };
+}
+
+interface NormalizedReviewerSummary {
+  reviewedAt: string | null;
+  overall: SprintReviewSummaryPayload | null;
+  projects: SprintReviewProjectPayload[];
+  metadata: Record<string, unknown> | null;
+}
+
+function normalizeReviewerSummary(value: JsonValue | null | undefined): NormalizedReviewerSummary | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const reviewedAt = typeof record.reviewedAt === 'string' ? record.reviewedAt : null;
+  const metadata = isRecord(record.metadata) ? cloneMetadata(record.metadata as Record<string, unknown>) : null;
+
+  const overall = isRecord(record.overall) ? toReviewSummary(record.overall as Record<string, unknown>) : null;
+
+  const projectsRaw = Array.isArray(record.projects) ? (record.projects as Record<string, unknown>[]) : [];
+  const projects = projectsRaw
+    .map((item) => toReviewProject(item))
+    .filter((item): item is SprintReviewProjectPayload => Boolean(item));
+
+  return {
+    reviewedAt,
+    overall,
+    projects,
+    metadata
+  };
+}
+
+function toReviewProject(value: Record<string, unknown>): SprintReviewProjectPayload | null {
+  if (typeof value.projectId !== 'string' || !isRecord(value.review)) {
+    return null;
+  }
+
+  const review = toReviewSummary(value.review as Record<string, unknown>);
+  if (!review) {
+    return null;
+  }
+
+  const projectTitle = typeof value.projectTitle === 'string' ? value.projectTitle : undefined;
+
+  return {
+    projectId: value.projectId,
+    projectTitle,
+    review
+  };
+}
+
+function toReviewSummary(value: Record<string, unknown>): SprintReviewSummaryPayload | null {
+  const score = typeof value.score === 'number' && !Number.isNaN(value.score) ? clamp(value.score, 0, 1) : null;
+  const pass = typeof value.pass === 'boolean' ? value.pass : null;
+  const achieved = Array.isArray(value.achieved) ? value.achieved.filter((item) => typeof item === 'string') : [];
+  const missing = Array.isArray(value.missing) ? value.missing.filter((item) => typeof item === 'string') : [];
+  const nextRecommendations = Array.isArray(value.nextRecommendations)
+    ? value.nextRecommendations.filter((item) => typeof item === 'string')
+    : [];
+
+  if (score === null || pass === null) {
+    return null;
+  }
+
+  return {
+    score,
+    pass,
+    achieved,
+    missing,
+    nextRecommendations
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }

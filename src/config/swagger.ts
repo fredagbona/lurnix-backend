@@ -239,18 +239,97 @@ const swaggerOptions: swaggerJsDoc.Options = {
           properties: {
             id: { type: 'string', format: 'uuid' },
             objectiveId: { type: 'string', format: 'uuid' },
-            profileSnapshotId: { type: 'string', format: 'uuid', nullable: true },
-            plannerInput: { type: 'object' },
-            plannerOutput: { type: 'object' },
+            title: { type: 'string' },
+            description: { type: 'string' },
             lengthDays: { type: 'integer' },
             totalEstimatedHours: { type: 'number' },
             difficulty: { type: 'string', enum: ['beginner', 'intermediate', 'advanced'] },
             status: { type: 'string', enum: ['planned', 'in_progress', 'submitted', 'reviewed'] },
+            projects: { type: 'array', items: { type: 'object' } },
+            microTasks: { type: 'array', items: { type: 'object' } },
+            portfolioCards: { type: 'array', items: { type: 'object' } },
+            adaptationNotes: { type: 'string', nullable: true },
+            progress: {
+              type: 'object',
+              properties: {
+                completedTasks: { type: 'integer' },
+                completedDays: { type: 'integer' },
+                scoreEstimate: { type: 'number', nullable: true }
+              }
+            },
             startedAt: { type: 'string', format: 'date-time', nullable: true },
             completedAt: { type: 'string', format: 'date-time', nullable: true },
             score: { type: 'number', nullable: true },
-            reviewerSummary: { type: 'object', nullable: true },
-            createdAt: { type: 'string', format: 'date-time' }
+            metadata: { type: 'object', nullable: true },
+            evidence: {
+              type: 'object',
+              properties: {
+                artifacts: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      artifactId: { type: 'string' },
+                      projectId: { type: 'string' },
+                      type: { type: 'string', enum: ['repository', 'deployment', 'video', 'screenshot'] },
+                      status: { type: 'string', enum: ['ok', 'broken', 'missing', 'unknown'] },
+                      title: { type: 'string', nullable: true },
+                      url: { type: 'string', nullable: true },
+                      notes: { type: 'string', nullable: true },
+                      updatedAt: { type: 'string', format: 'date-time' }
+                    }
+                  }
+                },
+                selfEvaluation: {
+                  type: 'object',
+                  nullable: true,
+                  properties: {
+                    confidence: { type: 'number', nullable: true },
+                    reflection: { type: 'string', nullable: true }
+                  }
+                }
+              }
+            },
+            review: {
+              type: 'object',
+              properties: {
+                status: { type: 'string', enum: ['not_requested', 'pending', 'completed'] },
+                reviewedAt: { type: 'string', format: 'date-time', nullable: true },
+                score: { type: 'number', nullable: true },
+                summary: {
+                  type: 'object',
+                  nullable: true,
+                  properties: {
+                    score: { type: 'number' },
+                    pass: { type: 'boolean' },
+                    achieved: { type: 'array', items: { type: 'string' } },
+                    missing: { type: 'array', items: { type: 'string' } },
+                    nextRecommendations: { type: 'array', items: { type: 'string' } }
+                  }
+                },
+                projectSummaries: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      projectId: { type: 'string' },
+                      projectTitle: { type: 'string', nullable: true },
+                      review: {
+                        type: 'object',
+                        properties: {
+                          score: { type: 'number' },
+                          pass: { type: 'boolean' },
+                          achieved: { type: 'array', items: { type: 'string' } },
+                          missing: { type: 'array', items: { type: 'string' } },
+                          nextRecommendations: { type: 'array', items: { type: 'string' } }
+                        }
+                      }
+                    }
+                  }
+                },
+                metadata: { type: 'object', nullable: true }
+              }
+            }
           }
         },
         SprintPlan: {

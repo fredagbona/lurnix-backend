@@ -16,6 +16,9 @@
   "sprint": {
     "generated": "Sprint generated successfully.",
     "retrieved": "Sprint retrieved successfully.",
+    "evidenceSaved": "Sprint evidence submitted successfully.",
+    "reviewCompleted": "Sprint reviewed successfully.",
+    "reviewRetrieved": "Sprint review retrieved successfully.",
     "errors": {
       "profileRequired": "You need a learner profile snapshot before generating a sprint.",
       "notFound": "Sprint not found."

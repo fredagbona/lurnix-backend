@@ -5,6 +5,7 @@ import { learnerProfileService } from './learnerProfileService.js';
 import { plannerService } from './plannerService.js';
 import type { SprintPlan } from './plannerService.js';
 import { sprintService } from './sprintService.js';
+import { SprintUpdateInput } from '../repositories/sprintRepository.js';
 import { profileContextBuilder, ProfileContext } from './profileContextBuilder.js';
 import { config } from '../config/environment.js';
 import {
@@ -15,22 +16,22 @@ import {
   SprintDifficulty,
   Objective,
   Progress,
-  Sprint
+  Sprint,
+  SprintArtifact
 } from '../types/prisma';
 import {
   ObjectiveUiPayload,
   ObjectiveWithRelations,
   SprintUiPayload,
+  extractSprintPlanDetails,
   serializeObjective,
   serializeSprint
 } from '../serializers/objectiveSerializer.js';
 import type { PlanLimitsPayload, ObjectiveSprintLimitPayload } from '../types/planLimits.js';
 import { planLimitationService, type PlanLimitsSummary } from './planLimitationService.js';
-
-
-type ObjectiveWithSprints = {
-  sprints: Record<string, unknown>[];
-} & Record<string, unknown>;
+import { evidenceService, SubmittedArtifactInput } from './evidenceService.js';
+import { reviewerService } from './reviewerService.js';
+import { ReviewerSummary, zReviewerSummary } from '../types/reviewer.js';
 
 
 export interface CreateObjectiveRequest {
@@ -75,6 +76,35 @@ export interface GenerateSprintResponse {
   objectiveLimits: ObjectiveSprintLimitPayload;
 }
 
+export interface SubmitSprintEvidenceRequest {
+  userId: string;
+  objectiveId: string;
+  sprintId: string;
+  artifacts: SubmittedArtifactInput[];
+  selfEvaluation?: { confidence?: number; reflection?: string };
+  markSubmitted?: boolean;
+}
+
+export interface SubmitSprintEvidenceResponse {
+  sprint: SprintUiPayload;
+}
+
+export interface ReviewSprintRequest {
+  userId: string;
+  objectiveId: string;
+  sprintId: string;
+}
+
+export interface SprintReviewResponse {
+  sprint: SprintUiPayload;
+  review: ReviewerSummary;
+}
+
+export interface SprintReviewDetailsResponse {
+  sprint: SprintUiPayload;
+  review: ReviewerSummary | null;
+}
+
 export class ObjectiveService {
   async listObjectives(userId: string): Promise<ObjectiveListResponse> {
     const [{ summary, plan: planLimits }, objectives] = await Promise.all([
@@ -88,7 +118,8 @@ export class ObjectiveService {
           sprints: {
             orderBy: { createdAt: 'desc' },
             include: {
-              progresses: true
+              progresses: true,
+              artifacts: true
             }
           }
         },
@@ -128,14 +159,13 @@ export class ObjectiveService {
           sprints: {
             orderBy: { createdAt: 'desc' },
             include: {
-              progresses: true
+              progresses: true,
+              artifacts: true
             }
           }
         }
       })
     ]);
-
-
     const objectiveRecord = objective as ObjectiveWithRelations | null;
 
     if (!objectiveRecord) {
@@ -200,7 +230,8 @@ export class ObjectiveService {
         profileSnapshot: true,
         sprints: {
           orderBy: { createdAt: 'desc' },
-          include: { progresses: true }
+          include: { progresses: true, artifacts: true }
+
         }
       }
     })) as ObjectiveWithRelations | null;
@@ -222,12 +253,12 @@ export class ObjectiveService {
       userId: request.userId,
       limits: objectiveLimits
     });
-
     const metadataOverride = plan.metadata
       ? (JSON.parse(JSON.stringify(plan.metadata)) as Record<string, unknown>)
       : undefined;
     const sprintPayload = serializeSprint(
-      { ...sprint, progresses: [] },
+      { ...sprint, progresses: [], artifacts: [] },
+
       request.userId,
       objectiveWithRelations,
       {
@@ -326,25 +357,111 @@ export class ObjectiveService {
   }
 
   async getSprint(userId: string, objectiveId: string, sprintId: string): Promise<SprintUiPayload> {
-    const sprint = (await db.sprint.findFirst({
-      where: {
-        id: sprintId,
-        objective: {
-          id: objectiveId,
-          profileSnapshot: { userId }
-        }
-      },
-      include: {
-        progresses: true,
-        objective: true
-      }
-    })) as (Sprint & { progresses?: Progress[]; objective?: Objective | null }) | null;
-
-    if (!sprint) {
-      throw new AppError('objectives.sprint.errors.notFound', 404, 'SPRINT_NOT_FOUND');
-    }
+    const sprint = await this.loadSprintForUser({ userId, objectiveId, sprintId });
 
     return serializeSprint(sprint, userId, sprint.objective ?? null);
+  }
+
+  async submitSprintEvidence(request: SubmitSprintEvidenceRequest): Promise<SubmitSprintEvidenceResponse> {
+    const sprint = await this.loadSprintForUser({
+      userId: request.userId,
+      objectiveId: request.objectiveId,
+      sprintId: request.sprintId
+    });
+
+
+    await evidenceService.upsertArtifacts(request.sprintId, request.artifacts ?? []);
+
+    const updates: SprintUpdateInput = {};
+    let hasUpdates = false;
+
+    const normalizedSelfEval = this.normalizeSelfEvaluationInput(request.selfEvaluation);
+    if (normalizedSelfEval) {
+      updates.selfEvaluationConfidence = normalizedSelfEval.confidence ?? null;
+      updates.selfEvaluationReflection = normalizedSelfEval.reflection ?? null;
+      hasUpdates = true;
+    }
+
+    if (request.markSubmitted && sprint.status !== SprintStatus.reviewed) {
+      updates.status = SprintStatus.submitted;
+      updates.completedAt = sprint.completedAt ?? new Date();
+      hasUpdates = true;
+    }
+
+    if (hasUpdates) {
+      await sprintService.updateSprint(request.sprintId, updates);
+    }
+
+    const refreshed = await this.loadSprintForUser({
+      userId: request.userId,
+      objectiveId: request.objectiveId,
+      sprintId: request.sprintId
+    });
+
+    const payload = serializeSprint(refreshed, request.userId, refreshed.objective ?? null);
+
+    return { sprint: payload };
+  }
+
+  async reviewSprint(request: ReviewSprintRequest): Promise<SprintReviewResponse> {
+    const sprint = await this.loadSprintForUser({
+      userId: request.userId,
+      objectiveId: request.objectiveId,
+      sprintId: request.sprintId
+    });
+
+    const planDetails = extractSprintPlanDetails(sprint.plannerOutput);
+    const projects = Array.isArray(planDetails.projects)
+      ? (planDetails.projects as Record<string, unknown>[])
+      : [];
+
+    const selfEvaluation = this.normalizeSelfEvaluationInput({
+      confidence: sprint.selfEvaluationConfidence ?? undefined,
+      reflection: sprint.selfEvaluationReflection ?? undefined
+    });
+
+    const { summary } = await reviewerService.reviewSprint({
+      projects,
+      artifacts: Array.isArray(sprint.artifacts) ? sprint.artifacts : [],
+      selfEvaluation
+    });
+
+    const reviewerSummaryJson = this.cloneAsJson(summary);
+
+    await sprintService.markSprintStatus(sprint.id, SprintStatus.reviewed, {
+      completedAt: sprint.completedAt ?? new Date(),
+      score: summary.overall.score,
+      reviewerSummary: reviewerSummaryJson
+    });
+
+    const refreshed = await this.loadSprintForUser({
+      userId: request.userId,
+      objectiveId: request.objectiveId,
+      sprintId: request.sprintId
+    });
+
+    const sprintPayload = serializeSprint(refreshed, request.userId, refreshed.objective ?? null);
+
+    return {
+      sprint: sprintPayload,
+      review: summary
+    };
+  }
+
+  async getSprintReview(request: ReviewSprintRequest): Promise<SprintReviewDetailsResponse> {
+    const sprint = await this.loadSprintForUser({
+      userId: request.userId,
+      objectiveId: request.objectiveId,
+      sprintId: request.sprintId
+    });
+
+    const sprintPayload = serializeSprint(sprint, request.userId, sprint.objective ?? null);
+    const reviewSummary = this.parseReviewerSummary(sprint.reviewerSummary);
+
+    return {
+      sprint: sprintPayload,
+      review: reviewSummary
+    };
   }
 
   private async resolveLearnerProfile(userId: string, learnerProfileId?: string): Promise<LearnerProfile | null> {
@@ -357,6 +474,81 @@ export class ObjectiveService {
     }
 
     return learnerProfileService.getLatestProfileForUser(userId);
+  }
+
+  private async loadSprintForUser(params: {
+    userId: string;
+    objectiveId: string;
+    sprintId: string;
+  }): Promise<
+    Sprint & {
+      progresses?: Progress[];
+      artifacts?: SprintArtifact[];
+      objective?: Objective | null;
+    }
+  > {
+    const sprint = (await db.sprint.findFirst({
+      where: {
+        id: params.sprintId,
+        objective: {
+          id: params.objectiveId,
+          profileSnapshot: { userId: params.userId }
+        }
+      },
+      include: {
+        progresses: true,
+        artifacts: true,
+        objective: true
+      }
+    })) as (Sprint & {
+      progresses?: Progress[];
+      artifacts?: SprintArtifact[];
+      objective?: Objective | null;
+    }) | null;
+
+    if (!sprint) {
+      throw new AppError('objectives.sprint.errors.notFound', 404, 'SPRINT_NOT_FOUND');
+    }
+
+    return sprint;
+  }
+
+  private normalizeSelfEvaluationInput(
+    selfEvaluation?: { confidence?: number | null; reflection?: string | null }
+  ): { confidence?: number | null; reflection?: string | null } | null {
+    if (!selfEvaluation) {
+      return null;
+    }
+
+    const payload: { confidence?: number | null; reflection?: string | null } = {};
+
+    if (typeof selfEvaluation.confidence === 'number' && !Number.isNaN(selfEvaluation.confidence)) {
+      payload.confidence = selfEvaluation.confidence;
+    }
+
+    if (typeof selfEvaluation.reflection === 'string' && selfEvaluation.reflection.trim().length > 0) {
+      payload.reflection = selfEvaluation.reflection.trim();
+    }
+
+    return Object.keys(payload).length > 0 ? payload : null;
+  }
+
+  private cloneAsJson<T>(value: T): Prisma.JsonValue {
+    return JSON.parse(JSON.stringify(value)) as Prisma.JsonValue;
+  }
+
+  private parseReviewerSummary(value: Prisma.JsonValue | null | undefined): ReviewerSummary | null {
+    if (!value) {
+      return null;
+    }
+
+    try {
+      const cloned = JSON.parse(JSON.stringify(value));
+      return zReviewerSummary.parse(cloned);
+    } catch (error) {
+      console.warn('[objectiveService] Failed to parse reviewer summary payload', error);
+      return null;
+    }
   }
 
   private async generateAndPersistSprint(params: {

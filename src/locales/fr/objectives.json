@@ -16,6 +16,9 @@
   "sprint": {
     "generated": "Sprint généré avec succès.",
     "retrieved": "Sprint récupéré avec succès.",
+    "evidenceSaved": "Preuves du sprint enregistrées avec succès.",
+    "reviewCompleted": "Sprint évalué avec succès.",
+    "reviewRetrieved": "Évaluation du sprint récupérée avec succès.",
     "errors": {
       "profileRequired": "Vous devez disposer d'un profil apprenant avant de générer un sprint.",
       "notFound": "Sprint introuvable."
