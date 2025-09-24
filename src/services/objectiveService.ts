@@ -11,8 +11,18 @@ import {
   LearnerProfile,
   RoadmapType,
   SprintStatus,
-  SprintDifficulty
+  SprintDifficulty,
+  Objective,
+  Progress,
+  Sprint
 } from '../types/prisma';
+import {
+  ObjectiveUiPayload,
+  ObjectiveWithRelations,
+  SprintUiPayload,
+  serializeObjective,
+  serializeSprint
+} from '../serializers/objectiveSerializer.js';
 
 type ObjectiveWithSprints = {
   sprints: Record<string, unknown>[];
@@ -37,18 +47,26 @@ export interface GenerateSprintRequest {
 }
 
 export class ObjectiveService {
-  async listObjectives(userId: string) {
+  async listObjectives(userId: string): Promise<ObjectiveUiPayload[]> {
+
     const objectives = (await db.objective.findMany({
       where: {
         profileSnapshot: { userId }
       },
       include: {
+        profileSnapshot: true,
         sprints: {
-          orderBy: { createdAt: 'desc' }
+          orderBy: { createdAt: 'desc' },
+          include: {
+            progresses: true
+          }
         }
       },
       orderBy: { createdAt: 'desc' }
-    })) as ObjectiveWithSprints[];
+    })) as ObjectiveWithRelations[];
+
+    return objectives.map((objective) => serializeObjective(objective, { userId }));
+
 
     return objectives.map((objective: ObjectiveWithSprints) => {
       const [latestSprint, ...restSprints] = objective.sprints;
@@ -59,30 +77,31 @@ export class ObjectiveService {
         totalSprints: objective.sprints.length
       };
     });
+
   }
 
-  async getObjective(userId: string, objectiveId: string) {
-    const objective = await db.objective.findFirst({
+  async getObjective(userId: string, objectiveId: string): Promise<ObjectiveUiPayload> {
+    const objective = (await db.objective.findFirst({
       where: {
         id: objectiveId,
         profileSnapshot: { userId }
       },
       include: {
+        profileSnapshot: true,
         sprints: {
-          orderBy: { createdAt: 'desc' }
+          orderBy: { createdAt: 'desc' },
+          include: {
+            progresses: true
+          }
         }
       }
-    });
+    })) as ObjectiveWithRelations | null;
 
     if (!objective) {
       throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
     }
 
-    return {
-      ...objective,
-      latestSprint: objective.sprints[0] ?? null,
-      pastSprints: objective.sprints.slice(1)
-    };
+    return serializeObjective(objective, { userId });
   }
 
   async createObjective(request: CreateObjectiveRequest) {
@@ -120,9 +139,31 @@ export class ObjectiveService {
       preferLength: request.roadmapType === RoadmapType.thirty_day ? 14 : undefined
     });
 
-    return {
+    const objectivePayload = await this.getObjective(request.userId, objective.id);
+    const metadataOverride = plan.metadata
+      ? (JSON.parse(JSON.stringify(plan.metadata)) as Record<string, unknown>)
+      : undefined;
+    const sprintPayload = serializeSprint(
+      { ...sprint, progresses: [] },
+      request.userId,
       objective,
-      sprint,
+      {
+        title: plan.title,
+        description: plan.description,
+        projects: plan.projects,
+        microTasks: plan.microTasks,
+        portfolioCards: plan.portfolioCards,
+        adaptationNotes: plan.adaptationNotes,
+        metadata: metadataOverride,
+        lengthDays: plan.lengthDays,
+        totalEstimatedHours: plan.totalEstimatedHours,
+        difficulty: plan.difficulty as SprintDifficulty
+      }
+    );
+
+    return {
+      objective: objectivePayload,
+      sprint: sprintPayload,
       plan
     };
   }
@@ -155,7 +196,7 @@ export class ObjectiveService {
       objectiveId: objective.id
     });
 
-    return this.generateAndPersistSprint({
+    const { sprint, plan } = await this.generateAndPersistSprint({
       userId: request.userId,
       objectiveId: objective.id,
       learnerProfile,
@@ -163,30 +204,54 @@ export class ObjectiveService {
       preferLength: request.preferLength,
       objective
     });
+
+    const metadataOverride = plan.metadata
+      ? (JSON.parse(JSON.stringify(plan.metadata)) as Record<string, unknown>)
+      : undefined;
+    const sprintPayload = serializeSprint(
+      { ...sprint, progresses: [] },
+      request.userId,
+      objective,
+      {
+        title: plan.title,
+        description: plan.description,
+        projects: plan.projects,
+        microTasks: plan.microTasks,
+        portfolioCards: plan.portfolioCards,
+        adaptationNotes: plan.adaptationNotes,
+        metadata: metadataOverride,
+        lengthDays: plan.lengthDays,
+        totalEstimatedHours: plan.totalEstimatedHours,
+        difficulty: plan.difficulty as SprintDifficulty
+      }
+    );
+
+    return {
+      sprint: sprintPayload,
+      plan
+    };
   }
 
-  async getSprint(userId: string, objectiveId: string, sprintId: string) {
-    const sprint = await db.sprint.findFirst({
+  async getSprint(userId: string, objectiveId: string, sprintId: string): Promise<SprintUiPayload> {
+    const sprint = (await db.sprint.findFirst({
       where: {
         id: sprintId,
         objective: {
           id: objectiveId,
           profileSnapshot: { userId }
         }
+      },
+      include: {
+        progresses: true,
+        objective: true
       }
-    });
+    })) as (Sprint & { progresses?: Progress[]; objective?: Objective | null }) | null;
 
     if (!sprint) {
       throw new AppError('objectives.sprint.errors.notFound', 404, 'SPRINT_NOT_FOUND');
     }
 
-    const plannerOutput = sprint.plannerOutput as Prisma.JsonValue;
-    const plan = (plannerOutput as any)?.plan ?? plannerOutput;
-
-    return {
-      ...sprint,
-      plan
-    };
+    return serializeSprint(sprint, userId, sprint.objective ?? null);
   }
 
   private async resolveLearnerProfile(userId: string, learnerProfileId?: string): Promise<LearnerProfile | null> {
