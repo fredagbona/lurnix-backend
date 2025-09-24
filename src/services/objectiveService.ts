@@ -166,6 +166,7 @@ export class ObjectiveService {
 
     const objectiveRecord = objective as ObjectiveWithRelations | null;
 
+
     if (!objectiveRecord) {
       throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
     }
@@ -183,6 +184,7 @@ export class ObjectiveService {
       objective: serializeObjective(objectiveRecord, { userId, limits: objectiveLimits }),
       planLimits
     };
+
   }
 
   async createObjective(request: CreateObjectiveRequest): Promise<CreateObjectiveResponse> {
@@ -272,6 +274,57 @@ export class ObjectiveService {
       }
     );
 
+    const objectiveWithRelations = (await db.objective.findFirst({
+      where: { id: objective.id },
+      include: {
+        profileSnapshot: true,
+        sprints: {
+          orderBy: { createdAt: 'desc' },
+          include: { progresses: true, artifacts: true }
+
+        }
+      }
+    })) as ObjectiveWithRelations | null;
+
+    if (!objectiveWithRelations) {
+      throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
+    }
+
+    const updatedSummary: PlanLimitsSummary = {
+      ...summary,
+      objectiveCount: summary.objectiveCount + 1
+    };
+    const planLimits = planLimitationService.buildPlanPayload(updatedSummary);
+    const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(
+      updatedSummary,
+      objectiveWithRelations.sprints?.length ?? 0
+    );
+    const objectivePayload = serializeObjective(objectiveWithRelations, {
+      userId: request.userId,
+      limits: objectiveLimits
+    });
+    const metadataOverride = plan.metadata
+      ? (JSON.parse(JSON.stringify(plan.metadata)) as Record<string, unknown>)
+      : undefined;
+    const sprintPayload = serializeSprint(
+      { ...sprint, progresses: [], artifacts: [] },
+
+      request.userId,
+      objectiveWithRelations,
+      {
+        title: plan.title,
+        description: plan.description,
+        projects: plan.projects,
+        microTasks: plan.microTasks,
+        portfolioCards: plan.portfolioCards,
+        adaptationNotes: plan.adaptationNotes,
+        metadata: metadataOverride,
+        lengthDays: plan.lengthDays,
+        totalEstimatedHours: plan.totalEstimatedHours,
+        difficulty: plan.difficulty as SprintDifficulty
+      }
+    );
+
     return {
       objective: objectivePayload,
       sprint: sprintPayload,
@@ -330,6 +383,7 @@ export class ObjectiveService {
       objective.estimatedWeeksMax = estimates.max;
     }
 
+
     const metadataOverride = plan.metadata
       ? (JSON.parse(JSON.stringify(plan.metadata)) as Record<string, unknown>)
       : undefined;
@@ -374,6 +428,7 @@ export class ObjectiveService {
       sprintId: request.sprintId
     });
 
+
     await evidenceService.upsertArtifacts(request.sprintId, request.artifacts ?? []);
 
     const updates: SprintUpdateInput = {};
@@ -395,6 +450,7 @@ export class ObjectiveService {
     if (hasUpdates) {
       await sprintService.updateSprint(request.sprintId, updates);
     }
+
 
     const refreshed = await this.loadSprintForUser({
       userId: request.userId,
@@ -590,6 +646,7 @@ export class ObjectiveService {
       }
     });
   }
+
 
   private async generateAndPersistSprint(params: {
     userId: string;
