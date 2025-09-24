@@ -12,6 +12,7 @@ import {
 } from '../types/prisma';
 import type { ObjectiveSprintLimitPayload } from '../types/planLimits.js';
 
+
 type JsonValue = Prisma.JsonValue;
 
 export interface SprintProgressPayload {
@@ -53,6 +54,7 @@ export interface SprintReviewPayload {
   projectSummaries: SprintReviewProjectPayload[];
   metadata: Record<string, unknown> | null;
 }
+
 
 export interface SprintUiPayload {
   id: string;
@@ -107,6 +109,7 @@ export interface ObjectiveUiPayload {
 
 export interface ObjectiveWithRelations extends Objective {
   sprints: (Sprint & { progresses?: Progress[]; artifacts?: SprintArtifact[] })[];
+
   profileSnapshot?: LearnerProfile | null;
 }
 
@@ -139,6 +142,7 @@ const ACTIVE_STATUS_PRIORITY: SprintStatus[] = [
 export function serializeObjective(
   objective: ObjectiveWithRelations,
   options: { userId: string; limits: ObjectiveSprintLimitPayload }
+
 ): ObjectiveUiPayload {
   const sprints = [...(objective.sprints ?? [])].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -190,11 +194,13 @@ export function serializeObjective(
 
 export function serializeSprint(
   sprint: Sprint & { progresses?: Progress[]; artifacts?: SprintArtifact[] },
+
   userId: string,
   objective?: Objective | null,
   planOverride?: SprintPlanOverride
 ): SprintUiPayload {
   const planDetailsFromOutput = extractSprintPlanDetails(sprint.plannerOutput);
+
   const planDetails = mergePlanDetails(planDetailsFromOutput, planOverride);
 
   const title = planDetails.title ?? buildFallbackTitle(objective);
@@ -226,6 +232,7 @@ export function serializeSprint(
   const selfEvaluation = buildSelfEvaluationPayload(sprint);
   const review = buildReviewPayload(sprint, planDetails.metadata);
 
+
   return {
     id: sprint.id,
     objectiveId: sprint.objectiveId,
@@ -253,6 +260,7 @@ export function serializeSprint(
       selfEvaluation
     },
     review
+
   };
 }
 
@@ -267,6 +275,7 @@ function findCurrentSprint(sprints: Sprint[]): Sprint | null {
 }
 
 export function extractSprintPlanDetails(plannerOutput: JsonValue | null | undefined): SprintPlanDetails {
+
   if (!plannerOutput || typeof plannerOutput !== 'object') {
     return {};
   }
