@@ -9,6 +9,7 @@ type PrismaModels = {
   progress: any;
   objective: any;
   sprint: any;
+  sprintArtifact: any;
   learnerProfile: any;
   quizResult: any;
   quizQuestion: any;

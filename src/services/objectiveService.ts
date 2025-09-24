@@ -3,16 +3,34 @@ import { db } from '../prisma/prismaWrapper';
 import { AppError } from '../errors/AppError';
 import { learnerProfileService } from './learnerProfileService.js';
 import { plannerService } from './plannerService.js';
+import type { SprintPlan } from './plannerService.js';
 import { sprintService } from './sprintService.js';
+import { SprintUpdateInput } from '../repositories/sprintRepository.js';
 import { profileContextBuilder, ProfileContext } from './profileContextBuilder.js';
 import { config } from '../config/environment.js';
 import {
   ObjectiveStatus,
   LearnerProfile,
-  RoadmapType,
   SprintStatus,
-  SprintDifficulty
+  SprintDifficulty,
+  Objective,
+  Progress,
+  Sprint,
+  SprintArtifact
 } from '../types/prisma';
+import {
+  ObjectiveUiPayload,
+  ObjectiveWithRelations,
+  SprintUiPayload,
+  extractSprintPlanDetails,
+  serializeObjective,
+  serializeSprint
+} from '../serializers/objectiveSerializer.js';
+import type { PlanLimitsPayload, ObjectiveSprintLimitPayload } from '../types/planLimits.js';
+import { planLimitationService, type PlanLimitsSummary } from './planLimitationService.js';
+import { evidenceService, SubmittedArtifactInput } from './evidenceService.js';
+import { reviewerService } from './reviewerService.js';
+import { ReviewerSummary, zReviewerSummary } from '../types/reviewer.js';
 
 export interface CreateObjectiveRequest {
   userId: string;
@@ -22,7 +40,6 @@ export interface CreateObjectiveRequest {
   successCriteria?: string[];
   requiredSkills?: string[];
   priority?: number;
-  roadmapType?: RoadmapType;
 }
 
 export interface GenerateSprintRequest {
@@ -32,56 +49,144 @@ export interface GenerateSprintRequest {
   preferLength?: number;
 }
 
+export interface ObjectiveListResponse {
+  objectives: ObjectiveUiPayload[];
+  planLimits: PlanLimitsPayload;
+}
+
+export interface ObjectiveDetailResponse {
+  objective: ObjectiveUiPayload;
+  planLimits: PlanLimitsPayload;
+}
+
+export interface CreateObjectiveResponse {
+  objective: ObjectiveUiPayload;
+  sprint: SprintUiPayload;
+  plan: SprintPlan;
+  planLimits: PlanLimitsPayload;
+}
+
+export interface GenerateSprintResponse {
+  sprint: SprintUiPayload;
+  plan: SprintPlan;
+  planLimits: PlanLimitsPayload;
+  objectiveLimits: ObjectiveSprintLimitPayload;
+}
+
+export interface SubmitSprintEvidenceRequest {
+  userId: string;
+  objectiveId: string;
+  sprintId: string;
+  artifacts: SubmittedArtifactInput[];
+  selfEvaluation?: { confidence?: number; reflection?: string };
+  markSubmitted?: boolean;
+}
+
+export interface SubmitSprintEvidenceResponse {
+  sprint: SprintUiPayload;
+}
+
+export interface ReviewSprintRequest {
+  userId: string;
+  objectiveId: string;
+  sprintId: string;
+}
+
+export interface SprintReviewResponse {
+  sprint: SprintUiPayload;
+  review: ReviewerSummary;
+}
+
+export interface SprintReviewDetailsResponse {
+  sprint: SprintUiPayload;
+  review: ReviewerSummary | null;
+}
+
 export class ObjectiveService {
-  async listObjectives(userId: string) {
-    const objectives = await db.objective.findMany({
-      where: {
-        profileSnapshot: { userId }
-      },
-      include: {
-        sprints: {
-          orderBy: { createdAt: 'desc' }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+  async listObjectives(userId: string): Promise<ObjectiveListResponse> {
+    const [{ summary, plan: planLimits }, objectives] = await Promise.all([
+      planLimitationService.getPlanLimits(userId),
+      db.objective.findMany({
+        where: {
+          profileSnapshot: { userId }
+        },
+        include: {
+          profileSnapshot: true,
+          sprints: {
+            orderBy: { createdAt: 'desc' },
+            include: {
+              progresses: true,
+              artifacts: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
 
-    return objectives.map((objective) => {
-      const [latestSprint, ...restSprints] = objective.sprints;
-      return {
-        ...objective,
-        latestSprint: latestSprint ?? null,
-        pastSprints: restSprints,
-        totalSprints: objective.sprints.length
-      };
-    });
-  }
+    const summaryWithCounts: PlanLimitsSummary = {
+      ...summary,
+      objectiveCount: planLimits.objectiveCount
+    };
 
-  async getObjective(userId: string, objectiveId: string) {
-    const objective = await db.objective.findFirst({
-      where: {
-        id: objectiveId,
-        profileSnapshot: { userId }
-      },
-      include: {
-        sprints: {
-          orderBy: { createdAt: 'desc' }
-        }
-      }
+    const payloads = (objectives as ObjectiveWithRelations[]).map((objective) => {
+      const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(
+        summaryWithCounts,
+        objective.sprints?.length ?? 0
+      );
+      return serializeObjective(objective, { userId, limits: objectiveLimits });
     });
-
-    if (!objective) {
-      throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
-    }
 
     return {
-      ...objective,
-      latestSprint: objective.sprints[0] ?? null,
-      pastSprints: objective.sprints.slice(1)
+      objectives: payloads,
+      planLimits
     };
   }
 
-  async createObjective(request: CreateObjectiveRequest) {
+  async getObjective(userId: string, objectiveId: string): Promise<ObjectiveDetailResponse> {
+    const [{ summary, plan: planLimits }, objective] = await Promise.all([
+      planLimitationService.getPlanLimits(userId),
+      db.objective.findFirst({
+        where: {
+          id: objectiveId,
+          profileSnapshot: { userId }
+        },
+        include: {
+          profileSnapshot: true,
+          sprints: {
+            orderBy: { createdAt: 'desc' },
+            include: {
+              progresses: true,
+              artifacts: true
+            }
+          }
+        }
+      })
+    ]);
+
+    const objectiveRecord = objective as ObjectiveWithRelations | null;
+
+    if (!objectiveRecord) {
+      throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
+    }
+
+    const summaryWithCounts: PlanLimitsSummary = {
+      ...summary,
+      objectiveCount: planLimits.objectiveCount
+    };
+    const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(
+      summaryWithCounts,
+      objectiveRecord.sprints?.length ?? 0
+    );
+
+    return {
+      objective: serializeObjective(objectiveRecord, { userId, limits: objectiveLimits }),
+      planLimits
+    };
+  }
+
+  async createObjective(request: CreateObjectiveRequest): Promise<CreateObjectiveResponse> {
+    const { summary } = await planLimitationService.ensureCanCreateObjective(request.userId);
     const learnerProfile = await this.resolveLearnerProfile(request.userId, request.learnerProfileId);
 
     if (!learnerProfile) {
@@ -96,9 +201,7 @@ export class ObjectiveService {
         status: ObjectiveStatus.active,
         priority: request.priority ?? 2,
         successCriteria: request.successCriteria ?? [],
-        requiredSkills: request.requiredSkills ?? [],
-        estimatedWeeksMin: request.roadmapType === RoadmapType.thirty_day ? 3 : 1,
-        estimatedWeeksMax: request.roadmapType === RoadmapType.thirty_day ? 6 : 2
+        requiredSkills: request.requiredSkills ?? []
       }
     });
 
@@ -112,26 +215,77 @@ export class ObjectiveService {
       userId: request.userId,
       objectiveId: objective.id,
       learnerProfile,
-      profileContext,
-      preferLength: request.roadmapType === RoadmapType.thirty_day ? 14 : undefined
+      profileContext
     });
 
+    await this.applyPlanEstimates(objective.id, plan.lengthDays, {
+      estimatedWeeksMin: objective.estimatedWeeksMin ?? null,
+      estimatedWeeksMax: objective.estimatedWeeksMax ?? null
+    });
+
+    const objectiveWithRelations = (await db.objective.findFirst({
+      where: { id: objective.id },
+      include: {
+        profileSnapshot: true,
+        sprints: {
+          orderBy: { createdAt: 'desc' },
+          include: { progresses: true, artifacts: true }
+        }
+      }
+    })) as ObjectiveWithRelations | null;
+
+    if (!objectiveWithRelations) {
+      throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
+    }
+
+    const updatedSummary: PlanLimitsSummary = {
+      ...summary,
+      objectiveCount: summary.objectiveCount + 1
+    };
+    const planLimits = planLimitationService.buildPlanPayload(updatedSummary);
+    const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(
+      updatedSummary,
+      objectiveWithRelations.sprints?.length ?? 0
+    );
+    const objectivePayload = serializeObjective(objectiveWithRelations, {
+      userId: request.userId,
+      limits: objectiveLimits
+    });
+    const metadataOverride = plan.metadata
+      ? (JSON.parse(JSON.stringify(plan.metadata)) as Record<string, unknown>)
+      : undefined;
+    const sprintPayload = serializeSprint(
+      { ...sprint, progresses: [], artifacts: [] },
+      request.userId,
+      objectiveWithRelations,
+      {
+        title: plan.title,
+        description: plan.description,
+        projects: plan.projects,
+        microTasks: plan.microTasks,
+        portfolioCards: plan.portfolioCards,
+        adaptationNotes: plan.adaptationNotes,
+        metadata: metadataOverride,
+        lengthDays: plan.lengthDays,
+        totalEstimatedHours: plan.totalEstimatedHours,
+        difficulty: plan.difficulty as SprintDifficulty
+      }
+    );
+
     return {
-      objective,
-      sprint,
-      plan
+      objective: objectivePayload,
+      sprint: sprintPayload,
+      plan,
+      planLimits
     };
   }
 
-  async generateSprint(request: GenerateSprintRequest) {
+  async generateSprint(request: GenerateSprintRequest): Promise<GenerateSprintResponse> {
     const [objective, learnerProfile] = await Promise.all([
       db.objective.findFirst({
         where: {
           id: request.objectiveId,
-          OR: [
-            { roadmap: { userId: request.userId } },
-            { profileSnapshot: { userId: request.userId } }
-          ]
+          profileSnapshot: { userId: request.userId }
         }
       }),
       this.resolveLearnerProfile(request.userId, request.learnerProfileId)
@@ -145,13 +299,18 @@ export class ObjectiveService {
       throw new AppError('objectives.sprint.errors.profileRequired', 400, 'LEARNER_PROFILE_REQUIRED');
     }
 
+    const { summary, plan: planLimits, sprintCount } = await planLimitationService.ensureCanGenerateSprint(
+      request.userId,
+      objective.id
+    );
+
     const profileContext = await profileContextBuilder.build({
       userId: request.userId,
       learnerProfileId: learnerProfile.id,
       objectiveId: objective.id
     });
 
-    return this.generateAndPersistSprint({
+    const { sprint, plan } = await this.generateAndPersistSprint({
       userId: request.userId,
       objectiveId: objective.id,
       learnerProfile,
@@ -159,29 +318,153 @@ export class ObjectiveService {
       preferLength: request.preferLength,
       objective
     });
-  }
 
-  async getSprint(userId: string, objectiveId: string, sprintId: string) {
-    const sprint = await db.sprint.findFirst({
-      where: {
-        id: sprintId,
-        objective: {
-          id: objectiveId,
-          profileSnapshot: { userId }
-        }
-      }
+    await this.applyPlanEstimates(objective.id, plan.lengthDays, {
+      estimatedWeeksMin: objective.estimatedWeeksMin ?? null,
+      estimatedWeeksMax: objective.estimatedWeeksMax ?? null
     });
 
-    if (!sprint) {
-      throw new AppError('objectives.sprint.errors.notFound', 404, 'SPRINT_NOT_FOUND');
+    if (plan.lengthDays) {
+      const estimates = this.deriveEstimatedWeeks(plan.lengthDays);
+      objective.estimatedWeeksMin = estimates.min;
+      objective.estimatedWeeksMax = estimates.max;
     }
 
-    const plannerOutput = sprint.plannerOutput as Prisma.JsonValue;
-    const plan = (plannerOutput as any)?.plan ?? plannerOutput;
+    const metadataOverride = plan.metadata
+      ? (JSON.parse(JSON.stringify(plan.metadata)) as Record<string, unknown>)
+      : undefined;
+    const sprintPayload = serializeSprint(
+      { ...sprint, progresses: [] },
+      request.userId,
+      objective,
+      {
+        title: plan.title,
+        description: plan.description,
+        projects: plan.projects,
+        microTasks: plan.microTasks,
+        portfolioCards: plan.portfolioCards,
+        adaptationNotes: plan.adaptationNotes,
+        metadata: metadataOverride,
+        lengthDays: plan.lengthDays,
+        totalEstimatedHours: plan.totalEstimatedHours,
+        difficulty: plan.difficulty as SprintDifficulty
+      }
+    );
+
+    const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(summary, sprintCount + 1);
 
     return {
-      ...sprint,
-      plan
+      sprint: sprintPayload,
+      plan,
+      planLimits,
+      objectiveLimits
+    };
+  }
+
+  async getSprint(userId: string, objectiveId: string, sprintId: string): Promise<SprintUiPayload> {
+    const sprint = await this.loadSprintForUser({ userId, objectiveId, sprintId });
+
+    return serializeSprint(sprint, userId, sprint.objective ?? null);
+  }
+
+  async submitSprintEvidence(request: SubmitSprintEvidenceRequest): Promise<SubmitSprintEvidenceResponse> {
+    const sprint = await this.loadSprintForUser({
+      userId: request.userId,
+      objectiveId: request.objectiveId,
+      sprintId: request.sprintId
+    });
+
+    await evidenceService.upsertArtifacts(request.sprintId, request.artifacts ?? []);
+
+    const updates: SprintUpdateInput = {};
+    let hasUpdates = false;
+
+    const normalizedSelfEval = this.normalizeSelfEvaluationInput(request.selfEvaluation);
+    if (normalizedSelfEval) {
+      updates.selfEvaluationConfidence = normalizedSelfEval.confidence ?? null;
+      updates.selfEvaluationReflection = normalizedSelfEval.reflection ?? null;
+      hasUpdates = true;
+    }
+
+    if (request.markSubmitted && sprint.status !== SprintStatus.reviewed) {
+      updates.status = SprintStatus.submitted;
+      updates.completedAt = sprint.completedAt ?? new Date();
+      hasUpdates = true;
+    }
+
+    if (hasUpdates) {
+      await sprintService.updateSprint(request.sprintId, updates);
+    }
+
+    const refreshed = await this.loadSprintForUser({
+      userId: request.userId,
+      objectiveId: request.objectiveId,
+      sprintId: request.sprintId
+    });
+
+    const payload = serializeSprint(refreshed, request.userId, refreshed.objective ?? null);
+
+    return { sprint: payload };
+  }
+
+  async reviewSprint(request: ReviewSprintRequest): Promise<SprintReviewResponse> {
+    const sprint = await this.loadSprintForUser({
+      userId: request.userId,
+      objectiveId: request.objectiveId,
+      sprintId: request.sprintId
+    });
+
+    const planDetails = extractSprintPlanDetails(sprint.plannerOutput);
+    const projects = Array.isArray(planDetails.projects)
+      ? (planDetails.projects as Record<string, unknown>[])
+      : [];
+
+    const selfEvaluation = this.normalizeSelfEvaluationInput({
+      confidence: sprint.selfEvaluationConfidence ?? undefined,
+      reflection: sprint.selfEvaluationReflection ?? undefined
+    });
+
+    const { summary } = await reviewerService.reviewSprint({
+      projects,
+      artifacts: Array.isArray(sprint.artifacts) ? sprint.artifacts : [],
+      selfEvaluation
+    });
+
+    const reviewerSummaryJson = this.cloneAsJson(summary);
+
+    await sprintService.markSprintStatus(sprint.id, SprintStatus.reviewed, {
+      completedAt: sprint.completedAt ?? new Date(),
+      score: summary.overall.score,
+      reviewerSummary: reviewerSummaryJson
+    });
+
+    const refreshed = await this.loadSprintForUser({
+      userId: request.userId,
+      objectiveId: request.objectiveId,
+      sprintId: request.sprintId
+    });
+
+    const sprintPayload = serializeSprint(refreshed, request.userId, refreshed.objective ?? null);
+
+    return {
+      sprint: sprintPayload,
+      review: summary
+    };
+  }
+
+  async getSprintReview(request: ReviewSprintRequest): Promise<SprintReviewDetailsResponse> {
+    const sprint = await this.loadSprintForUser({
+      userId: request.userId,
+      objectiveId: request.objectiveId,
+      sprintId: request.sprintId
+    });
+
+    const sprintPayload = serializeSprint(sprint, request.userId, sprint.objective ?? null);
+    const reviewSummary = this.parseReviewerSummary(sprint.reviewerSummary);
+
+    return {
+      sprint: sprintPayload,
+      review: reviewSummary
     };
   }
 
@@ -195,6 +478,117 @@ export class ObjectiveService {
     }
 
     return learnerProfileService.getLatestProfileForUser(userId);
+  }
+
+  private async loadSprintForUser(params: {
+    userId: string;
+    objectiveId: string;
+    sprintId: string;
+  }): Promise<
+    Sprint & {
+      progresses?: Progress[];
+      artifacts?: SprintArtifact[];
+      objective?: Objective | null;
+    }
+  > {
+    const sprint = (await db.sprint.findFirst({
+      where: {
+        id: params.sprintId,
+        objective: {
+          id: params.objectiveId,
+          profileSnapshot: { userId: params.userId }
+        }
+      },
+      include: {
+        progresses: true,
+        artifacts: true,
+        objective: true
+      }
+    })) as (Sprint & {
+      progresses?: Progress[];
+      artifacts?: SprintArtifact[];
+      objective?: Objective | null;
+    }) | null;
+
+    if (!sprint) {
+      throw new AppError('objectives.sprint.errors.notFound', 404, 'SPRINT_NOT_FOUND');
+    }
+
+    return sprint;
+  }
+
+  private normalizeSelfEvaluationInput(
+    selfEvaluation?: { confidence?: number | null; reflection?: string | null }
+  ): { confidence?: number | null; reflection?: string | null } | null {
+    if (!selfEvaluation) {
+      return null;
+    }
+
+    const payload: { confidence?: number | null; reflection?: string | null } = {};
+
+    if (typeof selfEvaluation.confidence === 'number' && !Number.isNaN(selfEvaluation.confidence)) {
+      payload.confidence = selfEvaluation.confidence;
+    }
+
+    if (typeof selfEvaluation.reflection === 'string' && selfEvaluation.reflection.trim().length > 0) {
+      payload.reflection = selfEvaluation.reflection.trim();
+    }
+
+    return Object.keys(payload).length > 0 ? payload : null;
+  }
+
+  private cloneAsJson<T>(value: T): Prisma.JsonValue {
+    return JSON.parse(JSON.stringify(value)) as Prisma.JsonValue;
+  }
+
+  private parseReviewerSummary(value: Prisma.JsonValue | null | undefined): ReviewerSummary | null {
+    if (!value) {
+      return null;
+    }
+
+    try {
+      const cloned = JSON.parse(JSON.stringify(value));
+      return zReviewerSummary.parse(cloned);
+    } catch (error) {
+      console.warn('[objectiveService] Failed to parse reviewer summary payload', error);
+      return null;
+    }
+  }
+
+  private deriveEstimatedWeeks(lengthDays?: number | null): { min: number | null; max: number | null } {
+    if (!lengthDays || lengthDays <= 0) {
+      return { min: null, max: null };
+    }
+
+    if (lengthDays <= 7) {
+      return { min: 1, max: 2 };
+    }
+
+    if (lengthDays <= 14) {
+      return { min: 2, max: 4 };
+    }
+
+    return { min: 3, max: 6 };
+  }
+
+  private async applyPlanEstimates(
+    objectiveId: string,
+    lengthDays?: number | null,
+    current?: { estimatedWeeksMin: number | null; estimatedWeeksMax: number | null }
+  ): Promise<void> {
+    const { min, max } = this.deriveEstimatedWeeks(lengthDays);
+
+    if (min === current?.estimatedWeeksMin && max === current?.estimatedWeeksMax) {
+      return;
+    }
+
+    await db.objective.update({
+      where: { id: objectiveId },
+      data: {
+        estimatedWeeksMin: min,
+        estimatedWeeksMax: max
+      }
+    });
   }
 
   private async generateAndPersistSprint(params: {

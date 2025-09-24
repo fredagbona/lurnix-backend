@@ -72,6 +72,9 @@ export interface EnvironmentConfig {
   GROQ_API_KEY: string;
   GROQ_MODEL: string;
   PLANNER_VERSION: string;
+  REVIEWER_PROVIDER: 'lmstudio' | 'groq';
+  REVIEWER_LMSTUDIO_MODEL: string;
+  REVIEWER_GROQ_MODEL: string;
 
   // Feature Requests Configuration
   FEATURE_REQUESTS_MAX_PER_DAY: number;
@@ -156,6 +159,18 @@ export const config: EnvironmentConfig = {
   GROQ_API_KEY: process.env.GROQ_API_KEY || '',
   GROQ_MODEL: process.env.GROQ_MODEL || 'llama-3.1-70b',
   PLANNER_VERSION: process.env.PLANNER_VERSION || '2024-09-profile-context',
+  REVIEWER_PROVIDER:
+    (process.env.REVIEWER_PROVIDER as 'lmstudio' | 'groq')
+    || (process.env.PLANNER_PROVIDER as 'lmstudio' | 'groq')
+    || (env === 'production' ? 'groq' : 'lmstudio'),
+  REVIEWER_LMSTUDIO_MODEL:
+    process.env.REVIEWER_LMSTUDIO_MODEL
+    || process.env.LMSTUDIO_MODEL
+    || 'llama-3.1-8b-instruct',
+  REVIEWER_GROQ_MODEL:
+    process.env.REVIEWER_GROQ_MODEL
+    || process.env.GROQ_MODEL
+    || 'llama-3.1-70b',
 
   // Feature Requests Configuration
   FEATURE_REQUESTS_MAX_PER_DAY: parseInt(process.env.FEATURE_REQUESTS_MAX_PER_DAY || '1', 10),
