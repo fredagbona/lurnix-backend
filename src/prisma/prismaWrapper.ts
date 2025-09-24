@@ -14,6 +14,10 @@ type PrismaModels = {
   user: any;
   admin: any;
   subscriptionPlan: any;
+  featureRequest: any;
+  featureVote: any;
+  featureStatusChange: any;
+  featureModNote: any;
 };
 
 // Create a wrapper with type assertions to fix TypeScript errors

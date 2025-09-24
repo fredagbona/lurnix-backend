@@ -67,6 +67,11 @@ export interface EnvironmentConfig {
   // OpenAI Configuration
   OPENAI_API_KEY: string;
   OPENAI_MODEL: string;
+
+  // Feature Requests Configuration
+  FEATURE_REQUESTS_MAX_PER_DAY: number;
+  FEATURE_REQUESTS_WINDOW_HOURS: number;
+  FEATURE_REQUEST_DUPLICATE_THRESHOLD: number;
 }
 
 // Validate required environment variables
@@ -141,6 +146,11 @@ export const config: EnvironmentConfig = {
   // OpenAI Configuration
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4o',
+
+  // Feature Requests Configuration
+  FEATURE_REQUESTS_MAX_PER_DAY: parseInt(process.env.FEATURE_REQUESTS_MAX_PER_DAY || '1', 10),
+  FEATURE_REQUESTS_WINDOW_HOURS: parseInt(process.env.FEATURE_REQUESTS_WINDOW_HOURS || '24', 10),
+  FEATURE_REQUEST_DUPLICATE_THRESHOLD: parseFloat(process.env.FEATURE_REQUEST_DUPLICATE_THRESHOLD || '0.55'),
 };
 
 // Environment validation

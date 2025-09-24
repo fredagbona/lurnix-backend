@@ -6,11 +6,14 @@ import { validateRequest, validateQuery, validateParams, rateLimit, rateLimitCon
 import { paginationQuerySchema, userIdParamSchema } from '../../validation/routeSchemas';
 import { testEmailSchema } from '../../validation/emailSchemas';
 import adminAuthRoutes from './adminAuthRoutes';
+import featureRequestAdminRoutes from './featureRequestAdminRoutes';
 
 const router = Router();
 
 // Use admin auth routes
 router.use('/auth', adminAuthRoutes);
+
+router.use('/features', featureRequestAdminRoutes);
 
 // All other admin routes require admin authentication
 
