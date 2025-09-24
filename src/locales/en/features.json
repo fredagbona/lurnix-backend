@@ -1,0 +1,86 @@
+{
+  "nav": {
+    "askFeatures": "Ask Features"
+  },
+  "status": {
+    "open": "Open",
+    "under_review": "Under review",
+    "in_progress": "In progress",
+    "released": "Released",
+    "declined": "Declined"
+  },
+  "list": {
+    "title": "Feature requests",
+    "subtitle": "Vote on ideas or share what would make Lurnix better for you.",
+    "empty": "No feature requests match your filters yet.",
+    "loadMore": "Load more feature requests"
+  },
+  "filters": {
+    "searchPlaceholder": "Search requests",
+    "status": "Status",
+    "category": "Category",
+    "sort": {
+      "label": "Sort by",
+      "top": "Top",
+      "new": "New",
+      "trending": "Trending"
+    },
+    "tags": "Tags"
+  },
+  "categories": {
+    "Roadmaps": "Roadmaps",
+    "AI_Mentor": "AI Mentor",
+    "Community": "Community",
+    "Integrations": "Integrations",
+    "Payments": "Payments",
+    "UX": "User experience",
+    "Other": "Other"
+  },
+  "form": {
+    "title": "Submit a feature request",
+    "success": "Feature request submitted",
+    "duplicateHint": "We found similar requests. Consider upvoting one of them instead.",
+    "fields": {
+      "title": {
+        "label": "Title",
+        "help": "Summarize the feature in 6–100 characters."
+      },
+      "description": {
+        "label": "Description",
+        "help": "Describe the problem and the impact in 20–1000 characters."
+      },
+      "category": {
+        "label": "Category"
+      },
+      "tags": {
+        "label": "Tags",
+        "help": "Optional keywords to help others find this request."
+      }
+    },
+    "submit": "Submit request"
+  },
+  "detail": {
+    "statusHistory": "Status updates",
+    "votes": "Votes",
+    "vote": {
+      "add": "Upvote",
+      "remove": "Remove vote"
+    },
+    "duplicateOf": "Merged into request #{{featureId}}"
+  },
+  "admin": {
+    "panelTitle": "Moderator tools",
+    "edit": "Edit request",
+    "merge": "Merge with another request",
+    "modNotes": "Moderator notes",
+    "addNote": "Add internal note",
+    "notePlaceholder": "Write a note for the team",
+    "statusChanged": "Status updated to {{status}}",
+    "mergeSuccess": "Request merged successfully"
+  },
+  "errors": {
+    "limit": "You reached the submission limit. Try again later.",
+    "duplicate": "A feature request with this title already exists.",
+    "notFound": "Feature request not found."
+  }
+}

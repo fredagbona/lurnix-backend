@@ -14,6 +14,7 @@ import webhookRoutes from "./webhookRoutes";
 import aiRoutes from "./aiRoutes";
 import aiRoadmapRoutes from "./aiRoadmapRoutes";
 import aiProfileRoutes from "./aiProfileRoutes";
+import featureRequestRoutes from "./featureRequestRoutes";
 
 const router = Router();
 
@@ -36,6 +37,7 @@ router.use(`${API_VERSION}/webhooks`, webhookRoutes);
 router.use(`${API_VERSION}/ai`, aiRoutes);
 router.use(`${API_VERSION}/ai/roadmap`, aiRoadmapRoutes);
 router.use(`${API_VERSION}/ai/profile`, aiProfileRoutes);
+router.use(`${API_VERSION}/features`, featureRequestRoutes);
 
 // Health check endpoint (no auth required)
 router.get("/health", (req, res) => {
