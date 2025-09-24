@@ -14,6 +14,10 @@ import {
   SprintDifficulty
 } from '../types/prisma';
 
+type ObjectiveWithSprints = {
+  sprints: Record<string, unknown>[];
+} & Record<string, unknown>;
+
 export interface CreateObjectiveRequest {
   userId: string;
   title: string;
@@ -34,7 +38,7 @@ export interface GenerateSprintRequest {
 
 export class ObjectiveService {
   async listObjectives(userId: string) {
-    const objectives = await db.objective.findMany({
+    const objectives = (await db.objective.findMany({
       where: {
         profileSnapshot: { userId }
       },
@@ -44,9 +48,9 @@ export class ObjectiveService {
         }
       },
       orderBy: { createdAt: 'desc' }
-    });
+    })) as ObjectiveWithSprints[];
 
-    return objectives.map((objective) => {
+    return objectives.map((objective: ObjectiveWithSprints) => {
       const [latestSprint, ...restSprints] = objective.sprints;
       return {
         ...objective,
