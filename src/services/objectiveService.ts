@@ -3,6 +3,7 @@ import { db } from '../prisma/prismaWrapper';
 import { AppError } from '../errors/AppError';
 import { learnerProfileService } from './learnerProfileService.js';
 import { plannerService } from './plannerService.js';
+import type { SprintPlan } from './plannerService.js';
 import { sprintService } from './sprintService.js';
 import { profileContextBuilder, ProfileContext } from './profileContextBuilder.js';
 import { config } from '../config/environment.js';
@@ -23,10 +24,14 @@ import {
   serializeObjective,
   serializeSprint
 } from '../serializers/objectiveSerializer.js';
+import type { PlanLimitsPayload, ObjectiveSprintLimitPayload } from '../types/planLimits.js';
+import { planLimitationService, type PlanLimitsSummary } from './planLimitationService.js';
+
 
 type ObjectiveWithSprints = {
   sprints: Record<string, unknown>[];
 } & Record<string, unknown>;
+
 
 export interface CreateObjectiveRequest {
   userId: string;
@@ -46,65 +51,115 @@ export interface GenerateSprintRequest {
   preferLength?: number;
 }
 
+export interface ObjectiveListResponse {
+  objectives: ObjectiveUiPayload[];
+  planLimits: PlanLimitsPayload;
+}
+
+export interface ObjectiveDetailResponse {
+  objective: ObjectiveUiPayload;
+  planLimits: PlanLimitsPayload;
+}
+
+export interface CreateObjectiveResponse {
+  objective: ObjectiveUiPayload;
+  sprint: SprintUiPayload;
+  plan: SprintPlan;
+  planLimits: PlanLimitsPayload;
+}
+
+export interface GenerateSprintResponse {
+  sprint: SprintUiPayload;
+  plan: SprintPlan;
+  planLimits: PlanLimitsPayload;
+  objectiveLimits: ObjectiveSprintLimitPayload;
+}
+
 export class ObjectiveService {
-  async listObjectives(userId: string): Promise<ObjectiveUiPayload[]> {
-
-    const objectives = (await db.objective.findMany({
-      where: {
-        profileSnapshot: { userId }
-      },
-      include: {
-        profileSnapshot: true,
-        sprints: {
-          orderBy: { createdAt: 'desc' },
-          include: {
-            progresses: true
+  async listObjectives(userId: string): Promise<ObjectiveListResponse> {
+    const [{ summary, plan: planLimits }, objectives] = await Promise.all([
+      planLimitationService.getPlanLimits(userId),
+      db.objective.findMany({
+        where: {
+          profileSnapshot: { userId }
+        },
+        include: {
+          profileSnapshot: true,
+          sprints: {
+            orderBy: { createdAt: 'desc' },
+            include: {
+              progresses: true
+            }
           }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    })) as ObjectiveWithRelations[];
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
 
-    return objectives.map((objective) => serializeObjective(objective, { userId }));
+    const summaryWithCounts: PlanLimitsSummary = {
+      ...summary,
+      objectiveCount: planLimits.objectiveCount
+    };
 
-
-    return objectives.map((objective: ObjectiveWithSprints) => {
-      const [latestSprint, ...restSprints] = objective.sprints;
-      return {
-        ...objective,
-        latestSprint: latestSprint ?? null,
-        pastSprints: restSprints,
-        totalSprints: objective.sprints.length
-      };
+    const payloads = (objectives as ObjectiveWithRelations[]).map((objective) => {
+      const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(
+        summaryWithCounts,
+        objective.sprints?.length ?? 0
+      );
+      return serializeObjective(objective, { userId, limits: objectiveLimits });
     });
 
+    return {
+      objectives: payloads,
+      planLimits
+    };
   }
 
-  async getObjective(userId: string, objectiveId: string): Promise<ObjectiveUiPayload> {
-    const objective = (await db.objective.findFirst({
-      where: {
-        id: objectiveId,
-        profileSnapshot: { userId }
-      },
-      include: {
-        profileSnapshot: true,
-        sprints: {
-          orderBy: { createdAt: 'desc' },
-          include: {
-            progresses: true
+  async getObjective(userId: string, objectiveId: string): Promise<ObjectiveDetailResponse> {
+    const [{ summary, plan: planLimits }, objective] = await Promise.all([
+      planLimitationService.getPlanLimits(userId),
+      db.objective.findFirst({
+        where: {
+          id: objectiveId,
+          profileSnapshot: { userId }
+        },
+        include: {
+          profileSnapshot: true,
+          sprints: {
+            orderBy: { createdAt: 'desc' },
+            include: {
+              progresses: true
+            }
           }
         }
-      }
-    })) as ObjectiveWithRelations | null;
+      })
+    ]);
 
-    if (!objective) {
+
+    const objectiveRecord = objective as ObjectiveWithRelations | null;
+
+    if (!objectiveRecord) {
       throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
     }
 
-    return serializeObjective(objective, { userId });
+    const summaryWithCounts: PlanLimitsSummary = {
+      ...summary,
+      objectiveCount: planLimits.objectiveCount
+    };
+    const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(
+      summaryWithCounts,
+      objectiveRecord.sprints?.length ?? 0
+    );
+
+    return {
+      objective: serializeObjective(objectiveRecord, { userId, limits: objectiveLimits }),
+      planLimits
+    };
+
   }
 
-  async createObjective(request: CreateObjectiveRequest) {
+  async createObjective(request: CreateObjectiveRequest): Promise<CreateObjectiveResponse> {
+    const { summary } = await planLimitationService.ensureCanCreateObjective(request.userId);
     const learnerProfile = await this.resolveLearnerProfile(request.userId, request.learnerProfileId);
 
     if (!learnerProfile) {
@@ -139,14 +194,42 @@ export class ObjectiveService {
       preferLength: request.roadmapType === RoadmapType.thirty_day ? 14 : undefined
     });
 
-    const objectivePayload = await this.getObjective(request.userId, objective.id);
+    const objectiveWithRelations = (await db.objective.findFirst({
+      where: { id: objective.id },
+      include: {
+        profileSnapshot: true,
+        sprints: {
+          orderBy: { createdAt: 'desc' },
+          include: { progresses: true }
+        }
+      }
+    })) as ObjectiveWithRelations | null;
+
+    if (!objectiveWithRelations) {
+      throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
+    }
+
+    const updatedSummary: PlanLimitsSummary = {
+      ...summary,
+      objectiveCount: summary.objectiveCount + 1
+    };
+    const planLimits = planLimitationService.buildPlanPayload(updatedSummary);
+    const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(
+      updatedSummary,
+      objectiveWithRelations.sprints?.length ?? 0
+    );
+    const objectivePayload = serializeObjective(objectiveWithRelations, {
+      userId: request.userId,
+      limits: objectiveLimits
+    });
+
     const metadataOverride = plan.metadata
       ? (JSON.parse(JSON.stringify(plan.metadata)) as Record<string, unknown>)
       : undefined;
     const sprintPayload = serializeSprint(
       { ...sprint, progresses: [] },
       request.userId,
-      objective,
+      objectiveWithRelations,
       {
         title: plan.title,
         description: plan.description,
@@ -164,11 +247,12 @@ export class ObjectiveService {
     return {
       objective: objectivePayload,
       sprint: sprintPayload,
-      plan
+      plan,
+      planLimits
     };
   }
 
-  async generateSprint(request: GenerateSprintRequest) {
+  async generateSprint(request: GenerateSprintRequest): Promise<GenerateSprintResponse> {
     const [objective, learnerProfile] = await Promise.all([
       db.objective.findFirst({
         where: {
@@ -189,6 +273,11 @@ export class ObjectiveService {
     if (!learnerProfile) {
       throw new AppError('objectives.sprint.errors.profileRequired', 400, 'LEARNER_PROFILE_REQUIRED');
     }
+
+    const { summary, plan: planLimits, sprintCount } = await planLimitationService.ensureCanGenerateSprint(
+      request.userId,
+      objective.id
+    );
 
     const profileContext = await profileContextBuilder.build({
       userId: request.userId,
@@ -226,9 +315,13 @@ export class ObjectiveService {
       }
     );
 
+    const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(summary, sprintCount + 1);
+
     return {
       sprint: sprintPayload,
-      plan
+      plan,
+      planLimits,
+      objectiveLimits
     };
   }
 
