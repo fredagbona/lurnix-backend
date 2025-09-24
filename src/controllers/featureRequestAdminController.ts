@@ -57,7 +57,7 @@ export class FeatureRequestAdminController {
 
     try {
       const updated = await featureRequestService.updateFeatureRequest(featureId, updatePayload, {
-        changedById: req.adminId || 'admin',
+        changedByAdminId: req.adminId || undefined,
       });
 
       res.status(200).json({
@@ -113,7 +113,7 @@ export class FeatureRequestAdminController {
     const payload: MergeFeatureRequestsInput = {
       sourceId,
       targetId,
-      mergedById: req.adminId || 'admin',
+      mergedByAdminId: req.adminId || undefined,
       closeWithStatus: req.body.closeWithStatus,
     };
 
@@ -146,7 +146,7 @@ export class FeatureRequestAdminController {
 
     const payload: CreateModNoteInput = {
       featureId,
-      authorId: req.adminId || 'admin',
+      authorAdminId: req.adminId || 'admin',
       note: req.body.note,
     };
 

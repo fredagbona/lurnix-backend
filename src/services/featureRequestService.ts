@@ -8,8 +8,8 @@ import {
 } from '../repositories/featureRequestRepository.js';
 import type {
   FeatureRequestRecord,
-  FeatureStatusChangeRecord,
-  FeatureModNoteRecord,
+  FeatureStatusChangeWithActor,
+  FeatureModNoteWithAuthor,
   FeatureListFilters,
   FeatureListSort,
   DuplicateCheckCandidate,
@@ -48,23 +48,31 @@ export interface FeatureAdminDetailDto extends FeatureDetailDto {
   modNotes: FeatureModNoteDto[];
 }
 
+export interface FeatureStatusActorDto {
+  type: 'user' | 'admin';
+  id: string;
+  name: string | null;
+  username?: string | null;
+  email?: string | null;
+}
+
 export interface FeatureStatusEntryDto {
   id: string;
   oldStatus: FeatureStatus | null;
   newStatus: FeatureStatus;
   note: string | null;
   changedAt: string;
-  changedBy: {
-    id: string;
-    username: string | null;
-    fullname: string | null;
-  } | null;
+  changedBy: FeatureStatusActorDto | null;
 }
 
 export interface FeatureModNoteDto {
   id: string;
   note: string;
-  authorId: string;
+  author: {
+    id: string;
+    name: string;
+    email: string;
+  };
   createdAt: string;
 }
 
@@ -204,7 +212,7 @@ export class FeatureRequestService {
   async updateFeatureRequest(
     featureId: bigint,
     data: UpdateFeatureRequestInput,
-    options: { changedById: string }
+    options: { changedByUserId?: string; changedByAdminId?: string }
   ): Promise<FeatureAdminDetailDto> {
     const existing = await featureRequestRepository.findWithDetails(featureId);
     if (!existing) {
@@ -239,16 +247,19 @@ export class FeatureRequestService {
         featureId,
         oldStatus: existing.status,
         newStatus: status,
-        changedById: options.changedById,
+        changedByUserId: options.changedByUserId,
+        changedByAdminId: options.changedByAdminId,
       });
     }
 
-    return this.getAdminFeatureRequest(featureId, options.changedById);
+    const actorId = options.changedByUserId ?? options.changedByAdminId;
+    return this.getAdminFeatureRequest(featureId, actorId);
   }
 
   async mergeFeatureRequests(input: MergeFeatureRequestsInput): Promise<FeatureAdminDetailDto> {
     await featureRequestRepository.mergeFeatureRequests(input);
-    return this.getAdminFeatureRequest(input.targetId, input.mergedById);
+    const actorId = input.mergedByUserId ?? input.mergedByAdminId;
+    return this.getAdminFeatureRequest(input.targetId, actorId);
   }
 
   async addModeratorNote(input: CreateModNoteInput): Promise<FeatureModNoteDto> {
@@ -275,10 +286,8 @@ export class FeatureRequestService {
   private toFeatureDetail(
     record: FeatureRequestRecord & {
       author: { id: string; username: string; fullname: string };
-      statusHistory: (FeatureStatusChangeRecord & {
-        changedBy: { id: string; username: string | null; fullname: string | null } | null;
-      })[];
-      modNotes: FeatureModNoteRecord[];
+      statusHistory: FeatureStatusChangeWithActor[];
+      modNotes: FeatureModNoteWithAuthor[];
     },
     userVoted: boolean,
     historyLimit?: number
@@ -296,32 +305,45 @@ export class FeatureRequestService {
     };
   }
 
-  private toStatusEntryDto(
-    entry: FeatureStatusChangeRecord & {
-      changedBy: { id: string; username: string | null; fullname: string | null } | null;
+  private toStatusEntryDto(entry: FeatureStatusChangeWithActor): FeatureStatusEntryDto {
+    let changedBy: FeatureStatusActorDto | null = null;
+
+    if (entry.changedByUser) {
+      changedBy = {
+        type: 'user',
+        id: entry.changedByUser.id,
+        name: entry.changedByUser.fullname,
+        username: entry.changedByUser.username,
+        email: null,
+      };
+    } else if (entry.changedByAdmin) {
+      changedBy = {
+        type: 'admin',
+        id: entry.changedByAdmin.id,
+        name: entry.changedByAdmin.name,
+        email: entry.changedByAdmin.email,
+      };
     }
-  ): FeatureStatusEntryDto {
+
     return {
       id: entry.id.toString(),
       oldStatus: entry.oldStatus ?? null,
       newStatus: entry.newStatus,
       note: entry.note ?? null,
       changedAt: entry.createdAt.toISOString(),
-      changedBy: entry.changedBy
-        ? {
-            id: entry.changedBy.id,
-            username: entry.changedBy.username,
-            fullname: entry.changedBy.fullname,
-          }
-        : null,
+      changedBy,
     };
   }
 
-  private toModNoteDto(note: FeatureModNoteRecord): FeatureModNoteDto {
+  private toModNoteDto(note: FeatureModNoteWithAuthor): FeatureModNoteDto {
     return {
       id: note.id.toString(),
       note: note.note,
-      authorId: note.authorId,
+      author: {
+        id: note.authorAdmin.id,
+        name: note.authorAdmin.name,
+        email: note.authorAdmin.email,
+      },
       createdAt: note.createdAt.toISOString(),
     };
   }

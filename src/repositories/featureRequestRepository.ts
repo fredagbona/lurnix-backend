@@ -6,9 +6,10 @@ import type {
   DuplicateCheckCandidate,
   FeatureListFilters,
   FeatureListSort,
-  FeatureModNoteRecord,
+  FeatureModNoteWithAuthor,
   FeatureRequestRecord,
   FeatureStatusChangeRecord,
+  FeatureStatusChangeWithActor,
   FeatureVoteRecord,
   MergeFeatureRequestsInput,
   RecordStatusChangeInput,
@@ -122,10 +123,8 @@ export class FeatureRequestRepository {
 
   async findWithDetails(id: bigint): Promise<(FeatureRequestRecord & {
     author: { id: string; username: string; fullname: string };
-    statusHistory: (FeatureStatusChangeRecord & {
-      changedBy: { id: string; username: string | null; fullname: string | null } | null;
-    })[];
-    modNotes: FeatureModNoteRecord[];
+    statusHistory: FeatureStatusChangeWithActor[];
+    modNotes: FeatureModNoteWithAuthor[];
   }) | null> {
     return prisma.featureRequest.findUnique({
       where: { id },
@@ -136,13 +135,21 @@ export class FeatureRequestRepository {
         statusHistory: {
           orderBy: { createdAt: 'desc' },
           include: {
-            changedBy: {
+            changedByUser: {
               select: { id: true, username: true, fullname: true },
+            },
+            changedByAdmin: {
+              select: { id: true, name: true, email: true },
             },
           },
         },
         modNotes: {
           orderBy: { createdAt: 'desc' },
+          include: {
+            authorAdmin: {
+              select: { id: true, name: true, email: true },
+            },
+          },
         },
       },
     });
@@ -318,6 +325,10 @@ export class FeatureRequestRepository {
   }
 
   async recordStatusChange(input: RecordStatusChangeInput): Promise<FeatureStatusChangeRecord> {
+    if (!input.changedByUserId && !input.changedByAdminId) {
+      throw new FeatureRequestRepositoryError('Status change requires an actor');
+    }
+
     try {
       const result = await prisma.$transaction(async tx => {
         const feature = await tx.featureRequest.findUnique({
@@ -341,7 +352,8 @@ export class FeatureRequestRepository {
             featureId: input.featureId,
             oldStatus: input.oldStatus ?? feature.status,
             newStatus: input.newStatus,
-            changedById: input.changedById,
+            changedByUserId: input.changedByUserId ?? null,
+            changedByAdminId: input.changedByAdminId ?? null,
             note: input.note,
           },
         });
@@ -356,13 +368,22 @@ export class FeatureRequestRepository {
     }
   }
 
-  async createModNote(data: CreateModNoteInput): Promise<FeatureModNoteRecord> {
+  async createModNote(data: CreateModNoteInput): Promise<FeatureModNoteWithAuthor> {
+    if (!data.authorAdminId) {
+      throw new FeatureRequestRepositoryError('Moderator note requires an admin author');
+    }
+
     try {
       return await prisma.featureModNote.create({
         data: {
           featureId: data.featureId,
-          authorId: data.authorId,
+          authorAdminId: data.authorAdminId,
           note: data.note.trim(),
+        },
+        include: {
+          authorAdmin: {
+            select: { id: true, name: true, email: true },
+          },
         },
       });
     } catch (error) {
@@ -426,12 +447,17 @@ export class FeatureRequestRepository {
           },
         });
 
+        if (!input.mergedByUserId && !input.mergedByAdminId) {
+          throw new FeatureRequestRepositoryError('Merge requires an actor');
+        }
+
         await tx.featureStatusChange.create({
           data: {
             featureId: input.sourceId,
             oldStatus: source.status,
             newStatus: closeStatus,
-            changedById: input.mergedById,
+            changedByUserId: input.mergedByUserId ?? null,
+            changedByAdminId: input.mergedByAdminId ?? null,
             note: `Merged into feature ${input.targetId.toString()}`,
           },
         });

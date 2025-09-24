@@ -104,8 +104,8 @@ model User {
   featureUsages    FeatureUsage[]
   featureRequests  FeatureRequest[]
   featureVotes     FeatureVote[]
-  featureStatusChanges FeatureStatusChange[] @relation("FeatureStatusChangedBy")
-  featureModNotes  FeatureModNote[]
+  featureStatusChanges FeatureStatusChange[] @relation("FeatureStatusChangedByUser")
+
 }
 
 model Admin {
@@ -121,6 +121,9 @@ model Admin {
   // Password reset functionality
   resetToken       String?
   resetTokenExpiry DateTime?
+
+  featureStatusChanges FeatureStatusChange[] @relation("FeatureStatusChangedByAdmin")
+  featureModNotes      FeatureModNote[]
 }
 
 model FeatureRequest {
@@ -167,12 +170,14 @@ model FeatureStatusChange {
   featureId  BigInt         @map("feature_id")
   oldStatus  FeatureStatus? @map("old_status")
   newStatus  FeatureStatus  @map("new_status")
-  changedById String        @map("changed_by")
+  changedByUserId String?   @map("changed_by_user_id")
+  changedByAdminId String?  @map("changed_by_admin_id")
   note       String?        @map("note")
   createdAt  DateTime       @default(now()) @map("created_at")
 
   feature   FeatureRequest @relation(fields: [featureId], references: [id], onDelete: Cascade)
-  changedBy User           @relation("FeatureStatusChangedBy", fields: [changedById], references: [id], onDelete: Restrict)
+  changedByUser User?      @relation("FeatureStatusChangedByUser", fields: [changedByUserId], references: [id], onDelete: Restrict)
+  changedByAdmin Admin?    @relation("FeatureStatusChangedByAdmin", fields: [changedByAdminId], references: [id], onDelete: Restrict)
 
   @@map("feature_status_changes")
   @@index([featureId], map: "feature_status_changes_feature_idx")
@@ -181,12 +186,12 @@ model FeatureStatusChange {
 model FeatureModNote {
   id        BigInt   @id @default(autoincrement()) @map("id")
   featureId BigInt   @map("feature_id")
-  authorId  String   @map("author_id")
+  authorAdminId  String   @map("author_admin_id")
   note      String   @map("note")
   createdAt DateTime @default(now()) @map("created_at")
 
   feature FeatureRequest @relation(fields: [featureId], references: [id], onDelete: Cascade)
-  author  User           @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  authorAdmin  Admin     @relation(fields: [authorAdminId], references: [id], onDelete: Restrict)
 
   @@map("feature_mod_notes")
   @@index([featureId], map: "feature_mod_notes_feature_idx")
