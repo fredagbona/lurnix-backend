@@ -129,6 +129,7 @@ export class ObjectiveService {
       objectiveCount: planLimits.objectiveCount
     };
 
+
     const payloads = (objectives as ObjectiveWithRelations[]).map((objective) => {
       const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(
         summaryWithCounts,
@@ -183,6 +184,7 @@ export class ObjectiveService {
       objective: serializeObjective(objectiveRecord, { userId, limits: objectiveLimits }),
       planLimits
     };
+
   }
 
   async createObjective(request: CreateObjectiveRequest): Promise<CreateObjectiveResponse> {
@@ -223,7 +225,8 @@ export class ObjectiveService {
       estimatedWeeksMax: objective.estimatedWeeksMax ?? null
     });
 
-    const objectiveRecord = (await db.objective.findFirst({
+   const objectiveRecord = (await db.objective.findFirst({
+
       where: { id: objective.id },
       include: {
         profileSnapshot: true,
@@ -235,6 +238,7 @@ export class ObjectiveService {
     })) as ObjectiveWithRelations | null;
 
     if (!objectiveRecord) {
+
       throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
     }
 
@@ -245,6 +249,7 @@ export class ObjectiveService {
     const planLimits = planLimitationService.buildPlanPayload(updatedSummary);
     const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(
       updatedSummary,
+
       objectiveRecord.sprints?.length ?? 0
     );
     const objectivePayload = serializeObjective(objectiveRecord, {
@@ -259,6 +264,7 @@ export class ObjectiveService {
       progresses: [],
       artifacts: []
     });
+
 
     return {
       objective: objectivePayload,
@@ -307,6 +313,7 @@ export class ObjectiveService {
       objective
     });
 
+
     await this.applyPlanEstimates(objective.id, plan.lengthDays, {
       estimatedWeeksMin: objective.estimatedWeeksMin ?? null,
       estimatedWeeksMax: objective.estimatedWeeksMax ?? null
@@ -336,6 +343,7 @@ export class ObjectiveService {
       objectiveLimits
     };
   }
+
 
   async getSprint(userId: string, objectiveId: string, sprintId: string): Promise<SprintUiPayload> {
     const sprint = await this.loadSprintForUser({ userId, objectiveId, sprintId });
@@ -371,6 +379,7 @@ export class ObjectiveService {
     if (hasUpdates) {
       await sprintService.updateSprint(request.sprintId, updates);
     }
+
 
     const refreshed = await this.loadSprintForUser({
       userId: request.userId,
@@ -422,6 +431,7 @@ export class ObjectiveService {
 
     const sprintPayload = serializeSprint(refreshed, request.userId, refreshed.objective ?? null);
 
+
     return {
       sprint: sprintPayload,
       review: summary
@@ -440,6 +450,7 @@ export class ObjectiveService {
 
     return {
       sprint: sprintPayload,
+
       review: reviewSummary
     };
   }
@@ -566,6 +577,7 @@ export class ObjectiveService {
       }
     });
   }
+
 
   private async generateAndPersistSprint(params: {
     userId: string;
