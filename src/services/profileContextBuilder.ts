@@ -224,11 +224,6 @@ class ProfileContextBuilder {
   }
 
   private async getProgressSignals(userId: string, objectiveId?: string): Promise<ProfileProgressContext | undefined> {
-    const roadmapProgress = await db.progress.findFirst({
-      where: { userId, roadmapId: { not: null } },
-      orderBy: { updatedAt: 'desc' }
-    });
-
     let sprintProgress: any = null;
     let latestSprint: any = null;
 
@@ -264,17 +259,6 @@ class ProfileContextBuilder {
           startedAt: latestSprint.startedAt?.toISOString?.() ?? null,
           completedAt: latestSprint.completedAt?.toISOString?.() ?? null
         }
-      };
-    }
-
-    if (roadmapProgress) {
-      return {
-        source: 'roadmap',
-        referenceId: roadmapProgress.id,
-        streak: roadmapProgress.streak ?? 0,
-        completedObjectives: roadmapProgress.completedObjectives ?? 0,
-        completedTasks: this.countCompletedTasks(roadmapProgress.completedTasks),
-        lastActivityAt: roadmapProgress.lastActivityAt?.toISOString?.()
       };
     }
 

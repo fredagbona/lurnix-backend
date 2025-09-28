@@ -1,10 +1,7 @@
 import { z } from 'zod';
-import { RoadmapType } from '../types/prisma';
-
 export const createObjectiveSchema = z.object({
   title: z.string().min(3),
   description: z.string().optional(),
-  roadmapType: z.nativeEnum(RoadmapType).optional(),
   learnerProfileId: z.string().uuid().optional(),
   successCriteria: z.array(z.string()).optional(),
   requiredSkills: z.array(z.string()).optional(),

@@ -29,6 +29,20 @@ export enum SprintDifficulty {
   advanced = 'advanced'
 }
 
+export enum ArtifactType {
+  repository = 'repository',
+  deployment = 'deployment',
+  video = 'video',
+  screenshot = 'screenshot'
+}
+
+export enum ArtifactStatus {
+  ok = 'ok',
+  broken = 'broken',
+  missing = 'missing',
+  unknown = 'unknown'
+}
+
 export enum LearnerProfileSource {
   quiz = 'quiz',
   manual = 'manual',
@@ -98,6 +112,23 @@ export interface Sprint {
   completedAt?: Date | null;
   score?: number | null;
   reviewerSummary?: Prisma.JsonValue | null;
+  selfEvaluationConfidence?: number | null;
+  selfEvaluationReflection?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SprintArtifact {
+  id: string;
+  sprintId: string;
+  projectId: string;
+  artifactId: string;
+  title?: string | null;
+  type: ArtifactType;
+  url?: string | null;
+  status: ArtifactStatus;
+  notes?: string | null;
+  metadata?: Prisma.JsonValue | null;
   createdAt: Date;
   updatedAt: Date;
 }

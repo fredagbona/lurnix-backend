@@ -1,4 +1,5 @@
 import Groq from 'groq-sdk';
+import { createHash } from 'node:crypto';
 import { config } from '../config/environment.js';
 
 export interface PlannerRequestPayload {
@@ -105,7 +106,7 @@ type ProviderConfig =
       baseUrl: string;
     };
 
-let groqClient: Groq | null = null;
+let groqClient: any = null;
 
 function buildProviderConfig(): ProviderConfig {
   const provider = config.PLANNER_PROVIDER;
@@ -125,7 +126,7 @@ function buildProviderConfig(): ProviderConfig {
   };
 }
 
-function getGroqClient(apiKey: string): Groq {
+function getGroqClient(apiKey: string): any {
   if (!apiKey) {
     throw new Error('GROQ_API_KEY is required when PLANNER_PROVIDER is set to groq');
   }
@@ -137,50 +138,146 @@ function getGroqClient(apiKey: string): Groq {
   return groqClient;
 }
 
-export async function requestPlannerPlan(payload: PlannerRequestPayload): Promise<unknown> {
+export type PlannerRequestErrorReason = 'provider_error' | 'invalid_json';
+
+export interface PlannerRequestTelemetry {
+  provider: ProviderConfig['provider'];
+  model: string;
+  promptHash: string;
+  latencyMs: number;
+}
+
+export class PlannerRequestError extends Error {
+  readonly reason: PlannerRequestErrorReason;
+  readonly telemetry: PlannerRequestTelemetry;
+
+  constructor(params: {
+    reason: PlannerRequestErrorReason;
+    message: string;
+    telemetry: PlannerRequestTelemetry;
+    cause?: unknown;
+  }) {
+    super(params.message);
+    this.name = 'PlannerRequestError';
+    this.reason = params.reason;
+    this.telemetry = params.telemetry;
+    if (params.cause instanceof Error) {
+      (this as unknown as { cause?: Error }).cause = params.cause;
+    }
+  }
+}
+
+export interface PlannerClientResult {
+  plan: unknown;
+  telemetry: PlannerRequestTelemetry;
+  rawContent: string;
+}
+
+export async function requestPlannerPlan(payload: PlannerRequestPayload): Promise<PlannerClientResult> {
   const providerConfig = buildProviderConfig();
   const { systemMessage, userPrompt } = buildPrompt(payload);
+  const promptHash = createHash('sha256').update(`${systemMessage}\n${userPrompt}`).digest('hex');
+  const baseTelemetry: PlannerRequestTelemetry = {
+    provider: providerConfig.provider,
+    model: providerConfig.model,
+    promptHash,
+    latencyMs: 0
+  };
+  const startTime = Date.now();
 
   if (providerConfig.provider === 'groq') {
     const client = getGroqClient(providerConfig.apiKey);
-    const completion = await client.chat.completions.create({
-      model: providerConfig.model,
-      temperature: 0.2,
-      max_tokens: 2048,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: systemMessage },
-        { role: 'user', content: userPrompt }
-      ]
-    });
+    try {
+      const completion = await client.chat.completions.create({
+        model: providerConfig.model,
+        temperature: 0.2,
+        max_tokens: 2048,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: userPrompt }
+        ]
+      });
 
-    const content = completion?.choices?.[0]?.message?.content;
-    if (!content || typeof content !== 'string') {
-      throw new Error('Groq planner returned empty content');
+      const content = completion?.choices?.[0]?.message?.content;
+      if (!content || typeof content !== 'string') {
+        throw new PlannerRequestError({
+          reason: 'provider_error',
+          message: 'Groq planner returned empty content',
+          telemetry: {
+            ...baseTelemetry,
+            latencyMs: Date.now() - startTime
+          }
+        });
+      }
+
+      return parsePlannerContent(content, baseTelemetry, startTime);
+    } catch (error) {
+      if (error instanceof PlannerRequestError) {
+        throw error;
+      }
+
+      throw new PlannerRequestError({
+        reason: 'provider_error',
+        message: (error as Error)?.message ?? 'Groq planner request failed',
+        telemetry: {
+          ...baseTelemetry,
+          latencyMs: Date.now() - startTime
+        },
+        cause: error
+      });
     }
-
-    return parsePlannerContent(content);
   }
 
   const body = buildLmStudioRequest(providerConfig.model, systemMessage, userPrompt);
-  const response = await fetch(providerConfig.baseUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
+  try {
+    const response = await fetch(providerConfig.baseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Planner provider error (${response.status}): ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new PlannerRequestError({
+        reason: 'provider_error',
+        message: `Planner provider error (${response.status}): ${errorText}`,
+        telemetry: {
+          ...baseTelemetry,
+          latencyMs: Date.now() - startTime
+        }
+      });
+    }
+
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content || typeof content !== 'string') {
+      throw new PlannerRequestError({
+        reason: 'provider_error',
+        message: 'LM Studio planner returned empty content',
+        telemetry: {
+          ...baseTelemetry,
+          latencyMs: Date.now() - startTime
+        }
+      });
+    }
+
+    return parsePlannerContent(content, baseTelemetry, startTime);
+  } catch (error) {
+    if (error instanceof PlannerRequestError) {
+      throw error;
+    }
+
+    throw new PlannerRequestError({
+      reason: 'provider_error',
+      message: (error as Error)?.message ?? 'LM Studio planner request failed',
+      telemetry: {
+        ...baseTelemetry,
+        latencyMs: Date.now() - startTime
+      },
+      cause: error
+    });
   }
-
-  const data = await response.json();
-  const content = data?.choices?.[0]?.message?.content;
-  if (!content || typeof content !== 'string') {
-    throw new Error('LM Studio planner returned empty content');
-  }
-
-  return parsePlannerContent(content);
 }
 
 function buildPrompt(payload: PlannerRequestPayload) {
@@ -239,13 +336,33 @@ function buildLmStudioRequest(model: string, systemMessage: string, userPrompt: 
   };
 }
 
-function parsePlannerContent(rawContent: string) {
+function parsePlannerContent(
+  rawContent: string,
+  baseTelemetry: PlannerRequestTelemetry,
+  startTime: number
+): PlannerClientResult {
   const sanitized = stripCodeFence(rawContent.trim());
 
   try {
-    return JSON.parse(sanitized);
+    const parsed = JSON.parse(sanitized);
+    return {
+      plan: parsed,
+      rawContent: sanitized,
+      telemetry: {
+        ...baseTelemetry,
+        latencyMs: Date.now() - startTime
+      }
+    };
   } catch (error) {
-    throw new Error(`Failed to parse planner response JSON: ${(error as Error).message}`);
+    throw new PlannerRequestError({
+      reason: 'invalid_json',
+      message: `Failed to parse planner response JSON: ${(error as Error).message}`,
+      telemetry: {
+        ...baseTelemetry,
+        latencyMs: Date.now() - startTime
+      },
+      cause: error
+    });
   }
 }
 
