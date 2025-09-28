@@ -129,6 +129,7 @@ export class ObjectiveService {
       objectiveCount: planLimits.objectiveCount
     };
 
+
     const payloads = (objectives as ObjectiveWithRelations[]).map((objective) => {
       const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(
         summaryWithCounts,
@@ -165,7 +166,6 @@ export class ObjectiveService {
     ]);
 
     const objectiveRecord = objective as ObjectiveWithRelations | null;
-
 
     if (!objectiveRecord) {
       throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
@@ -225,7 +225,8 @@ export class ObjectiveService {
       estimatedWeeksMax: objective.estimatedWeeksMax ?? null
     });
 
-    const objectiveWithRelations = (await db.objective.findFirst({
+   const objectiveRecord = (await db.objective.findFirst({
+
       where: { id: objective.id },
       include: {
         profileSnapshot: true,
@@ -236,7 +237,8 @@ export class ObjectiveService {
       }
     })) as ObjectiveWithRelations | null;
 
-    if (!objectiveWithRelations) {
+    if (!objectiveRecord) {
+
       throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
     }
 
@@ -247,83 +249,22 @@ export class ObjectiveService {
     const planLimits = planLimitationService.buildPlanPayload(updatedSummary);
     const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(
       updatedSummary,
-      objectiveWithRelations.sprints?.length ?? 0
+
+      objectiveRecord.sprints?.length ?? 0
     );
-    const objectivePayload = serializeObjective(objectiveWithRelations, {
+    const objectivePayload = serializeObjective(objectiveRecord, {
       userId: request.userId,
       limits: objectiveLimits
     });
-    const metadataOverride = plan.metadata
-      ? (JSON.parse(JSON.stringify(plan.metadata)) as Record<string, unknown>)
-      : undefined;
-    const sprintPayload = serializeSprint(
-      { ...sprint, progresses: [], artifacts: [] },
-      request.userId,
-      objectiveWithRelations,
-      {
-        title: plan.title,
-        description: plan.description,
-        projects: plan.projects,
-        microTasks: plan.microTasks,
-        portfolioCards: plan.portfolioCards,
-        adaptationNotes: plan.adaptationNotes,
-        metadata: metadataOverride,
-        lengthDays: plan.lengthDays,
-        totalEstimatedHours: plan.totalEstimatedHours,
-        difficulty: plan.difficulty as SprintDifficulty
-      }
-    );
-
-    const objectiveWithRelations = (await db.objective.findFirst({
-      where: { id: objective.id },
-      include: {
-        profileSnapshot: true,
-        sprints: {
-          orderBy: { createdAt: 'desc' },
-          include: { progresses: true, artifacts: true }
-
-        }
-      }
-    })) as ObjectiveWithRelations | null;
-
-    if (!objectiveWithRelations) {
-      throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
-    }
-
-    const updatedSummary: PlanLimitsSummary = {
-      ...summary,
-      objectiveCount: summary.objectiveCount + 1
-    };
-    const planLimits = planLimitationService.buildPlanPayload(updatedSummary);
-    const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(
-      updatedSummary,
-      objectiveWithRelations.sprints?.length ?? 0
-    );
-    const objectivePayload = serializeObjective(objectiveWithRelations, {
+    const sprintPayload = this.buildSprintPayload({
+      sprint,
       userId: request.userId,
-      limits: objectiveLimits
+      objective: objectiveRecord,
+      plan,
+      progresses: [],
+      artifacts: []
     });
-    const metadataOverride = plan.metadata
-      ? (JSON.parse(JSON.stringify(plan.metadata)) as Record<string, unknown>)
-      : undefined;
-    const sprintPayload = serializeSprint(
-      { ...sprint, progresses: [], artifacts: [] },
 
-      request.userId,
-      objectiveWithRelations,
-      {
-        title: plan.title,
-        description: plan.description,
-        projects: plan.projects,
-        microTasks: plan.microTasks,
-        portfolioCards: plan.portfolioCards,
-        adaptationNotes: plan.adaptationNotes,
-        metadata: metadataOverride,
-        lengthDays: plan.lengthDays,
-        totalEstimatedHours: plan.totalEstimatedHours,
-        difficulty: plan.difficulty as SprintDifficulty
-      }
-    );
 
     return {
       objective: objectivePayload,
@@ -372,6 +313,7 @@ export class ObjectiveService {
       objective
     });
 
+
     await this.applyPlanEstimates(objective.id, plan.lengthDays, {
       estimatedWeeksMin: objective.estimatedWeeksMin ?? null,
       estimatedWeeksMax: objective.estimatedWeeksMax ?? null
@@ -383,27 +325,14 @@ export class ObjectiveService {
       objective.estimatedWeeksMax = estimates.max;
     }
 
-
-    const metadataOverride = plan.metadata
-      ? (JSON.parse(JSON.stringify(plan.metadata)) as Record<string, unknown>)
-      : undefined;
-    const sprintPayload = serializeSprint(
-      { ...sprint, progresses: [] },
-      request.userId,
+    const sprintPayload = this.buildSprintPayload({
+      sprint,
+      userId: request.userId,
       objective,
-      {
-        title: plan.title,
-        description: plan.description,
-        projects: plan.projects,
-        microTasks: plan.microTasks,
-        portfolioCards: plan.portfolioCards,
-        adaptationNotes: plan.adaptationNotes,
-        metadata: metadataOverride,
-        lengthDays: plan.lengthDays,
-        totalEstimatedHours: plan.totalEstimatedHours,
-        difficulty: plan.difficulty as SprintDifficulty
-      }
-    );
+      plan,
+      progresses: [],
+      artifacts: []
+    });
 
     const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(summary, sprintCount + 1);
 
@@ -414,6 +343,7 @@ export class ObjectiveService {
       objectiveLimits
     };
   }
+
 
   async getSprint(userId: string, objectiveId: string, sprintId: string): Promise<SprintUiPayload> {
     const sprint = await this.loadSprintForUser({ userId, objectiveId, sprintId });
@@ -427,7 +357,6 @@ export class ObjectiveService {
       objectiveId: request.objectiveId,
       sprintId: request.sprintId
     });
-
 
     await evidenceService.upsertArtifacts(request.sprintId, request.artifacts ?? []);
 
@@ -502,6 +431,7 @@ export class ObjectiveService {
 
     const sprintPayload = serializeSprint(refreshed, request.userId, refreshed.objective ?? null);
 
+
     return {
       sprint: sprintPayload,
       review: summary
@@ -520,6 +450,7 @@ export class ObjectiveService {
 
     return {
       sprint: sprintPayload,
+
       review: reviewSummary
     };
   }
@@ -732,6 +663,38 @@ export class ObjectiveService {
     });
 
     return { sprint, plan };
+  }
+
+  private buildSprintPayload(params: {
+    sprint: Sprint;
+    userId: string;
+    objective: Objective | ObjectiveWithRelations | null;
+    plan: SprintPlan;
+    progresses?: Progress[];
+    artifacts?: SprintArtifact[];
+  }): SprintUiPayload {
+    const metadataOverride = params.plan.metadata
+      ? (JSON.parse(JSON.stringify(params.plan.metadata)) as Record<string, unknown>)
+      : undefined;
+
+    const sprintRecord = {
+      ...params.sprint,
+      progresses: params.progresses ?? [],
+      artifacts: params.artifacts ?? []
+    } as Sprint & { progresses: Progress[]; artifacts: SprintArtifact[] };
+
+    return serializeSprint(sprintRecord, params.userId, params.objective, {
+      title: params.plan.title,
+      description: params.plan.description,
+      projects: params.plan.projects,
+      microTasks: params.plan.microTasks,
+      portfolioCards: params.plan.portfolioCards,
+      adaptationNotes: params.plan.adaptationNotes,
+      metadata: metadataOverride,
+      lengthDays: params.plan.lengthDays,
+      totalEstimatedHours: params.plan.totalEstimatedHours,
+      difficulty: params.plan.difficulty as SprintDifficulty
+    });
   }
 }
 

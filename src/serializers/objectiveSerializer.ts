@@ -54,7 +54,6 @@ export interface SprintReviewPayload {
   metadata: Record<string, unknown> | null;
 }
 
-
 export interface SprintUiPayload {
   id: string;
   objectiveId: string;
@@ -269,7 +268,7 @@ function findCurrentSprint(sprints: Sprint[]): Sprint | null {
 }
 
 export function extractSprintPlanDetails(plannerOutput: JsonValue | null | undefined): SprintPlanDetails {
-  
+
   if (!plannerOutput || typeof plannerOutput !== 'object') {
     return {};
   }
@@ -522,4 +521,5 @@ function toReviewSummary(value: Record<string, unknown>): SprintReviewSummaryPay
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
 
