@@ -217,6 +217,13 @@ GOOGLE_CALLBACK_URL="http://localhost:5050/api/auth/google/callback"
 GITHUB_CLIENT_ID="your-local-github-client-id"
 GITHUB_CLIENT_SECRET="your-local-github-client-secret"
 GITHUB_CALLBACK_URL="http://localhost:5050/api/auth/github/callback"
+
+# Planner / AI
+PLANNER_PROVIDER="lmstudio"
+LMSTUDIO_BASE_URL="http://localhost:1234"
+LMSTUDIO_MODEL="llama-3.1-8b-instruct"
+# Defaults to 4096 tokens if unset
+LMSTUDIO_MAX_TOKENS="4096"
 ```
 
 ### OAuth Provider Configuration

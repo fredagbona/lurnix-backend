@@ -69,6 +69,7 @@ export interface EnvironmentConfig {
   LMSTUDIO_BASE_URL: string;
   LMSTUDIO_MODEL: string;
   LMSTUDIO_TIMEOUT_MS: number;
+  LMSTUDIO_MAX_TOKENS: number;
   GROQ_BASE_URL: string;
   GROQ_API_KEY: string;
   GROQ_MODEL: string;
@@ -168,6 +169,7 @@ export const config: EnvironmentConfig = {
       || '60000',
     10
   ),
+  LMSTUDIO_MAX_TOKENS: parseInt(process.env.LMSTUDIO_MAX_TOKENS || '4096', 10),
   REVIEWER_PROVIDER:
     (process.env.REVIEWER_PROVIDER as 'lmstudio' | 'groq')
     || (process.env.PLANNER_PROVIDER as 'lmstudio' | 'groq')

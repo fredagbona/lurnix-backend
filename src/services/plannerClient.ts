@@ -822,10 +822,12 @@ function buildLmStudioRequest(
   responseSchemaName: string,
   maxTokens: number
 ) {
+  const resolvedMaxTokens = Math.max(maxTokens, config.LMSTUDIO_MAX_TOKENS);
+
   return {
     model,
     temperature: 0.2,
-    max_tokens: maxTokens,
+    max_tokens: resolvedMaxTokens,
     response_format: {
       type: 'json_schema',
       json_schema: {
