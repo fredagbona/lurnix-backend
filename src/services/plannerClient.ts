@@ -361,7 +361,7 @@ function getGroqClient(apiKey: string): any {
   return groqClient;
 }
 
-export type PlannerRequestErrorReason = 'provider_error' | 'invalid_json';
+export type PlannerRequestErrorReason = 'provider_error' | 'client_timeout' | 'invalid_json';
 
 export interface PlannerRequestTelemetry {
   provider: ProviderConfig['provider'];
@@ -369,6 +369,7 @@ export interface PlannerRequestTelemetry {
   promptHash: string;
   latencyMs: number;
   timedOut?: boolean;
+  timeoutMs?: number;
 }
 
 export class PlannerRequestError extends Error {
@@ -408,7 +409,10 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
     latencyMs: 0
   };
   const startTime = Date.now();
-  const requestTimeoutMs = config.PLANNER_REQUEST_TIMEOUT_MS;
+  const requestTimeoutMs =
+    providerConfig.provider === 'groq'
+      ? config.PLANNER_REQUEST_TIMEOUT_MS
+      : config.LMSTUDIO_TIMEOUT_MS;
 
   if (providerConfig.provider === 'groq') {
     const client = getGroqClient(providerConfig.apiKey);
@@ -446,12 +450,13 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
 
       if (isAbortError(error)) {
         throw new PlannerRequestError({
-          reason: 'provider_error',
-          message: `Groq planner request timed out after ${requestTimeoutMs}ms`,
+          reason: 'client_timeout',
+          message: `Groq planner request exceeded client timeout of ${requestTimeoutMs}ms`,
           telemetry: {
             ...baseTelemetry,
             latencyMs: Date.now() - startTime,
-            timedOut: true
+            timedOut: true,
+            timeoutMs: requestTimeoutMs
           },
           cause: error
         });
@@ -470,13 +475,19 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
   }
 
   const body = buildLmStudioRequest(providerConfig.model, systemMessage, userPrompt);
-  const lmStudioSignal = AbortSignal.timeout(requestTimeoutMs);
+  const lmStudioController = new AbortController();
+  let timedOutByClient = false;
+  const timeoutId = setTimeout(() => {
+    timedOutByClient = true;
+    lmStudioController.abort();
+  }, requestTimeoutMs);
+
   try {
     const response = await fetch(providerConfig.baseUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-      signal: lmStudioSignal
+      signal: lmStudioController.signal
     });
 
     if (!response.ok) {
@@ -510,14 +521,27 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
       throw error;
     }
 
-    if (isAbortError(error)) {
+    if (isAbortError(error) && timedOutByClient) {
       throw new PlannerRequestError({
-        reason: 'provider_error',
-        message: `LM Studio planner request timed out after ${requestTimeoutMs}ms`,
+        reason: 'client_timeout',
+        message: `LM Studio planner request exceeded client timeout of ${requestTimeoutMs}ms`,
         telemetry: {
           ...baseTelemetry,
           latencyMs: Date.now() - startTime,
-          timedOut: true
+          timedOut: true,
+          timeoutMs: requestTimeoutMs
+        },
+        cause: error
+      });
+    }
+
+    if (isAbortError(error)) {
+      throw new PlannerRequestError({
+        reason: 'provider_error',
+        message: 'LM Studio planner request was aborted before completion',
+        telemetry: {
+          ...baseTelemetry,
+          latencyMs: Date.now() - startTime
         },
         cause: error
       });
@@ -532,6 +556,8 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
       },
       cause: error
     });
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
