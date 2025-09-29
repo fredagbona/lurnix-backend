@@ -36,6 +36,11 @@ export interface GenerateSprintPlanInput {
   expansionGoal?: SprintPlanExpansionGoal | null;
 }
 
+type EvidenceRubric = {
+  dimensions: { name: string; weight: number; levels?: string[] }[];
+  passThreshold: number;
+};
+
 export interface SprintProjectPlan {
   id: string;
   title: string;
@@ -47,10 +52,7 @@ export interface SprintProjectPlan {
     title: string;
     artifactId: string;
   }[];
-  evidenceRubric: {
-    dimensions: { name: string; weight: number; levels?: string[] }[];
-    passThreshold: number;
-  };
+  evidenceRubric: EvidenceRubric;
   checkpoints?: { id: string; title: string; type: 'assessment' | 'quiz' | 'demo'; spec: string }[];
   support?: {
     concepts?: { id: string; title: string; summary: string }[];
@@ -138,6 +140,79 @@ const sprintPlanCoreSchema = z.object({
 });
 
 export type SprintPlanCore = z.infer<typeof sprintPlanCoreSchema>;
+
+const DEFAULT_EVIDENCE_RUBRIC: EvidenceRubric = Object.freeze({
+  dimensions: [
+    { name: 'Fonctionnalité', weight: 0.4 },
+    { name: 'Qualité du code', weight: 0.25 },
+    { name: 'Expérience utilisateur', weight: 0.2 },
+    { name: 'Documentation', weight: 0.15 }
+  ],
+  passThreshold: 0.7
+});
+
+const cloneDefaultEvidenceRubric = (): EvidenceRubric => ({
+  dimensions: DEFAULT_EVIDENCE_RUBRIC.dimensions.map(dimension => ({ ...dimension })),
+  passThreshold: DEFAULT_EVIDENCE_RUBRIC.passThreshold
+});
+
+const cloneValue = <T>(value: T): T => {
+  if (typeof globalThis.structuredClone === 'function') {
+    return globalThis.structuredClone(value);
+  }
+
+  return JSON.parse(JSON.stringify(value));
+};
+
+const ensureProjectEvidenceRubrics = (rawPlan: unknown): unknown => {
+  if (!rawPlan || typeof rawPlan !== 'object') {
+    return rawPlan;
+  }
+
+  const clonedPlan = cloneValue(rawPlan) as Record<string, any>;
+
+  if (!Array.isArray(clonedPlan.projects)) {
+    return clonedPlan;
+  }
+
+  clonedPlan.projects = clonedPlan.projects.map(project => {
+    if (!project || typeof project !== 'object') {
+      return project;
+    }
+
+    const candidate = project as Record<string, any>;
+    const evidenceRubric = candidate.evidenceRubric as Record<string, any> | undefined;
+    const dimensions = evidenceRubric?.dimensions;
+    const passThreshold = evidenceRubric?.passThreshold;
+    const hasValidRubric =
+      Array.isArray(dimensions) &&
+      dimensions.length > 0 &&
+      dimensions.every(
+        (dimension: any) =>
+          dimension &&
+          typeof dimension.name === 'string' &&
+          typeof dimension.weight === 'number' &&
+          Number.isFinite(dimension.weight) &&
+          dimension.weight >= 0 &&
+          dimension.weight <= 1
+      ) &&
+      typeof passThreshold === 'number' &&
+      Number.isFinite(passThreshold) &&
+      passThreshold >= 0 &&
+      passThreshold <= 1;
+
+    if (hasValidRubric) {
+      return candidate;
+    }
+
+    return {
+      ...candidate,
+      evidenceRubric: cloneDefaultEvidenceRubric()
+    };
+  });
+
+  return clonedPlan;
+};
 
 export interface PlannerPlanMetadata {
   plannerVersion: string;
@@ -255,7 +330,8 @@ class PlannerService {
     input: GenerateSprintPlanInput,
     planId: string
   ): SprintPlanCore {
-    const parsed = sprintPlanCoreSchema.safeParse(rawPlan);
+    const sanitizedPlan = ensureProjectEvidenceRubrics(rawPlan);
+    const parsed = sprintPlanCoreSchema.safeParse(sanitizedPlan);
     if (!parsed.success) {
       throw new PlannerSchemaValidationError(parsed.error.issues);
     }
@@ -677,15 +753,7 @@ class PlannerService {
         { type: 'repository', title: 'Repository link', artifactId: `${projectId}_repo` },
         { type: 'deployment', title: 'Demo link', artifactId: `${projectId}_demo` }
       ],
-      evidenceRubric: {
-        dimensions: [
-          { name: 'Fonctionnalité', weight: 0.4 },
-          { name: 'Qualité du code', weight: 0.25 },
-          { name: 'Expérience utilisateur', weight: 0.2 },
-          { name: 'Documentation', weight: 0.15 }
-        ],
-        passThreshold: 0.7
-      },
+      evidenceRubric: cloneDefaultEvidenceRubric(),
       checkpoints: [
         {
           id: `${planId}_checkpoint_review`,
@@ -1095,5 +1163,11 @@ class PlannerService {
     return notes.join(' ');
   }
 }
+
+export const plannerServiceTestables = {
+  ensureProjectEvidenceRubrics,
+  sprintPlanCoreSchema,
+  defaultEvidenceRubric: DEFAULT_EVIDENCE_RUBRIC
+};
 
 export const plannerService = new PlannerService();

@@ -39,13 +39,17 @@ Rules:
 4. Use the context payload (profile quiz summary, streak, completed tasks) to adapt deliverables and pacing.
 5. Output MUST be valid JSON and match the SprintPlan schema exactly.
 `;
+type SprintLength = 1 | 3 | 7 | 14;
 
-const SCHEMA_PROMPT = `SprintPlan JSON structure (types shown for clarity):
+const LENGTH_DAYS_LITERAL = '1 | 3 | 7 | 14';
+
+const SCHEMA_PROMPT = `JSON Schema (SprintPlan):
+
 {
   "id": string,
   "title": string,
   "description": string,
-  "lengthDays": 1 | 3 | 7 | 14,
+  "lengthDays": ${LENGTH_DAYS_LITERAL},
   "totalEstimatedHours": number,
   "difficulty": "beginner" | "intermediate" | "advanced",
   "projects": Array<{
