@@ -327,6 +327,8 @@ class PlannerService {
       latencyMs: resolvedTelemetry?.latencyMs,
       promptHash: resolvedTelemetry?.promptHash,
       timedOut: resolvedTelemetry?.timedOut ?? false,
+      timeoutMs: resolvedTelemetry?.timeoutMs,
+      errorReason: error instanceof PlannerRequestError ? error.reason : undefined,
       error: error instanceof Error ? error.message : error
     });
   }
