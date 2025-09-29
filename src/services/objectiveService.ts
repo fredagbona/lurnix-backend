@@ -3,7 +3,7 @@ import { db } from '../prisma/prismaWrapper';
 import { AppError } from '../errors/AppError';
 import { learnerProfileService } from './learnerProfileService.js';
 import { plannerService } from './plannerService.js';
-import type { SprintPlan } from './plannerService.js';
+import type { SprintPlan, SprintPlanCore, SprintPlanExpansionGoal, SprintPlanMode } from './plannerService.js';
 import { sprintService } from './sprintService.js';
 import { SprintUpdateInput } from '../repositories/sprintRepository.js';
 import { profileContextBuilder, ProfileContext } from './profileContextBuilder.js';
@@ -71,6 +71,20 @@ export interface GenerateSprintResponse {
   plan: SprintPlan;
   planLimits: PlanLimitsPayload;
   objectiveLimits: ObjectiveSprintLimitPayload;
+}
+
+export interface ExpandSprintRequest {
+  userId: string;
+  objectiveId: string;
+  sprintId: string;
+  targetLengthDays?: number;
+  additionalDays?: number;
+  additionalMicroTasks?: number;
+}
+
+export interface ExpandSprintResponse {
+  sprint: SprintUiPayload;
+  plan: SprintPlan;
 }
 
 export interface SubmitSprintEvidenceRequest {
@@ -217,7 +231,9 @@ export class ObjectiveService {
       userId: request.userId,
       objectiveId: objective.id,
       learnerProfile,
-      profileContext
+      profileContext,
+      mode: 'skeleton',
+      expansionGoal: { targetLengthDays: 1 }
     });
 
     await this.applyPlanEstimates(objective.id, plan.lengthDays, {
@@ -304,13 +320,19 @@ export class ObjectiveService {
       objectiveId: objective.id
     });
 
+    const expansionGoal = request.preferLength
+      ? ({ targetLengthDays: request.preferLength } as SprintPlanExpansionGoal)
+      : null;
+
     const { sprint, plan } = await this.generateAndPersistSprint({
       userId: request.userId,
       objectiveId: objective.id,
       learnerProfile,
       profileContext,
       preferLength: request.preferLength,
-      objective
+      objective,
+      mode: 'skeleton',
+      expansionGoal
     });
 
 
@@ -342,6 +364,68 @@ export class ObjectiveService {
       planLimits,
       objectiveLimits
     };
+  }
+
+  async expandSprint(request: ExpandSprintRequest): Promise<ExpandSprintResponse> {
+    const sprint = await this.loadSprintForUser({
+      userId: request.userId,
+      objectiveId: request.objectiveId,
+      sprintId: request.sprintId
+    });
+
+    const profileSnapshotId = sprint.profileSnapshotId ?? sprint.profileSnapshot?.id ?? null;
+    if (!profileSnapshotId) {
+      throw new AppError('objectives.sprint.errors.profileRequired', 400, 'LEARNER_PROFILE_REQUIRED');
+    }
+
+    const learnerProfile = await learnerProfileService.getProfileById(profileSnapshotId);
+    if (!learnerProfile) {
+      throw new AppError('objectives.sprint.errors.profileRequired', 400, 'LEARNER_PROFILE_REQUIRED');
+    }
+
+    const profileContext = await profileContextBuilder.build({
+      userId: request.userId,
+      learnerProfileId: learnerProfile.id,
+      objectiveId: sprint.objectiveId
+    });
+
+    const currentPlan = this.buildCurrentPlanPayload(sprint);
+    const expansionGoal = this.normalizeExpansionGoal(request, sprint);
+
+    const { plan } = await this.generateAndPersistSprint({
+      userId: request.userId,
+      objectiveId: sprint.objectiveId,
+      learnerProfile,
+      profileContext,
+      preferLength: expansionGoal?.targetLengthDays ?? undefined,
+      objective: sprint.objective ?? null,
+      existingSprintId: sprint.id,
+      mode: 'expansion',
+      currentPlan,
+      expansionGoal
+    });
+
+    await this.applyPlanEstimates(sprint.objectiveId, plan.lengthDays, {
+      estimatedWeeksMin: sprint.objective?.estimatedWeeksMin ?? null,
+      estimatedWeeksMax: sprint.objective?.estimatedWeeksMax ?? null
+    });
+
+    const refreshed = await this.loadSprintForUser({
+      userId: request.userId,
+      objectiveId: request.objectiveId,
+      sprintId: request.sprintId
+    });
+
+    const sprintPayload = this.buildSprintPayload({
+      sprint: refreshed,
+      userId: request.userId,
+      objective: refreshed.objective ?? null,
+      plan,
+      progresses: refreshed.progresses ?? [],
+      artifacts: refreshed.artifacts ?? []
+    });
+
+    return { sprint: sprintPayload, plan };
   }
 
 
@@ -476,6 +560,7 @@ export class ObjectiveService {
       progresses?: Progress[];
       artifacts?: SprintArtifact[];
       objective?: Objective | null;
+      profileSnapshot?: LearnerProfile | null;
     }
   > {
     const sprint = (await db.sprint.findFirst({
@@ -489,12 +574,14 @@ export class ObjectiveService {
       include: {
         progresses: true,
         artifacts: true,
-        objective: true
+        objective: true,
+        profileSnapshot: true
       }
     })) as (Sprint & {
       progresses?: Progress[];
       artifacts?: SprintArtifact[];
       objective?: Objective | null;
+      profileSnapshot?: LearnerProfile | null;
     }) | null;
 
     if (!sprint) {
@@ -526,6 +613,69 @@ export class ObjectiveService {
 
   private cloneAsJson<T>(value: T): Prisma.JsonValue {
     return JSON.parse(JSON.stringify(value)) as Prisma.JsonValue;
+  }
+
+  private buildCurrentPlanPayload(
+    sprint: Sprint & {
+      plannerOutput?: Prisma.JsonValue | null;
+      objective?: Objective | null;
+    }
+  ): Partial<SprintPlanCore> | null {
+    const planDetails = extractSprintPlanDetails(sprint.plannerOutput);
+
+    const payload: Partial<SprintPlanCore> = {
+      title: planDetails.title ?? sprint.objective?.title ?? undefined,
+      description: planDetails.description ?? sprint.objective?.description ?? undefined,
+      projects: Array.isArray(planDetails.projects) ? (planDetails.projects as SprintPlanCore['projects']) : undefined,
+      microTasks: Array.isArray(planDetails.microTasks) ? (planDetails.microTasks as SprintPlanCore['microTasks']) : undefined,
+      portfolioCards: Array.isArray(planDetails.portfolioCards)
+        ? (planDetails.portfolioCards as SprintPlanCore['portfolioCards'])
+        : undefined,
+      adaptationNotes: planDetails.adaptationNotes ?? undefined,
+      lengthDays: sprint.lengthDays as SprintPlanCore['lengthDays'],
+      totalEstimatedHours: sprint.totalEstimatedHours,
+      difficulty: sprint.difficulty
+    };
+
+    return payload;
+  }
+
+  private normalizeExpansionGoal(
+    request: ExpandSprintRequest,
+    sprint: Sprint
+  ): SprintPlanExpansionGoal | null {
+    const payload: SprintPlanExpansionGoal = {};
+
+    if (typeof request.targetLengthDays === 'number') {
+      const normalized = this.normalizeTargetLength(sprint.lengthDays, request.targetLengthDays);
+      if (normalized !== null) {
+        payload.targetLengthDays = normalized;
+      }
+    } else if (typeof request.additionalDays === 'number') {
+      const proposed = sprint.lengthDays + request.additionalDays;
+      const normalized = this.normalizeTargetLength(sprint.lengthDays, proposed);
+      if (normalized !== null) {
+        payload.targetLengthDays = normalized;
+      }
+    }
+
+    if (typeof request.additionalMicroTasks === 'number') {
+      payload.additionalMicroTasks = request.additionalMicroTasks;
+    }
+
+    return Object.keys(payload).length > 0 ? payload : null;
+  }
+
+  private normalizeTargetLength(currentLength: number, target?: number | null): number | null {
+    if (typeof target !== 'number' || Number.isNaN(target)) {
+      return null;
+    }
+
+    const allowed = [1, 3, 7, 14];
+    const normalizedTarget = allowed.find((value) => target <= value) ?? allowed[allowed.length - 1];
+    const normalizedCurrent = allowed.find((value) => currentLength <= value) ?? allowed[allowed.length - 1];
+
+    return Math.max(normalizedTarget, normalizedCurrent);
   }
 
   private parseReviewerSummary(value: Prisma.JsonValue | null | undefined): ReviewerSummary | null {
@@ -586,6 +736,10 @@ export class ObjectiveService {
     profileContext: ProfileContext;
     preferLength?: number;
     objective?: { title: string; description?: string | null; successCriteria: string[]; requiredSkills: string[]; priority?: number; status?: ObjectiveStatus } | null;
+    existingSprintId?: string;
+    mode?: SprintPlanMode;
+    currentPlan?: Partial<SprintPlanCore> | null;
+    expansionGoal?: SprintPlanExpansionGoal | null;
   }) {
     const objective = params.objective ?? (await db.objective.findUnique({ where: { id: params.objectiveId } }));
     if (!objective) {
@@ -594,6 +748,11 @@ export class ObjectiveService {
 
     const plannerVersion = config.PLANNER_VERSION ?? 'unversioned';
     const requestedAt = new Date();
+    const mode: SprintPlanMode = params.mode ?? 'skeleton';
+    const plannerPreferLength =
+      mode === 'skeleton'
+        ? 1
+        : params.preferLength ?? params.expansionGoal?.targetLengthDays ?? undefined;
 
     const plan = await plannerService.generateSprintPlan({
       objectiveId: params.objectiveId,
@@ -603,11 +762,14 @@ export class ObjectiveService {
       requiredSkills: objective.requiredSkills,
       learnerProfile: params.learnerProfile,
       profileContext: params.profileContext,
-      preferLength: params.preferLength,
+      preferLength: plannerPreferLength,
       objectivePriority: objective.priority,
       objectiveStatus: objective.status,
       plannerVersion,
-      requestedAt
+      requestedAt,
+      mode,
+      currentPlan: params.currentPlan ?? null,
+      expansionGoal: params.expansionGoal ?? null
     });
 
     const plannerInputPayload = {
@@ -624,11 +786,40 @@ export class ObjectiveService {
       profileContext: params.profileContext,
       plannerVersion,
       requestedAt: requestedAt.toISOString(),
-      preferLength: params.preferLength ?? null
+      preferLength: plannerPreferLength ?? null,
+      mode,
+      currentPlan: params.currentPlan ?? null,
+      expansionGoal: params.expansionGoal ?? null,
+      existingSprintId: params.existingSprintId ?? null
     };
 
-    const plannerInputJson = JSON.parse(JSON.stringify(plannerInputPayload)) as unknown as Prisma.JsonValue;
+    const plannerInputJson = this.cloneAsJson(plannerInputPayload);
     const plannerOutputJson = JSON.parse(JSON.stringify(plan.plannerOutput ?? {})) as unknown as Prisma.JsonValue;
+
+    if (params.existingSprintId) {
+      const sprint = await sprintService.updateSprint(params.existingSprintId, {
+        plannerInput: plannerInputJson,
+        plannerOutput: plannerOutputJson,
+        lengthDays: plan.lengthDays,
+        totalEstimatedHours: plan.totalEstimatedHours,
+        difficulty: plan.difficulty as SprintDifficulty
+      });
+
+      console.info('[objectiveService] sprint_expanded', {
+        objectiveId: params.objectiveId,
+        sprintId: sprint.id,
+        plannerVersion,
+        learnerProfileId: params.learnerProfile.id,
+        profileHash: params.profileContext.learnerProfile.profileHash,
+        provider: plan.metadata.provider,
+        lengthDays: plan.lengthDays,
+        requestedAt: requestedAt.toISOString(),
+        mode,
+        expansionGoal: params.expansionGoal ?? null
+      });
+
+      return { sprint, plan };
+    }
 
     const sprint = await sprintService.createSprint({
       objectiveId: params.objectiveId,
@@ -659,7 +850,9 @@ export class ObjectiveService {
       profileHash: params.profileContext.learnerProfile.profileHash,
       provider: plan.metadata.provider,
       lengthDays: plan.lengthDays,
-      requestedAt: requestedAt.toISOString()
+      requestedAt: requestedAt.toISOString(),
+      mode,
+      expansionGoal: params.expansionGoal ?? null
     });
 
     return { sprint, plan };

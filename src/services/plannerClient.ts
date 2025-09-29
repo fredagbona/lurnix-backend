@@ -24,6 +24,9 @@ export interface PlannerRequestPayload {
   } | null;
   preferLength?: number;
   context?: Record<string, unknown> | null;
+  mode?: 'skeleton' | 'expansion';
+  currentPlan?: Record<string, unknown> | null;
+  expansionGoal?: { targetLengthDays?: number | null; additionalMicroTasks?: number | null } | null;
 }
 
 const SYSTEM_PROMPT = `You are Lurnix Planner, an expert at generating short, portfolio-first learning sprints.
@@ -182,7 +185,7 @@ const SprintPlanJsonSchema = {
     description: { type: "string" },
     lengthDays: { 
       type: "number",
-      enum: [3, 7, 14]
+      enum: [1, 3, 7, 14]
     },
     totalEstimatedHours: { type: "number" },
     difficulty: { 
@@ -559,6 +562,7 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
 }
 
 function buildPrompt(payload: PlannerRequestPayload) {
+  const mode = payload.mode ?? 'skeleton';
   const objective = {
     id: payload.objective.id,
     title: payload.objective.title,
@@ -583,17 +587,49 @@ function buildPrompt(payload: PlannerRequestPayload) {
 
   const context = payload.context ? JSON.parse(JSON.stringify(payload.context)) : null;
 
-  const userPrompt = [
+  const guidelines: string[] = [];
+  if (mode === 'skeleton') {
+    guidelines.push('Generate a 1-day sprint skeleton with exactly 3 microTasks and a single primary project.');
+    guidelines.push('Keep instructions lightweight so the learner can execute quickly and prepare for future expansions.');
+  } else {
+    guidelines.push('Preserve all existing projects and microTasks from CURRENT_PLAN. Do not modify their IDs or instructions.');
+    guidelines.push('Append new microTasks and adjust metadata to satisfy the expansion goal while reflecting cumulative progress.');
+  }
+
+  if (payload.expansionGoal) {
+    const goal = payload.expansionGoal;
+    if (typeof goal.targetLengthDays === 'number') {
+      guidelines.push(`Target total length: ${goal.targetLengthDays} day(s).`);
+    }
+    if (typeof goal.additionalMicroTasks === 'number') {
+      guidelines.push(`Add approximately ${goal.additionalMicroTasks} new microTask(s).`);
+    }
+  }
+
+  guidelines.push('Always return valid JSON matching the SprintPlan schema. Do not include commentary.');
+
+  const promptSections: string[] = [
+    `INCREMENTAL PLANNING MODE: ${mode.toUpperCase()}`,
+    'GUIDELINES:',
+    ...guidelines.map((line) => `- ${line}`),
     'OBJECTIVE CONTEXT:',
     JSON.stringify(objective, null, 2),
     '\nLEARNER PROFILE:',
     JSON.stringify(learnerProfile, null, 2),
     '\nADDITIONAL CONTEXT:',
-    JSON.stringify(context, null, 2),
-    `\nPREFERRED LENGTH: ${payload.preferLength ?? 'auto'}`,
-    '\nReturn ONLY valid JSON with no commentary. Schema is defined below.',
-    SCHEMA_PROMPT
-  ].join('\n');
+    JSON.stringify(context, null, 2)
+  ];
+
+  if (mode === 'expansion') {
+    promptSections.push('\nCURRENT PLAN SNAPSHOT:');
+    promptSections.push(JSON.stringify(payload.currentPlan ?? null, null, 2));
+  }
+
+  promptSections.push(`\nPREFERRED LENGTH: ${payload.preferLength ?? 'auto'}`);
+  promptSections.push('\nReturn ONLY valid JSON with no commentary. Schema is defined below.');
+  promptSections.push(SCHEMA_PROMPT);
+
+  const userPrompt = promptSections.join('\n');
 
   return {
     systemMessage: SYSTEM_PROMPT,

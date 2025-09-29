@@ -10,6 +10,13 @@ import {
 import { ProfileContext } from './profileContextBuilder.js';
 import { config } from '../config/environment.js';
 
+export type SprintPlanMode = 'skeleton' | 'expansion';
+
+export interface SprintPlanExpansionGoal {
+  targetLengthDays?: number | null;
+  additionalMicroTasks?: number | null;
+}
+
 export interface GenerateSprintPlanInput {
   objectiveId: string;
   objectiveTitle: string;
@@ -23,6 +30,9 @@ export interface GenerateSprintPlanInput {
   requestedAt?: Date;
   objectivePriority?: number;
   objectiveStatus?: string;
+  mode?: SprintPlanMode;
+  currentPlan?: Partial<SprintPlanCore> | null;
+  expansionGoal?: SprintPlanExpansionGoal | null;
 }
 
 export interface SprintProjectPlan {
@@ -64,7 +74,7 @@ const sprintPlanCoreSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(3),
   description: z.string().min(5),
-  lengthDays: z.union([z.literal(3), z.literal(7), z.literal(14)]),
+  lengthDays: z.union([z.literal(1), z.literal(3), z.literal(7), z.literal(14)]),
   totalEstimatedHours: z.number().min(1),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
   projects: z.array(z.object({
@@ -135,6 +145,9 @@ export interface PlannerPlanMetadata {
   objectiveId: string;
   learnerProfileId?: string | null;
   preferLength?: number | null;
+  mode: SprintPlanMode;
+  incremental: boolean;
+  expansionGoal?: SprintPlanExpansionGoal | null;
 }
 
 interface PlannerPlanMetadataInput {
@@ -144,6 +157,9 @@ interface PlannerPlanMetadataInput {
   objectiveId: string;
   learnerProfileId?: string | null;
   preferLength?: number | null;
+  mode: SprintPlanMode;
+  incremental: boolean;
+  expansionGoal?: SprintPlanExpansionGoal | null;
 }
 
 export interface SprintPlan extends SprintPlanCore {
@@ -169,6 +185,7 @@ class PlannerService {
     const requestedAt = input.requestedAt ?? new Date();
     const plannerVersion = input.plannerVersion ?? config.PLANNER_VERSION ?? 'unversioned';
     const planId = this.buildPlanId(input.objectiveId, requestedAt);
+    const mode: SprintPlanMode = input.mode ?? 'skeleton';
     let attempt = 0;
     let lastError: unknown = null;
 
@@ -188,7 +205,10 @@ class PlannerService {
           provider: 'remote',
           objectiveId: input.objectiveId,
           learnerProfileId: input.learnerProfile?.id ?? null,
-          preferLength: input.preferLength ?? null
+          preferLength: input.preferLength ?? null,
+          mode,
+          incremental: true,
+          expansionGoal: input.expansionGoal ?? null
         });
 
         this.logRemoteAttemptSuccess(attempt, planId, input.objectiveId, remoteResult);
@@ -220,7 +240,13 @@ class PlannerService {
     }
 
     this.logFallback(planId, input.objectiveId, attempt, lastError);
-    return this.buildFallbackPlan(input, planId, requestedAt, plannerVersion);
+    return this.buildFallbackPlan({
+      input,
+      planId,
+      requestedAt,
+      plannerVersion,
+      mode
+    });
   }
 
   private validateRemotePlan(
@@ -326,6 +352,8 @@ class PlannerService {
     const profileContext = input.profileContext
       ? JSON.parse(JSON.stringify(input.profileContext))
       : null;
+    const mode: SprintPlanMode = input.mode ?? 'skeleton';
+    const currentPlan = input.currentPlan ? JSON.parse(JSON.stringify(input.currentPlan)) : null;
 
     return {
       objective: {
@@ -349,30 +377,70 @@ class PlannerService {
           }
         : null,
       preferLength: input.preferLength,
+      mode,
+      currentPlan,
+      expansionGoal: input.expansionGoal ?? null,
       context: {
         plannerVersion,
         requestedAt: requestedAt.toISOString(),
         planId,
-        profileContext
+        profileContext,
+        mode,
+        currentPlan,
+        expansionGoal: input.expansionGoal ?? null
       }
     };
   }
 
-  private buildFallbackPlan(
-    input: GenerateSprintPlanInput,
-    planId: string,
-    requestedAt: Date,
-    plannerVersion: string
-  ): SprintPlan {
+  private buildFallbackPlan(params: {
+    input: GenerateSprintPlanInput;
+    planId: string;
+    requestedAt: Date;
+    plannerVersion: string;
+    mode: SprintPlanMode;
+  }): SprintPlan {
+    const { input, planId, requestedAt, plannerVersion, mode } = params;
+    const sanitizedCurrentPlan = this.sanitizeCurrentPlan(input.currentPlan);
     const lengthDays = this.resolveFallbackLength(input);
-    const totalEstimatedHours = this.resolveFallbackHours(input, lengthDays);
-    const difficulty = this.resolveFallbackDifficulty(input);
+    const previousLength = this.normalizeLength(sanitizedCurrentPlan?.lengthDays);
+    const difficulty = (sanitizedCurrentPlan?.difficulty ?? this.resolveFallbackDifficulty(input)) as SprintDifficulty;
+    const projectId = sanitizedCurrentPlan?.projects?.[0]?.id ?? `${planId}_project`;
+    const projects =
+      Array.isArray(sanitizedCurrentPlan?.projects) && sanitizedCurrentPlan?.projects?.length
+        ? (sanitizedCurrentPlan.projects as SprintProjectPlan[])
+        : this.buildFallbackProjects(planId, projectId, input, difficulty);
 
-    const projectId = `${planId}_project`;
-    const projects = this.buildFallbackProjects(planId, projectId, input, difficulty);
-    const microTasks = this.buildFallbackMicroTasks(planId, projectId, input, lengthDays);
-    const portfolioCards = this.buildFallbackPortfolioCards(projectId, input);
-    const adaptationNotes = this.buildAdaptationNotes(input);
+    const microTasks = this.buildFallbackMicroTasks({
+      planId,
+      projectId,
+      input,
+      lengthDays,
+      mode,
+      currentPlan: sanitizedCurrentPlan
+    });
+
+    const totalEstimatedHours = this.resolveFallbackHours(
+      input,
+      lengthDays,
+      previousLength,
+      sanitizedCurrentPlan?.totalEstimatedHours ?? null,
+      mode,
+      microTasks.length,
+      sanitizedCurrentPlan?.microTasks?.length ?? 0
+    );
+
+    const portfolioCards =
+      Array.isArray(sanitizedCurrentPlan?.portfolioCards) && sanitizedCurrentPlan?.portfolioCards?.length
+        ? sanitizedCurrentPlan.portfolioCards
+        : this.buildFallbackPortfolioCards(projectId, input);
+
+    const baseNotes =
+      typeof sanitizedCurrentPlan?.adaptationNotes === 'string'
+        ? sanitizedCurrentPlan?.adaptationNotes
+        : undefined;
+    const adaptationNotes = baseNotes
+      ? `${baseNotes} Continue building on the existing plan incrementally.`
+      : this.buildAdaptationNotes(input, mode);
 
     const metadata = this.buildPlanMetadata({
       plannerVersion,
@@ -380,7 +448,10 @@ class PlannerService {
       provider: 'fallback',
       objectiveId: input.objectiveId,
       learnerProfileId: input.learnerProfile?.id ?? null,
-      preferLength: input.preferLength ?? null
+      preferLength: input.preferLength ?? null,
+      mode,
+      incremental: true,
+      expansionGoal: input.expansionGoal ?? null
     });
 
     const plannerOutput: Record<string, unknown> = {
@@ -389,6 +460,8 @@ class PlannerService {
       plannerVersion,
       planId,
       profileContext: input.profileContext ?? null,
+      mode,
+      expansionGoal: input.expansionGoal ?? null,
       projects,
       microTasks,
       portfolioCards,
@@ -398,8 +471,9 @@ class PlannerService {
 
     return {
       id: planId,
-      title: `${input.objectiveTitle} — Sprint`,
-      description: input.objectiveDescription ?? `Sprint focusing on ${input.objectiveTitle}.`,
+      title: sanitizedCurrentPlan?.title ?? `${input.objectiveTitle} — Sprint`,
+      description:
+        sanitizedCurrentPlan?.description ?? input.objectiveDescription ?? `Sprint focusing on ${input.objectiveTitle}.`,
       lengthDays,
       totalEstimatedHours,
       difficulty,
@@ -424,7 +498,10 @@ class PlannerService {
       provider: params.provider,
       objectiveId: params.objectiveId,
       learnerProfileId: params.learnerProfileId ?? null,
-      preferLength: params.preferLength ?? null
+      preferLength: params.preferLength ?? null,
+      mode: params.mode,
+      incremental: params.incremental,
+      expansionGoal: params.expansionGoal ?? null
     };
   }
 
@@ -435,6 +512,11 @@ class PlannerService {
   ): Record<string, unknown> {
     const payload = this.deepClone(rawPlan);
     payload.metadata = metadata;
+    payload.mode = metadata.mode;
+    payload.incremental = metadata.incremental;
+    if (metadata.expansionGoal) {
+      payload.expansionGoal = metadata.expansionGoal;
+    }
     if (profileContext) {
       payload.profileContext = profileContext;
     }
@@ -454,24 +536,90 @@ class PlannerService {
     }
   }
 
-  private resolveFallbackLength(input: GenerateSprintPlanInput): 3 | 7 | 14 {
-    if (input.preferLength && [3, 7, 14].includes(input.preferLength)) {
-      return input.preferLength as 3 | 7 | 14;
+  private resolveFallbackLength(input: GenerateSprintPlanInput): 1 | 3 | 7 | 14 {
+    const mode: SprintPlanMode = input.mode ?? 'skeleton';
+    if (mode === 'skeleton') {
+      return 1;
     }
-    const hoursPerWeek = input.learnerProfile?.hoursPerWeek;
-    if (hoursPerWeek && hoursPerWeek < 8) return 14;
-    if (hoursPerWeek && hoursPerWeek <= 15) return 7;
-    return 3;
+
+    const targetLength = this.normalizeLength(input.expansionGoal?.targetLengthDays);
+    if (targetLength) {
+      return targetLength;
+    }
+
+    const currentLength = this.normalizeLength(input.currentPlan?.lengthDays);
+    if (currentLength) {
+      const allowed: Array<1 | 3 | 7 | 14> = [1, 3, 7, 14];
+      const next = allowed.find((value) => value > currentLength);
+      return next ?? currentLength;
+    }
+
+    const preferred = this.normalizeLength(input.preferLength);
+    if (preferred) {
+      return preferred;
+    }
+
+    return this.resolveHeuristicLength(input);
   }
 
-  private resolveFallbackHours(input: GenerateSprintPlanInput, lengthDays: 3 | 7 | 14): number {
+  private resolveFallbackHours(
+    input: GenerateSprintPlanInput,
+    lengthDays: 1 | 3 | 7 | 14,
+    previousLength: 1 | 3 | 7 | 14 | null,
+    previousHours: number | null,
+    mode: SprintPlanMode,
+    totalTasks: number,
+    previousTaskCount: number
+  ): number {
     const hoursPerWeek = input.learnerProfile?.hoursPerWeek;
+
+    if (mode === 'expansion' && typeof previousHours === 'number') {
+      const normalizedPreviousLength = previousLength ?? 1;
+      const lengthDelta = Math.max(0, lengthDays - normalizedPreviousLength);
+      const taskDelta = Math.max(0, totalTasks - previousTaskCount);
+      const additionalHoursFromLength = lengthDelta * 2;
+      const additionalHoursFromTasks = taskDelta * 0.75;
+      const updated = previousHours + Math.max(1, additionalHoursFromLength + additionalHoursFromTasks);
+      return Math.round(updated * 10) / 10;
+    }
+
+    if (lengthDays === 1) {
+      if (hoursPerWeek && hoursPerWeek > 0) {
+        const hoursPerDay = hoursPerWeek / 7;
+        return Math.max(1, Math.round(hoursPerDay * 10) / 10);
+      }
+      return 2;
+    }
+
     if (hoursPerWeek && hoursPerWeek > 0) {
       const hoursPerDay = hoursPerWeek / 7;
       return Math.round(hoursPerDay * lengthDays * 10) / 10;
     }
-    const defaultHoursPerDay = lengthDays === 3 ? 3 : 2;
+
+    const defaultHoursPerDay = lengthDays === 3 ? 3 : lengthDays === 7 ? 2.5 : 2;
     return Math.round(defaultHoursPerDay * lengthDays * 10) / 10;
+  }
+
+  private normalizeLength(value?: number | null): 1 | 3 | 7 | 14 | null {
+    if (typeof value !== 'number') {
+      return null;
+    }
+    const allowed: Array<1 | 3 | 7 | 14> = [1, 3, 7, 14];
+    return allowed.includes(value as 1 | 3 | 7 | 14) ? (value as 1 | 3 | 7 | 14) : null;
+  }
+
+  private resolveHeuristicLength(input: GenerateSprintPlanInput): 1 | 3 | 7 | 14 {
+    const hoursPerWeek = input.learnerProfile?.hoursPerWeek ?? null;
+    if (!hoursPerWeek) {
+      return 3;
+    }
+    if (hoursPerWeek < 8) {
+      return 14;
+    }
+    if (hoursPerWeek <= 15) {
+      return 7;
+    }
+    return 3;
   }
 
   private resolveFallbackDifficulty(input: GenerateSprintPlanInput): SprintDifficulty {
@@ -563,45 +711,210 @@ class PlannerService {
     return [project];
   }
 
-  private buildFallbackMicroTasks(
+  private sanitizeCurrentPlan(plan?: Partial<SprintPlanCore> | null): Partial<SprintPlanCore> | null {
+    if (!plan || typeof plan !== 'object') {
+      return null;
+    }
+
+    try {
+      return JSON.parse(JSON.stringify(plan)) as Partial<SprintPlanCore>;
+    } catch (error) {
+      console.warn('[plannerService] Failed to sanitize current plan payload', error);
+      return null;
+    }
+  }
+
+  private buildFallbackMicroTasks(params: {
+    planId: string;
+    projectId: string;
+    input: GenerateSprintPlanInput;
+    lengthDays: 1 | 3 | 7 | 14;
+    mode: SprintPlanMode;
+    currentPlan?: Partial<SprintPlanCore> | null;
+  }): SprintMicroTaskPlan[] {
+    const { planId, projectId, input, lengthDays, mode, currentPlan } = params;
+    const planSnapshot = currentPlan ?? null;
+
+    if (mode === 'skeleton') {
+      return this.buildSkeletonMicroTasks(planId, projectId, input);
+    }
+
+    const existingTasks = Array.isArray(planSnapshot?.microTasks)
+      ? (JSON.parse(JSON.stringify(planSnapshot.microTasks)) as SprintMicroTaskPlan[])
+      : [];
+
+    const additionalCount = this.resolveExpansionMicroTaskCount(lengthDays, input, planSnapshot, existingTasks.length);
+    const newTasks = this.buildExpansionMicroTaskBatch(
+      planId,
+      projectId,
+      input,
+      lengthDays,
+      existingTasks.length,
+      additionalCount
+    );
+
+    return [...existingTasks, ...newTasks];
+  }
+
+  private buildSkeletonMicroTasks(
     planId: string,
     projectId: string,
-    input: GenerateSprintPlanInput,
-    lengthDays: 3 | 7 | 14
+    input: GenerateSprintPlanInput
   ): SprintMicroTaskPlan[] {
-    const baseTasks = [
+    const estimatedMinutes = 60;
+    const templates = [
       {
-        title: `Frame the sprint for ${input.objectiveTitle}`,
-        instructions: `Capture key outcomes you aim to achieve for ${input.objectiveTitle}. Share blockers or open questions.`
+        title: `Plan a quick win for ${input.objectiveTitle}`,
+        type: 'concept' as const,
+        instructions: `Define a single-day success outcome for ${input.objectiveTitle}. Clarify what artifact you'll ship and list blockers to unblock early.`,
+        acceptance: [
+          'Document a concise goal for the day',
+          'List key steps and blockers',
+          'Share the plan with an accountability partner or journal'
+        ]
       },
       {
-        title: `Build core deliverable for ${input.objectiveTitle}`,
-        instructions: 'Implement the main functionality and document tradeoffs in the README.'
+        title: `Ship the core slice of ${input.objectiveTitle}`,
+        type: 'project' as const,
+        instructions: `Implement the smallest meaningful deliverable that proves progress on ${input.objectiveTitle}. Commit code or notes that demonstrate momentum.`,
+        acceptance: [
+          'Produce a tangible artifact (code, notes, draft)',
+          'Record what changed compared to yesterday',
+          'Capture screenshots or repo links for evidence'
+        ]
       },
       {
-        title: 'Evidence & reflection package',
-        instructions: 'Record a quick demo, collect links/screenshots, and note learning takeaways.'
+        title: 'Rapid evidence + reflection',
+        type: 'reflection' as const,
+        instructions:
+          'Collect the day-one artifact, summarize what you learned, and note one improvement to tackle during the next expansion request.',
+        acceptance: [
+          'Attach at least one evidence link',
+          'Write a short reflection with a next-step focus',
+          'Identify one risk or question to explore next'
+        ]
       }
     ];
 
-    const estimatedMinutes = lengthDays <= 3 ? 90 : 60;
-
-    return baseTasks.map((task, idx) => ({
-      id: `${planId}_task_${idx + 1}`,
+    return templates.map((template, index) => ({
+      id: `${planId}_task_${index + 1}`,
       projectId,
-      title: task.title,
-      type: idx === baseTasks.length - 1 ? 'reflection' : 'project',
+      title: template.title,
+      type: template.type,
       estimatedMinutes,
-      instructions: task.instructions,
+      instructions: template.instructions,
       acceptanceTest: {
         type: 'checklist',
-        spec: [
-          'Document progress with screenshots or notes',
-          'List blockers and mitigation plan',
-          'Attach supporting evidence links'
-        ]
+        spec: template.acceptance
       }
     }));
+  }
+
+  private resolveExpansionMicroTaskCount(
+    lengthDays: 1 | 3 | 7 | 14,
+    input: GenerateSprintPlanInput,
+    currentPlan: Partial<SprintPlanCore> | null,
+    existingCount: number
+  ): number {
+    if (input.expansionGoal?.additionalMicroTasks && input.expansionGoal.additionalMicroTasks > 0) {
+      return input.expansionGoal.additionalMicroTasks;
+    }
+
+    const currentLength = this.normalizeLength(currentPlan?.lengthDays) ?? 1;
+    const lengthDelta = Math.max(0, lengthDays - currentLength);
+
+    if (lengthDelta >= 7) {
+      return 6;
+    }
+    if (lengthDelta >= 4) {
+      return 4;
+    }
+    if (lengthDelta >= 2) {
+      return 3;
+    }
+    if (lengthDelta > 0) {
+      return 2;
+    }
+
+    return existingCount >= 6 ? 2 : 3;
+  }
+
+  private buildExpansionMicroTaskBatch(
+    planId: string,
+    projectId: string,
+    input: GenerateSprintPlanInput,
+    lengthDays: 1 | 3 | 7 | 14,
+    startIndex: number,
+    count: number
+  ): SprintMicroTaskPlan[] {
+    if (count <= 0) {
+      return [];
+    }
+
+    const estimatedMinutes = lengthDays >= 7 ? 90 : 75;
+    const templates = [
+      {
+        title: `Extend the deliverable for ${input.objectiveTitle}`,
+        type: 'project' as const,
+        instructions:
+          'Add a stretch enhancement or robustness improvement. Focus on polish that showcases quality when you share the sprint.',
+        acceptance: [
+          'Document the enhancement in CHANGELOG or README',
+          'Record before/after screenshots or metrics',
+          'Note any trade-offs introduced by the enhancement'
+        ]
+      },
+      {
+        title: 'Quality sweep & peer feedback',
+        type: 'assessment' as const,
+        instructions:
+          'Run tests or manual QA, capture issues found, and share progress with a peer or community channel for quick feedback.',
+        acceptance: [
+          'List bugs or gaps discovered during QA',
+          'Summarize feedback received (or your own review notes)',
+          'Identify follow-up tasks to address in the next iteration'
+        ]
+      },
+      {
+        title: 'Evidence packaging sprint',
+        type: 'reflection' as const,
+        instructions:
+          'Produce supporting materials—demo video, screenshots, or walkthrough notes—to make your progress portfolio-ready.',
+        acceptance: [
+          'Capture at least two artifacts (video, screenshot, repo diff)',
+          'Write a narrative that highlights new capabilities',
+          'List questions to explore in the next planning cycle'
+        ]
+      },
+      {
+        title: 'Skill deep-dive booster',
+        type: 'concept' as const,
+        instructions:
+          'Study a targeted concept or tutorial that unlocks the next milestone. Summarize takeaways and how they apply to the project.',
+        acceptance: [
+          'Link to the resource consumed',
+          'Summarize top three insights',
+          'Describe how you will apply the insight in upcoming work'
+        ]
+      }
+    ];
+
+    return Array.from({ length: count }).map((_, index) => {
+      const template = templates[index % templates.length];
+      const idIndex = startIndex + index + 1;
+      return {
+        id: `${planId}_task_${idIndex}`,
+        projectId,
+        title: template.title,
+        type: template.type,
+        estimatedMinutes,
+        instructions: template.instructions,
+        acceptanceTest: {
+          type: 'checklist',
+          spec: template.acceptance
+        }
+      } satisfies SprintMicroTaskPlan;
+    });
   }
 
   private buildFallbackPortfolioCards(projectId: string, input: GenerateSprintPlanInput) {
@@ -615,11 +928,15 @@ class PlannerService {
     ];
   }
 
-  private buildAdaptationNotes(input: GenerateSprintPlanInput): string {
+  private buildAdaptationNotes(input: GenerateSprintPlanInput, mode: SprintPlanMode): string {
     const strengths = input.learnerProfile?.strengths ?? [];
     const gaps = input.learnerProfile?.gaps ?? [];
 
     const notes: string[] = [];
+
+    if (mode === 'skeleton') {
+      notes.push('Focus on a single quick win today, then request an expansion to layer additional scope.');
+    }
 
     if (gaps.length > 0) {
       notes.push('Insert refresher resources for learner gaps before core tasks.');
@@ -639,6 +956,10 @@ class PlannerService {
 
     if (notes.length === 0) {
       notes.push('Review progress every two days to adjust scope if needed.');
+    }
+
+    if (mode === 'expansion') {
+      notes.push('Carry forward evidence from the skeleton sprint and highlight new additions in each expansion.');
     }
 
     return notes.join(' ');

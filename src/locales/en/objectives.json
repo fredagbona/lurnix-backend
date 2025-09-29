@@ -15,6 +15,7 @@
   },
   "sprint": {
     "generated": "Sprint generated successfully.",
+    "expanded": "Sprint expanded successfully.",
     "retrieved": "Sprint retrieved successfully.",
     "evidenceSaved": "Sprint evidence submitted successfully.",
     "reviewCompleted": "Sprint reviewed successfully.",

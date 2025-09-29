@@ -122,8 +122,8 @@ router.get('/:objectiveId', authMiddleware, objectiveController.getObjective.bin
  * @swagger
  * /api/objectives/{objectiveId}/sprints/generate:
  *   post:
- *     summary: Generate a new sprint for an objective
- *     description: Uses the learner profile context to create the next sprint plan for a given objective.
+ *     summary: Generate the initial skeleton sprint for an objective
+ *     description: Creates a one-day, three micro-task sprint skeleton so learners can start immediately. Additional scope can be added later via the expansion endpoint.
  *     tags: [Objectives]
  *     security:
  *       - bearerAuth: []
@@ -146,7 +146,8 @@ router.get('/:objectiveId', authMiddleware, objectiveController.getObjective.bin
  *                 format: uuid
  *               preferLength:
  *                 type: integer
- *                 enum: [3, 7, 14]
+ *                 enum: [1, 3, 7, 14]
+ *                 description: Desired eventual sprint length (used as a target for future expansions). The initial skeleton is always 1 day.
  *     responses:
  *       201:
  *         description: Sprint generated successfully
@@ -170,6 +171,62 @@ router.get('/:objectiveId', authMiddleware, objectiveController.getObjective.bin
  *         description: Unauthorized
  */
 router.post('/:objectiveId/sprints/generate', authMiddleware, objectiveController.generateSprint.bind(objectiveController));
+
+/**
+ * @swagger
+ * /api/objectives/{objectiveId}/sprints/{sprintId}/expand:
+ *   post:
+ *     summary: Expand an existing sprint incrementally
+ *     description: Extends the current sprint plan by adding more days or micro-tasks while preserving previously generated work.
+ *     tags: [Objectives]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: objectiveId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: sprintId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SprintExpansionRequest'
+ *     responses:
+ *       200:
+ *         description: Sprint expanded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                   description: Localized success message using `objectives.sprint.expanded`
+ *                 data:
+ *                   $ref: '#/components/schemas/SprintPlanResponse'
+ *                 timestamp:
+ *                   type: string
+ *       400:
+ *         description: Invalid payload
+ *       401:
+ *         description: Unauthorized
+ */
+router.post(
+  '/:objectiveId/sprints/:sprintId/expand',
+  authMiddleware,
+  objectiveController.expandSprint.bind(objectiveController)
+);
 
 /**
  * @swagger
