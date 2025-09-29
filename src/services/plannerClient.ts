@@ -40,12 +40,16 @@ Rules:
 5. Output MUST be valid JSON and match the SprintPlan schema exactly.
 `;
 
+type SprintLength = 1 | 3 | 7 | 14;
+
+const LENGTH_DAYS_LITERAL = '1 | 3 | 7 | 14';
+
 const SCHEMA_PROMPT = `JSON Schema (SprintPlan):
 {
   "id": string,
   "title": string,
   "description": string,
-  "lengthDays": 1 | 3 | 7 | 14,
+  "lengthDays": ${LENGTH_DAYS_LITERAL},
   "totalEstimatedHours": number,
   "difficulty": "beginner" | "intermediate" | "advanced",
   "projects": [
@@ -104,7 +108,7 @@ interface SprintPlan {
   id: string;
   title: string;
   description: string;
-  lengthDays: 1 | 3 | 7 | 14;
+  lengthDays: SprintLength;
   totalEstimatedHours: number;
   difficulty: "beginner" | "intermediate" | "advanced";
   projects: Array<{
