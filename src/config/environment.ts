@@ -68,10 +68,13 @@ export interface EnvironmentConfig {
   PLANNER_PROVIDER: 'lmstudio' | 'groq';
   LMSTUDIO_BASE_URL: string;
   LMSTUDIO_MODEL: string;
+  LMSTUDIO_TIMEOUT_MS: number;
+  LMSTUDIO_MAX_TOKENS: number;
   GROQ_BASE_URL: string;
   GROQ_API_KEY: string;
   GROQ_MODEL: string;
   PLANNER_VERSION: string;
+  PLANNER_REQUEST_TIMEOUT_MS: number;
   REVIEWER_PROVIDER: 'lmstudio' | 'groq';
   REVIEWER_LMSTUDIO_MODEL: string;
   REVIEWER_GROQ_MODEL: string;
@@ -159,6 +162,14 @@ export const config: EnvironmentConfig = {
   GROQ_API_KEY: process.env.GROQ_API_KEY || '',
   GROQ_MODEL: process.env.GROQ_MODEL || 'llama-3.1-70b',
   PLANNER_VERSION: process.env.PLANNER_VERSION || '2024-09-profile-context',
+  PLANNER_REQUEST_TIMEOUT_MS: parseInt(process.env.PLANNER_REQUEST_TIMEOUT_MS || '60000', 10),
+  LMSTUDIO_TIMEOUT_MS: parseInt(
+    process.env.LMSTUDIO_TIMEOUT_MS
+      || process.env.PLANNER_REQUEST_TIMEOUT_MS
+      || '60000',
+    10
+  ),
+  LMSTUDIO_MAX_TOKENS: parseInt(process.env.LMSTUDIO_MAX_TOKENS || '4096', 10),
   REVIEWER_PROVIDER:
     (process.env.REVIEWER_PROVIDER as 'lmstudio' | 'groq')
     || (process.env.PLANNER_PROVIDER as 'lmstudio' | 'groq')

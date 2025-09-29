@@ -39,12 +39,12 @@ Rules:
 4. Use the context payload (profile quiz summary, streak, completed tasks) to adapt deliverables and pacing.
 5. Output MUST be valid JSON and match the SprintPlan schema exactly.
 `;
-
 type SprintLength = 1 | 3 | 7 | 14;
 
 const LENGTH_DAYS_LITERAL = '1 | 3 | 7 | 14';
 
 const SCHEMA_PROMPT = `JSON Schema (SprintPlan):
+
 {
   "id": string,
   "title": string,
@@ -52,57 +52,78 @@ const SCHEMA_PROMPT = `JSON Schema (SprintPlan):
   "lengthDays": ${LENGTH_DAYS_LITERAL},
   "totalEstimatedHours": number,
   "difficulty": "beginner" | "intermediate" | "advanced",
-  "projects": [
-    {
+  "projects": Array<{
+    "id": string,
+    "title": string,
+    "brief": string,
+    "requirements": string[],
+    "acceptanceCriteria": string[],
+    "deliverables": Array<{
+      "type": "repository" | "deployment" | "video" | "screenshot",
+      "title": string,
+      "artifactId": string
+    }>,
+    "evidenceRubric": {
+      "dimensions": Array<{
+        "name": string,
+        "weight": number,
+        "levels"?: string[]
+      }>,
+      "passThreshold": number
+    },
+    "checkpoints"?: Array<{
       "id": string,
       "title": string,
-      "brief": string,
-      "requirements": string[],
-      "acceptanceCriteria": string[],
-      "deliverables": [
-        {
-          "type": "repository" | "deployment" | "video" | "screenshot",
-          "title": string,
-          "artifactId": string
-        }
-      ],
-      "evidenceRubric": {
-        "dimensions": [ { "name": string, "weight": number, "levels"?: string[] } ],
-        "passThreshold": number
-      },
-      "checkpoints"?: [ { "id": string, "title": string, "type": "assessment" | "quiz" | "demo", "spec": string } ],
-      "support"?: {
-        "concepts"?: [ { "id": string, "title": string, "summary": string } ],
-        "practiceKatas"?: [ { "id": string, "title": string, "estimateMin": number } ],
-        "allowedResources"?: string[]
-      },
-      "reflection"?: { "prompt": string, "moodCheck"?: boolean }
+      "type": "assessment" | "quiz" | "demo",
+      "spec": string
+    }>,
+    "support"?: {
+      "concepts"?: Array<{
+        "id": string,
+        "title": string,
+        "summary": string
+      }>,
+      "practiceKatas"?: Array<{
+        "id": string,
+        "title": string,
+        "estimateMin": number
+      }>,
+      "allowedResources"?: string[]
+    },
+    "reflection"?: {
+      "prompt": string,
+      "moodCheck"?: boolean
     }
-  ],
-  "microTasks": [
-    {
-      "id": string,
-      "projectId": string,
-      "title": string,
-      "type": "concept" | "practice" | "project" | "assessment" | "reflection",
-      "estimatedMinutes": number,
-      "instructions": string,
-      "acceptanceTest": { "type": "checklist" | "unit_tests" | "quiz" | "demo", "spec": string | string[] },
-      "resources"?: string[]
+  }>,
+  "microTasks": Array<{
+    "id": string,
+    "projectId": string,
+    "title": string,
+    "type": "concept" | "practice" | "project" | "assessment" | "reflection",
+    "estimatedMinutes": number,
+    "instructions": string,
+    "acceptanceTest": {
+      "type": "checklist" | "unit_tests" | "quiz" | "demo",
+      "spec": string | string[]
+    },
+    "resources": string[]
+  }>,
+  "portfolioCards"?: Array<{
+    "projectId": string,
+    "cover"?: string,
+    "headline": string,
+    "badges"?: string[],
+    "links"?: {
+      "repo"?: string,
+      "demo"?: string,
+      "video"?: string
     }
-  ],
-  "portfolioCards"?: [
-    {
-      "projectId": string,
-      "cover"?: string,
-      "headline": string,
-      "badges"?: string[],
-      "links"?: { "repo"?: string, "demo"?: string, "video"?: string }
-    }
-  ],
+  }>,
   "adaptationNotes": string
-}`;
+}
+Every micro-task MUST populate "resources" with actionable references (usually URLs). Do not omit the field or leave it null—curate at least one link per task, prioritising ALLOWED_RESOURCES when provided.`;
 
+type SprintLength = 1 | 3 | 7 | 14;
 
 interface SprintPlan {
   id: string;
@@ -165,7 +186,7 @@ interface SprintPlan {
       type: "checklist" | "unit_tests" | "quiz" | "demo";
       spec: string | string[];
     };
-    resources?: string[];
+    resources: string[];
   }>;
   portfolioCards?: Array<{
     projectId: string;
@@ -182,6 +203,128 @@ interface SprintPlan {
 }
 
 // Then, define the JSON Schema (for LM Studio)
+const SkeletonSprintPlanJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    id: { type: 'string' },
+    title: { type: 'string' },
+    description: { type: 'string' },
+    lengthDays: {
+      type: 'integer',
+      enum: [1]
+    },
+    totalEstimatedHours: {
+      type: 'number',
+      minimum: 2,
+      maximum: 12
+    },
+    difficulty: {
+      type: 'string',
+      enum: ['beginner', 'intermediate', 'advanced']
+    },
+    projects: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 1,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          id: { type: 'string' },
+          title: { type: 'string' },
+          brief: { type: 'string' },
+          requirements: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 3,
+            items: { type: 'string' }
+          },
+          acceptanceCriteria: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 3,
+            items: { type: 'string' }
+          },
+          deliverables: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 1,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                type: {
+                  type: 'string',
+                  enum: ['repository', 'deployment', 'video', 'screenshot']
+                },
+                title: { type: 'string' },
+                artifactId: { type: 'string' }
+              },
+              required: ['type', 'title', 'artifactId']
+            }
+          }
+        },
+        required: ['id', 'title', 'brief', 'requirements', 'acceptanceCriteria', 'deliverables']
+      }
+    },
+    microTasks: {
+      type: 'array',
+      minItems: 3,
+      maxItems: 3,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          id: { type: 'string' },
+          projectId: { type: 'string' },
+          title: { type: 'string' },
+          type: {
+            type: 'string',
+            enum: ['concept', 'practice', 'project', 'assessment', 'reflection']
+          },
+          estimatedMinutes: {
+            type: 'number',
+            minimum: 20,
+            maximum: 90
+          },
+          instructions: { type: 'string' },
+          acceptanceTest: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              type: {
+                type: 'string',
+                enum: ['checklist']
+              },
+              spec: {
+                type: 'array',
+                minItems: 2,
+                maxItems: 4,
+                items: { type: 'string' }
+              }
+            },
+            required: ['type', 'spec']
+          }
+        },
+        required: ['id', 'projectId', 'title', 'type', 'estimatedMinutes', 'instructions', 'acceptanceTest']
+      }
+    },
+    adaptationNotes: { type: 'string' }
+  },
+  required: [
+    'id',
+    'title',
+    'description',
+    'lengthDays',
+    'totalEstimatedHours',
+    'difficulty',
+    'projects',
+    'microTasks',
+    'adaptationNotes'
+  ]
+};
+
 const SprintPlanJsonSchema = {
   type: "object",
   properties: {
@@ -319,7 +462,7 @@ const SprintPlanJsonSchema = {
           id: { type: "string" },
           projectId: { type: "string" },
           title: { type: "string" },
-          type: { 
+          type: {
             type: "string",
             enum: ["concept", "practice", "project", "assessment", "reflection"]
           },
@@ -346,7 +489,16 @@ const SprintPlanJsonSchema = {
             items: { type: "string" }
           }
         },
-        required: ["id", "projectId", "title", "type", "estimatedMinutes", "instructions", "acceptanceTest"]
+        required: [
+          "id",
+          "projectId",
+          "title",
+          "type",
+          "estimatedMinutes",
+          "instructions",
+          "acceptanceTest",
+          "resources"
+        ]
       }
     },
     portfolioCards: {
@@ -378,7 +530,6 @@ const SprintPlanJsonSchema = {
   required: ["id", "title", "description", "lengthDays", "totalEstimatedHours", "difficulty", "projects", "microTasks", "adaptationNotes"],
   additionalProperties: false
 };
-
 
 type ProviderConfig =
   | {
@@ -424,13 +575,15 @@ function getGroqClient(apiKey: string): any {
   return groqClient;
 }
 
-export type PlannerRequestErrorReason = 'provider_error' | 'invalid_json';
+export type PlannerRequestErrorReason = 'provider_error' | 'client_timeout' | 'invalid_json';
 
 export interface PlannerRequestTelemetry {
   provider: ProviderConfig['provider'];
   model: string;
   promptHash: string;
   latencyMs: number;
+  timedOut?: boolean;
+  timeoutMs?: number;
 }
 
 export class PlannerRequestError extends Error {
@@ -461,7 +614,7 @@ export interface PlannerClientResult {
 
 export async function requestPlannerPlan(payload: PlannerRequestPayload): Promise<PlannerClientResult> {
   const providerConfig = buildProviderConfig();
-  const { systemMessage, userPrompt } = buildPrompt(payload);
+  const { systemMessage, userPrompt, responseSchema, responseSchemaName, maxTokens } = buildPrompt(payload);
   const promptHash = createHash('sha256').update(`${systemMessage}\n${userPrompt}`).digest('hex');
   const baseTelemetry: PlannerRequestTelemetry = {
     provider: providerConfig.provider,
@@ -470,20 +623,26 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
     latencyMs: 0
   };
   const startTime = Date.now();
+  const requestTimeoutMs =
+    providerConfig.provider === 'groq'
+      ? config.PLANNER_REQUEST_TIMEOUT_MS
+      : config.LMSTUDIO_TIMEOUT_MS;
 
   if (providerConfig.provider === 'groq') {
     const client = getGroqClient(providerConfig.apiKey);
+    const signal = AbortSignal.timeout(requestTimeoutMs);
     try {
       const completion = await client.chat.completions.create({
         model: providerConfig.model,
         temperature: 0.2,
-        max_tokens: 2048,
+        max_tokens: maxTokens,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: systemMessage },
           { role: 'user', content: userPrompt }
-        ]
-      });
+        ],
+        signal
+      } as any);
 
       const content = completion?.choices?.[0]?.message?.content;
       if (!content || typeof content !== 'string') {
@@ -503,6 +662,20 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
         throw error;
       }
 
+      if (isAbortError(error)) {
+        throw new PlannerRequestError({
+          reason: 'client_timeout',
+          message: `Groq planner request exceeded client timeout of ${requestTimeoutMs}ms`,
+          telemetry: {
+            ...baseTelemetry,
+            latencyMs: Date.now() - startTime,
+            timedOut: true,
+            timeoutMs: requestTimeoutMs
+          },
+          cause: error
+        });
+      }
+
       throw new PlannerRequestError({
         reason: 'provider_error',
         message: (error as Error)?.message ?? 'Groq planner request failed',
@@ -515,12 +688,27 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
     }
   }
 
-  const body = buildLmStudioRequest(providerConfig.model, systemMessage, userPrompt);
+  const body = buildLmStudioRequest(
+    providerConfig.model,
+    systemMessage,
+    userPrompt,
+    responseSchema,
+    responseSchemaName,
+    maxTokens
+  );
+  const lmStudioController = new AbortController();
+  let timedOutByClient = false;
+  const timeoutId = setTimeout(() => {
+    timedOutByClient = true;
+    lmStudioController.abort();
+  }, requestTimeoutMs);
+
   try {
     const response = await fetch(providerConfig.baseUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: lmStudioController.signal
     });
 
     if (!response.ok) {
@@ -554,6 +742,32 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
       throw error;
     }
 
+    if (isAbortError(error) && timedOutByClient) {
+      throw new PlannerRequestError({
+        reason: 'client_timeout',
+        message: `LM Studio planner request exceeded client timeout of ${requestTimeoutMs}ms`,
+        telemetry: {
+          ...baseTelemetry,
+          latencyMs: Date.now() - startTime,
+          timedOut: true,
+          timeoutMs: requestTimeoutMs
+        },
+        cause: error
+      });
+    }
+
+    if (isAbortError(error)) {
+      throw new PlannerRequestError({
+        reason: 'provider_error',
+        message: 'LM Studio planner request was aborted before completion',
+        telemetry: {
+          ...baseTelemetry,
+          latencyMs: Date.now() - startTime
+        },
+        cause: error
+      });
+    }
+
     throw new PlannerRequestError({
       reason: 'provider_error',
       message: (error as Error)?.message ?? 'LM Studio planner request failed',
@@ -563,10 +777,37 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
       },
       cause: error
     });
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
-function buildPrompt(payload: PlannerRequestPayload) {
+function isAbortError(error: unknown): boolean {
+  if (!error) {
+    return false;
+  }
+
+  const DomExceptionCtor = globalThis.DOMException;
+  if (DomExceptionCtor && error instanceof DomExceptionCtor) {
+    return error.name === 'AbortError' || error.name === 'TimeoutError';
+  }
+
+  if (error instanceof Error) {
+    return error.name === 'AbortError' || error.name === 'TimeoutError';
+  }
+
+  return false;
+}
+
+interface PromptBuildResult {
+  systemMessage: string;
+  userPrompt: string;
+  responseSchema: Record<string, unknown>;
+  responseSchemaName: string;
+  maxTokens: number;
+}
+
+function buildPrompt(payload: PlannerRequestPayload): PromptBuildResult {
   const mode = payload.mode ?? 'skeleton';
   const objective = {
     id: payload.objective.id,
@@ -594,8 +835,15 @@ function buildPrompt(payload: PlannerRequestPayload) {
 
   const guidelines: string[] = [];
   if (mode === 'skeleton') {
-    guidelines.push('Generate a 1-day sprint skeleton with exactly 3 microTasks and a single primary project.');
-    guidelines.push('Keep instructions lightweight so the learner can execute quickly and prepare for future expansions.');
+    guidelines.push(
+      'Skeleton contract: output a 1-day plan with one project, exactly three microTasks, and no optional extras such as support, checkpoints, reflections, or portfolio cards.'
+    );
+    guidelines.push(
+      'Keep requirements and acceptance criteria to punchy bullets (<=3 each) and include exactly one deliverable for the project.'
+    );
+    guidelines.push(
+      'Ensure each microTask estimate stays between 20-90 minutes, the instructions stay under three sentences, and the acceptanceTest is a checklist with 2-4 bullet points.'
+    );
   } else {
     guidelines.push('Preserve all existing projects and microTasks from CURRENT_PLAN. Do not modify their IDs or instructions.');
     guidelines.push('Append new microTasks and adjust metadata to satisfy the expansion goal while reflecting cumulative progress.');
@@ -614,8 +862,6 @@ function buildPrompt(payload: PlannerRequestPayload) {
       guidelines.push(`Add approximately ${goal.additionalMicroTasks} new microTask(s).`);
     }
   }
-
-  guidelines.push('Always return valid JSON matching the SprintPlan schema. Do not include commentary.');
 
   const promptSections: string[] = [
     `INCREMENTAL PLANNING MODE: ${mode.toUpperCase()}`,
@@ -640,33 +886,61 @@ function buildPrompt(payload: PlannerRequestPayload) {
   }
 
   promptSections.push(`\nPREFERRED LENGTH: ${payload.preferLength ?? 'auto'}`);
-  promptSections.push('\nReturn ONLY valid JSON with no commentary. Schema is defined below.');
+  promptSections.push(
+    '\nReturn ONLY valid JSON with no commentary. The SprintPlan schema is enforced via response_format.'
+  );
+  promptSections.push('\nSCHEMA REFERENCE:');
   promptSections.push(SCHEMA_PROMPT);
 
   const userPrompt = promptSections.join('\n');
 
+  const isSkeletonMode = mode === 'skeleton';
+  const responseSchema = isSkeletonMode ? SkeletonSprintPlanJsonSchema : SprintPlanJsonSchema;
+  const responseSchemaName = isSkeletonMode ? 'skeleton_sprint_plan' : 'sprint_plan';
+  const maxTokens = isSkeletonMode ? 640 : 2048;
+
   return {
     systemMessage: SYSTEM_PROMPT,
-    userPrompt
+    userPrompt,
+    responseSchema,
+    responseSchemaName,
+    maxTokens
   };
 }
 
-function buildLmStudioRequest(model: string, systemMessage: string, userPrompt: string) {
+function buildLmStudioRequest(
+  model: string,
+  systemMessage: string,
+  userPrompt: string,
+  responseSchema: Record<string, unknown>,
+  responseSchemaName: string,
+  maxTokens: number
+) {
+  const resolvedMaxTokens = Math.max(maxTokens, config.LMSTUDIO_MAX_TOKENS);
+
   return {
     model,
     temperature: 0.2,
-    max_tokens: 2048,
-    response_format: { type: 'json_schema', json_schema: {
-    name: "sprint_plan",
-    strict: true,
-    schema: SprintPlanJsonSchema
-  }  },
+    max_tokens: resolvedMaxTokens,
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: responseSchemaName,
+        strict: true,
+        schema: responseSchema
+      }
+    },
     messages: [
       { role: 'system', content: systemMessage },
       { role: 'user', content: userPrompt }
     ]
   };
 }
+
+export const plannerClientTestables = {
+  buildPrompt,
+  buildLmStudioRequest
+};
 
 function parsePlannerContent(
   rawContent: string,
