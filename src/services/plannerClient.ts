@@ -1,6 +1,7 @@
 import Groq from 'groq-sdk';
 import { createHash } from 'node:crypto';
 import { config } from '../config/environment.js';
+import { json } from 'node:stream/consumers';
 
 export interface PlannerRequestPayload {
   objective: {
@@ -93,6 +94,283 @@ const SCHEMA_PROMPT = `JSON Schema (SprintPlan):
   ],
   "adaptationNotes": string
 }`;
+
+
+interface SprintPlan {
+  id: string;
+  title: string;
+  description: string;
+  lengthDays: 3 | 7 | 14;
+  totalEstimatedHours: number;
+  difficulty: "beginner" | "intermediate" | "advanced";
+  projects: Array<{
+    id: string;
+    title: string;
+    brief: string;
+    requirements: string[];
+    acceptanceCriteria: string[];
+    deliverables: Array<{
+      type: "repository" | "deployment" | "video" | "screenshot";
+      title: string;
+      artifactId: string;
+    }>;
+    evidenceRubric: {
+      dimensions: Array<{
+        name: string;
+        weight: number;
+        levels?: string[];
+      }>;
+      passThreshold: number;
+    };
+    checkpoints?: Array<{
+      id: string;
+      title: string;
+      type: "assessment" | "quiz" | "demo";
+      spec: string;
+    }>;
+    support?: {
+      concepts?: Array<{
+        id: string;
+        title: string;
+        summary: string;
+      }>;
+      practiceKatas?: Array<{
+        id: string;
+        title: string;
+        estimateMin: number;
+      }>;
+      allowedResources?: string[];
+    };
+    reflection?: {
+      prompt: string;
+      moodCheck?: boolean;
+    };
+  }>;
+  microTasks: Array<{
+    id: string;
+    projectId: string;
+    title: string;
+    type: "concept" | "practice" | "project" | "assessment" | "reflection";
+    estimatedMinutes: number;
+    instructions: string;
+    acceptanceTest: {
+      type: "checklist" | "unit_tests" | "quiz" | "demo";
+      spec: string | string[];
+    };
+    resources?: string[];
+  }>;
+  portfolioCards?: Array<{
+    projectId: string;
+    cover?: string;
+    headline: string;
+    badges?: string[];
+    links?: {
+      repo?: string;
+      demo?: string;
+      video?: string;
+    };
+  }>;
+  adaptationNotes: string;
+}
+
+// Then, define the JSON Schema (for LM Studio)
+const SprintPlanJsonSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    description: { type: "string" },
+    lengthDays: { 
+      type: "number",
+      enum: [3, 7, 14]
+    },
+    totalEstimatedHours: { type: "number" },
+    difficulty: { 
+      type: "string",
+      enum: ["beginner", "intermediate", "advanced"]
+    },
+    projects: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          brief: { type: "string" },
+          requirements: {
+            type: "array",
+            items: { type: "string" }
+          },
+          acceptanceCriteria: {
+            type: "array",
+            items: { type: "string" }
+          },
+          deliverables: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                type: { 
+                  type: "string",
+                  enum: ["repository", "deployment", "video", "screenshot"]
+                },
+                title: { type: "string" },
+                artifactId: { type: "string" }
+              },
+              required: ["type", "title", "artifactId"]
+            }
+          },
+          evidenceRubric: {
+            type: "object",
+            properties: {
+              dimensions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string" },
+                    weight: { type: "number" },
+                    levels: {
+                      type: "array",
+                      items: { type: "string" }
+                    }
+                  },
+                  required: ["name", "weight"]
+                }
+              },
+              passThreshold: { type: "number" }
+            },
+            required: ["dimensions", "passThreshold"]
+          },
+          checkpoints: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                title: { type: "string" },
+                type: { 
+                  type: "string",
+                  enum: ["assessment", "quiz", "demo"]
+                },
+                spec: { type: "string" }
+              },
+              required: ["id", "title", "type", "spec"]
+            }
+          },
+          support: {
+            type: "object",
+            properties: {
+              concepts: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    title: { type: "string" },
+                    summary: { type: "string" }
+                  },
+                  required: ["id", "title", "summary"]
+                }
+              },
+              practiceKatas: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    title: { type: "string" },
+                    estimateMin: { type: "number" }
+                  },
+                  required: ["id", "title", "estimateMin"]
+                }
+              },
+              allowedResources: {
+                type: "array",
+                items: { type: "string" }
+              }
+            }
+          },
+          reflection: {
+            type: "object",
+            properties: {
+              prompt: { type: "string" },
+              moodCheck: { type: "boolean" }
+            },
+            required: ["prompt"]
+          }
+        },
+        required: ["id", "title", "brief", "requirements", "acceptanceCriteria", "deliverables", "evidenceRubric"]
+      }
+    },
+    microTasks: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          projectId: { type: "string" },
+          title: { type: "string" },
+          type: { 
+            type: "string",
+            enum: ["concept", "practice", "project", "assessment", "reflection"]
+          },
+          estimatedMinutes: { type: "number" },
+          instructions: { type: "string" },
+          acceptanceTest: {
+            type: "object",
+            properties: {
+              type: { 
+                type: "string",
+                enum: ["checklist", "unit_tests", "quiz", "demo"]
+              },
+              spec: {
+                oneOf: [
+                  { type: "string" },
+                  { type: "array", items: { type: "string" } }
+                ]
+              }
+            },
+            required: ["type", "spec"]
+          },
+          resources: {
+            type: "array",
+            items: { type: "string" }
+          }
+        },
+        required: ["id", "projectId", "title", "type", "estimatedMinutes", "instructions", "acceptanceTest"]
+      }
+    },
+    portfolioCards: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          projectId: { type: "string" },
+          cover: { type: "string" },
+          headline: { type: "string" },
+          badges: {
+            type: "array",
+            items: { type: "string" }
+          },
+          links: {
+            type: "object",
+            properties: {
+              repo: { type: "string" },
+              demo: { type: "string" },
+              video: { type: "string" }
+            }
+          }
+        },
+        required: ["projectId", "headline"]
+      }
+    },
+    adaptationNotes: { type: "string" }
+  },
+  required: ["id", "title", "description", "lengthDays", "totalEstimatedHours", "difficulty", "projects", "microTasks", "adaptationNotes"],
+  additionalProperties: false
+};
+
 
 type ProviderConfig =
   | {
@@ -328,7 +606,11 @@ function buildLmStudioRequest(model: string, systemMessage: string, userPrompt: 
     model,
     temperature: 0.2,
     max_tokens: 2048,
-    response_format: { type: 'json_object' },
+    response_format: { type: 'json_schema', json_schema: {
+    name: "sprint_plan",
+    strict: true,
+    schema: SprintPlanJsonSchema
+  }  },
     messages: [
       { role: 'system', content: systemMessage },
       { role: 'user', content: userPrompt }
