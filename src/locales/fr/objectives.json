@@ -15,6 +15,7 @@
   },
   "sprint": {
     "generated": "Sprint généré avec succès.",
+    "expanded": "Sprint étendu avec succès.",
     "retrieved": "Sprint récupéré avec succès.",
     "evidenceSaved": "Preuves du sprint enregistrées avec succès.",
     "reviewCompleted": "Sprint évalué avec succès.",

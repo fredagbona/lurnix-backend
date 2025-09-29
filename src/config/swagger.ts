@@ -338,7 +338,7 @@ const swaggerOptions: swaggerJsDoc.Options = {
             id: { type: 'string' },
             title: { type: 'string' },
             description: { type: 'string' },
-            lengthDays: { type: 'integer', enum: [3, 7, 14] },
+            lengthDays: { type: 'integer', enum: [1, 3, 7, 14] },
             totalEstimatedHours: { type: 'number' },
             difficulty: { type: 'string', enum: ['beginner', 'intermediate', 'advanced'] },
             projects: {
@@ -482,7 +482,38 @@ const swaggerOptions: swaggerJsDoc.Options = {
               },
               nullable: true
             },
-            adaptationNotes: { type: 'string' }
+            adaptationNotes: { type: 'string' },
+            metadata: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                plannerVersion: { type: 'string' },
+                requestedAt: { type: 'string' },
+                provider: { type: 'string', enum: ['remote', 'fallback'] },
+                objectiveId: { type: 'string' },
+                learnerProfileId: { type: 'string', nullable: true },
+                preferLength: { type: 'integer', nullable: true },
+                mode: { type: 'string', enum: ['skeleton', 'expansion'] },
+                incremental: { type: 'boolean' },
+                expansionGoal: {
+                  type: 'object',
+                  nullable: true,
+                  properties: {
+                    targetLengthDays: { type: 'integer', nullable: true },
+                    additionalMicroTasks: { type: 'integer', nullable: true }
+                  }
+                }
+              },
+              additionalProperties: true
+            }
+          }
+        },
+        SprintExpansionRequest: {
+          type: 'object',
+          properties: {
+            targetLengthDays: { type: 'integer', enum: [1, 3, 7, 14] },
+            additionalDays: { type: 'integer', minimum: 1, maximum: 14 },
+            additionalMicroTasks: { type: 'integer', minimum: 1, maximum: 12 }
           }
         },
         SprintPlanResponse: {
