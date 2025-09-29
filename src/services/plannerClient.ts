@@ -120,6 +120,120 @@ interface SprintPlan {
 }
 
 // Then, define the JSON Schema (for LM Studio)
+const SkeletonSprintPlanJsonSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    description: { type: "string" },
+    lengthDays: {
+      type: "number",
+      enum: [1]
+    },
+    totalEstimatedHours: { type: "number" },
+    difficulty: {
+      type: "string",
+      enum: ["beginner", "intermediate", "advanced"]
+    },
+    projects: {
+      type: "array",
+      minItems: 1,
+      maxItems: 1,
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          brief: { type: "string" },
+          requirements: {
+            type: "array",
+            minItems: 1,
+            maxItems: 4,
+            items: { type: "string" }
+          },
+          acceptanceCriteria: {
+            type: "array",
+            minItems: 1,
+            maxItems: 4,
+            items: { type: "string" }
+          },
+          deliverables: {
+            type: "array",
+            minItems: 1,
+            maxItems: 2,
+            items: {
+              type: "object",
+              properties: {
+                type: {
+                  type: "string",
+                  enum: ["repository", "deployment", "video", "screenshot"]
+                },
+                title: { type: "string" },
+                artifactId: { type: "string" }
+              },
+              required: ["type", "title", "artifactId"],
+              additionalProperties: false
+            }
+          }
+        },
+        required: ["id", "title", "brief", "requirements", "acceptanceCriteria", "deliverables"],
+        additionalProperties: false
+      }
+    },
+    microTasks: {
+      type: "array",
+      minItems: 3,
+      maxItems: 3,
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          projectId: { type: "string" },
+          title: { type: "string" },
+          type: {
+            type: "string",
+            enum: ["concept", "practice", "project", "assessment", "reflection"]
+          },
+          estimatedMinutes: { type: "number" },
+          instructions: { type: "string" },
+          acceptanceTest: {
+            type: "object",
+            properties: {
+              type: {
+                type: "string",
+                enum: ["checklist", "unit_tests", "quiz", "demo"]
+              },
+              spec: {
+                oneOf: [
+                  { type: "string" },
+                  { type: "array", items: { type: "string" } }
+                ]
+              }
+            },
+            required: ["type", "spec"],
+            additionalProperties: false
+          }
+        },
+        required: ["id", "projectId", "title", "type", "estimatedMinutes", "instructions", "acceptanceTest"],
+        additionalProperties: false
+      }
+    },
+    adaptationNotes: { type: "string" }
+  },
+  required: [
+    "id",
+    "title",
+    "description",
+    "lengthDays",
+    "totalEstimatedHours",
+    "difficulty",
+    "projects",
+    "microTasks",
+    "adaptationNotes"
+  ],
+  additionalProperties: false
+};
+
 const SprintPlanJsonSchema = {
   type: "object",
   properties: {
@@ -400,7 +514,7 @@ export interface PlannerClientResult {
 
 export async function requestPlannerPlan(payload: PlannerRequestPayload): Promise<PlannerClientResult> {
   const providerConfig = buildProviderConfig();
-  const { systemMessage, userPrompt } = buildPrompt(payload);
+  const { systemMessage, userPrompt, responseSchema, maxTokens } = buildPrompt(payload);
   const promptHash = createHash('sha256').update(`${systemMessage}\n${userPrompt}`).digest('hex');
   const baseTelemetry: PlannerRequestTelemetry = {
     provider: providerConfig.provider,
@@ -421,7 +535,7 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
       const completion = await client.chat.completions.create({
         model: providerConfig.model,
         temperature: 0.2,
-        max_tokens: 2048,
+        max_tokens: maxTokens,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: systemMessage },
@@ -474,7 +588,13 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
     }
   }
 
-  const body = buildLmStudioRequest(providerConfig.model, systemMessage, userPrompt);
+  const body = buildLmStudioRequest(
+    providerConfig.model,
+    systemMessage,
+    userPrompt,
+    responseSchema,
+    maxTokens
+  );
   const lmStudioController = new AbortController();
   let timedOutByClient = false;
   const timeoutId = setTimeout(() => {
@@ -578,7 +698,14 @@ function isAbortError(error: unknown): boolean {
   return false;
 }
 
-function buildPrompt(payload: PlannerRequestPayload) {
+interface PromptBuildResult {
+  systemMessage: string;
+  userPrompt: string;
+  responseSchema: Record<string, unknown>;
+  maxTokens: number;
+}
+
+function buildPrompt(payload: PlannerRequestPayload): PromptBuildResult {
   const mode = payload.mode ?? 'skeleton';
   const objective = {
     id: payload.objective.id,
@@ -656,23 +783,35 @@ function buildPrompt(payload: PlannerRequestPayload) {
 
   const userPrompt = promptSections.join('\n');
 
+  const responseSchema =
+    mode === 'skeleton' ? SkeletonSprintPlanJsonSchema : SprintPlanJsonSchema;
+  const maxTokens = mode === 'skeleton' ? 1024 : 2048;
+
   return {
     systemMessage: SYSTEM_PROMPT,
-    userPrompt
+    userPrompt,
+    responseSchema,
+    maxTokens
   };
 }
 
-function buildLmStudioRequest(model: string, systemMessage: string, userPrompt: string) {
+function buildLmStudioRequest(
+  model: string,
+  systemMessage: string,
+  userPrompt: string,
+  responseSchema: Record<string, unknown>,
+  maxTokens: number
+) {
   return {
     model,
     temperature: 0.2,
-    max_tokens: 2048,
+    max_tokens: maxTokens,
     response_format: {
       type: 'json_schema',
       json_schema: {
         name: 'sprint_plan',
         strict: true,
-        schema: SprintPlanJsonSchema
+        schema: responseSchema
       }
     },
     messages: [
