@@ -121,117 +121,125 @@ interface SprintPlan {
 
 // Then, define the JSON Schema (for LM Studio)
 const SkeletonSprintPlanJsonSchema = {
-  type: "object",
+  type: 'object',
+  additionalProperties: false,
   properties: {
-    id: { type: "string" },
-    title: { type: "string" },
-    description: { type: "string" },
+    id: { type: 'string' },
+    title: { type: 'string' },
+    description: { type: 'string' },
     lengthDays: {
-      type: "number",
+      type: 'integer',
       enum: [1]
     },
-    totalEstimatedHours: { type: "number" },
+    totalEstimatedHours: {
+      type: 'number',
+      minimum: 2,
+      maximum: 12
+    },
     difficulty: {
-      type: "string",
-      enum: ["beginner", "intermediate", "advanced"]
+      type: 'string',
+      enum: ['beginner', 'intermediate', 'advanced']
     },
     projects: {
-      type: "array",
+      type: 'array',
       minItems: 1,
       maxItems: 1,
       items: {
-        type: "object",
+        type: 'object',
+        additionalProperties: false,
         properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-          brief: { type: "string" },
+          id: { type: 'string' },
+          title: { type: 'string' },
+          brief: { type: 'string' },
           requirements: {
-            type: "array",
+            type: 'array',
             minItems: 1,
-            maxItems: 4,
-            items: { type: "string" }
+            maxItems: 3,
+            items: { type: 'string' }
           },
           acceptanceCriteria: {
-            type: "array",
+            type: 'array',
             minItems: 1,
-            maxItems: 4,
-            items: { type: "string" }
+            maxItems: 3,
+            items: { type: 'string' }
           },
           deliverables: {
-            type: "array",
+            type: 'array',
             minItems: 1,
-            maxItems: 2,
+            maxItems: 1,
             items: {
-              type: "object",
+              type: 'object',
+              additionalProperties: false,
               properties: {
                 type: {
-                  type: "string",
-                  enum: ["repository", "deployment", "video", "screenshot"]
+                  type: 'string',
+                  enum: ['repository', 'deployment', 'video', 'screenshot']
                 },
-                title: { type: "string" },
-                artifactId: { type: "string" }
+                title: { type: 'string' },
+                artifactId: { type: 'string' }
               },
-              required: ["type", "title", "artifactId"],
-              additionalProperties: false
+              required: ['type', 'title', 'artifactId']
             }
           }
         },
-        required: ["id", "title", "brief", "requirements", "acceptanceCriteria", "deliverables"],
-        additionalProperties: false
+        required: ['id', 'title', 'brief', 'requirements', 'acceptanceCriteria', 'deliverables']
       }
     },
     microTasks: {
-      type: "array",
+      type: 'array',
       minItems: 3,
       maxItems: 3,
       items: {
-        type: "object",
+        type: 'object',
+        additionalProperties: false,
         properties: {
-          id: { type: "string" },
-          projectId: { type: "string" },
-          title: { type: "string" },
+          id: { type: 'string' },
+          projectId: { type: 'string' },
+          title: { type: 'string' },
           type: {
-            type: "string",
-            enum: ["concept", "practice", "project", "assessment", "reflection"]
+            type: 'string',
+            enum: ['concept', 'practice', 'project', 'assessment', 'reflection']
           },
-          estimatedMinutes: { type: "number" },
-          instructions: { type: "string" },
+          estimatedMinutes: {
+            type: 'number',
+            minimum: 20,
+            maximum: 90
+          },
+          instructions: { type: 'string' },
           acceptanceTest: {
-            type: "object",
+            type: 'object',
+            additionalProperties: false,
             properties: {
               type: {
-                type: "string",
-                enum: ["checklist", "unit_tests", "quiz", "demo"]
+                type: 'string',
+                enum: ['checklist']
               },
               spec: {
-                oneOf: [
-                  { type: "string" },
-                  { type: "array", items: { type: "string" } }
-                ]
+                type: 'array',
+                minItems: 2,
+                maxItems: 4,
+                items: { type: 'string' }
               }
             },
-            required: ["type", "spec"],
-            additionalProperties: false
+            required: ['type', 'spec']
           }
         },
-        required: ["id", "projectId", "title", "type", "estimatedMinutes", "instructions", "acceptanceTest"],
-        additionalProperties: false
+        required: ['id', 'projectId', 'title', 'type', 'estimatedMinutes', 'instructions', 'acceptanceTest']
       }
     },
-    adaptationNotes: { type: "string" }
+    adaptationNotes: { type: 'string' }
   },
   required: [
-    "id",
-    "title",
-    "description",
-    "lengthDays",
-    "totalEstimatedHours",
-    "difficulty",
-    "projects",
-    "microTasks",
-    "adaptationNotes"
-  ],
-  additionalProperties: false
+    'id',
+    'title',
+    'description',
+    'lengthDays',
+    'totalEstimatedHours',
+    'difficulty',
+    'projects',
+    'microTasks',
+    'adaptationNotes'
+  ]
 };
 
 const SprintPlanJsonSchema = {
@@ -514,7 +522,7 @@ export interface PlannerClientResult {
 
 export async function requestPlannerPlan(payload: PlannerRequestPayload): Promise<PlannerClientResult> {
   const providerConfig = buildProviderConfig();
-  const { systemMessage, userPrompt, responseSchema, maxTokens } = buildPrompt(payload);
+  const { systemMessage, userPrompt, responseSchema, responseSchemaName, maxTokens } = buildPrompt(payload);
   const promptHash = createHash('sha256').update(`${systemMessage}\n${userPrompt}`).digest('hex');
   const baseTelemetry: PlannerRequestTelemetry = {
     provider: providerConfig.provider,
@@ -593,6 +601,7 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
     systemMessage,
     userPrompt,
     responseSchema,
+    responseSchemaName,
     maxTokens
   );
   const lmStudioController = new AbortController();
@@ -702,6 +711,7 @@ interface PromptBuildResult {
   systemMessage: string;
   userPrompt: string;
   responseSchema: Record<string, unknown>;
+  responseSchemaName: string;
   maxTokens: number;
 }
 
@@ -733,8 +743,15 @@ function buildPrompt(payload: PlannerRequestPayload): PromptBuildResult {
 
   const guidelines: string[] = [];
   if (mode === 'skeleton') {
-    guidelines.push('Generate a 1-day sprint skeleton with exactly 3 microTasks and a single primary project.');
-    guidelines.push('Keep instructions lightweight so the learner can execute quickly and prepare for future expansions.');
+    guidelines.push(
+      'Skeleton contract: output a 1-day plan with one project, exactly three microTasks, and no optional extras such as support, checkpoints, reflections, or portfolio cards.'
+    );
+    guidelines.push(
+      'Keep requirements and acceptance criteria to punchy bullets (<=3 each) and include exactly one deliverable for the project.'
+    );
+    guidelines.push(
+      'Ensure each microTask estimate stays between 20-90 minutes, the instructions stay under three sentences, and the acceptanceTest is a checklist with 2-4 bullet points.'
+    );
   } else {
     guidelines.push('Preserve all existing projects and microTasks from CURRENT_PLAN. Do not modify their IDs or instructions.');
     guidelines.push('Append new microTasks and adjust metadata to satisfy the expansion goal while reflecting cumulative progress.');
@@ -783,14 +800,16 @@ function buildPrompt(payload: PlannerRequestPayload): PromptBuildResult {
 
   const userPrompt = promptSections.join('\n');
 
-  const responseSchema =
-    mode === 'skeleton' ? SkeletonSprintPlanJsonSchema : SprintPlanJsonSchema;
-  const maxTokens = mode === 'skeleton' ? 1024 : 2048;
+  const isSkeletonMode = mode === 'skeleton';
+  const responseSchema = isSkeletonMode ? SkeletonSprintPlanJsonSchema : SprintPlanJsonSchema;
+  const responseSchemaName = isSkeletonMode ? 'skeleton_sprint_plan' : 'sprint_plan';
+  const maxTokens = isSkeletonMode ? 640 : 2048;
 
   return {
     systemMessage: SYSTEM_PROMPT,
     userPrompt,
     responseSchema,
+    responseSchemaName,
     maxTokens
   };
 }
@@ -800,6 +819,7 @@ function buildLmStudioRequest(
   systemMessage: string,
   userPrompt: string,
   responseSchema: Record<string, unknown>,
+  responseSchemaName: string,
   maxTokens: number
 ) {
   return {
@@ -809,7 +829,7 @@ function buildLmStudioRequest(
     response_format: {
       type: 'json_schema',
       json_schema: {
-        name: 'sprint_plan',
+        name: responseSchemaName,
         strict: true,
         schema: responseSchema
       }
@@ -820,6 +840,11 @@ function buildLmStudioRequest(
     ]
   };
 }
+
+export const plannerClientTestables = {
+  buildPrompt,
+  buildLmStudioRequest
+};
 
 function parsePlannerContent(
   rawContent: string,
