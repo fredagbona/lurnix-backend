@@ -45,7 +45,7 @@ const SCHEMA_PROMPT = `JSON Schema (SprintPlan):
   "id": string,
   "title": string,
   "description": string,
-  "lengthDays": 3 | 7 | 14,
+  "lengthDays": 1 | 3 | 7 | 14,
   "totalEstimatedHours": number,
   "difficulty": "beginner" | "intermediate" | "advanced",
   "projects": [
@@ -104,7 +104,7 @@ interface SprintPlan {
   id: string;
   title: string;
   description: string;
-  lengthDays: 3 | 7 | 14;
+  lengthDays: 1 | 3 | 7 | 14;
   totalEstimatedHours: number;
   difficulty: "beginner" | "intermediate" | "advanced";
   projects: Array<{
