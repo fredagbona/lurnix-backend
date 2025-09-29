@@ -47,6 +47,7 @@ export interface GenerateSprintRequest {
   objectiveId: string;
   learnerProfileId?: string;
   preferLength?: number;
+  allowedResources?: string[];
 }
 
 export interface ObjectiveListResponse {
@@ -61,8 +62,6 @@ export interface ObjectiveDetailResponse {
 
 export interface CreateObjectiveResponse {
   objective: ObjectiveUiPayload;
-  sprint: SprintUiPayload;
-  plan: SprintPlan;
   planLimits: PlanLimitsPayload;
 }
 
@@ -72,6 +71,16 @@ export interface GenerateSprintResponse {
   planLimits: PlanLimitsPayload;
   objectiveLimits: ObjectiveSprintLimitPayload;
 }
+
+export interface DeleteObjectiveRequest {
+  userId: string;
+  objectiveId: string;
+}
+
+export interface DeleteObjectiveResponse {
+  planLimits: PlanLimitsPayload;
+}
+
 
 export interface ExpandSprintRequest {
   userId: string;
@@ -201,6 +210,35 @@ export class ObjectiveService {
 
   }
 
+  async deleteObjective(request: DeleteObjectiveRequest): Promise<DeleteObjectiveResponse> {
+    const objective = await db.objective.findFirst({
+      where: {
+        id: request.objectiveId,
+        profileSnapshot: { userId: request.userId }
+      },
+      include: {
+        sprints: {
+          select: { id: true },
+          take: 1
+        }
+      }
+    });
+
+    if (!objective) {
+      throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
+    }
+
+    if (objective.sprints && objective.sprints.length > 0) {
+      throw new AppError('objectives.errors.deleteHasSprints', 400, 'OBJECTIVE_HAS_SPRINTS');
+    }
+
+    await db.objective.delete({ where: { id: objective.id } });
+
+    const { plan } = await planLimitationService.getPlanLimits(request.userId);
+
+    return { planLimits: plan };
+  }
+
   async createObjective(request: CreateObjectiveRequest): Promise<CreateObjectiveResponse> {
     const { summary } = await planLimitationService.ensureCanCreateObjective(request.userId);
     const learnerProfile = await this.resolveLearnerProfile(request.userId, request.learnerProfileId);
@@ -221,27 +259,7 @@ export class ObjectiveService {
       }
     });
 
-    const profileContext = await profileContextBuilder.build({
-      userId: request.userId,
-      learnerProfileId: learnerProfile.id,
-      objectiveId: objective.id
-    });
-
-    const { sprint, plan } = await this.generateAndPersistSprint({
-      userId: request.userId,
-      objectiveId: objective.id,
-      learnerProfile,
-      profileContext,
-      mode: 'skeleton',
-      expansionGoal: { targetLengthDays: 1 }
-    });
-
-    await this.applyPlanEstimates(objective.id, plan.lengthDays, {
-      estimatedWeeksMin: objective.estimatedWeeksMin ?? null,
-      estimatedWeeksMax: objective.estimatedWeeksMax ?? null
-    });
-
-   const objectiveRecord = (await db.objective.findFirst({
+    const objectiveRecord = (await db.objective.findFirst({
 
       where: { id: objective.id },
       include: {
@@ -254,7 +272,6 @@ export class ObjectiveService {
     })) as ObjectiveWithRelations | null;
 
     if (!objectiveRecord) {
-
       throw new AppError('objectives.errors.notFound', 404, 'OBJECTIVE_NOT_FOUND');
     }
 
@@ -265,27 +282,15 @@ export class ObjectiveService {
     const planLimits = planLimitationService.buildPlanPayload(updatedSummary);
     const objectiveLimits = planLimitationService.buildObjectiveSprintLimit(
       updatedSummary,
-
       objectiveRecord.sprints?.length ?? 0
     );
     const objectivePayload = serializeObjective(objectiveRecord, {
       userId: request.userId,
       limits: objectiveLimits
     });
-    const sprintPayload = this.buildSprintPayload({
-      sprint,
-      userId: request.userId,
-      objective: objectiveRecord,
-      plan,
-      progresses: [],
-      artifacts: []
-    });
-
 
     return {
       objective: objectivePayload,
-      sprint: sprintPayload,
-      plan,
       planLimits
     };
   }
@@ -324,6 +329,11 @@ export class ObjectiveService {
       ? ({ targetLengthDays: request.preferLength } as SprintPlanExpansionGoal)
       : null;
 
+    const allowedResources = Array.isArray(request.allowedResources)
+      ? request.allowedResources.filter((value) => typeof value === 'string' && value.trim().length > 0)
+      : undefined;
+
+
     const { sprint, plan } = await this.generateAndPersistSprint({
       userId: request.userId,
       objectiveId: objective.id,
@@ -332,7 +342,9 @@ export class ObjectiveService {
       preferLength: request.preferLength,
       objective,
       mode: 'skeleton',
-      expansionGoal
+      expansionGoal,
+      allowedResources
+
     });
 
 
@@ -740,6 +752,8 @@ export class ObjectiveService {
     mode?: SprintPlanMode;
     currentPlan?: Partial<SprintPlanCore> | null;
     expansionGoal?: SprintPlanExpansionGoal | null;
+    allowedResources?: string[];
+
   }) {
     const objective = params.objective ?? (await db.objective.findUnique({ where: { id: params.objectiveId } }));
     if (!objective) {
@@ -769,7 +783,9 @@ export class ObjectiveService {
       requestedAt,
       mode,
       currentPlan: params.currentPlan ?? null,
-      expansionGoal: params.expansionGoal ?? null
+      expansionGoal: params.expansionGoal ?? null,
+      allowedResources: params.allowedResources ?? undefined
+
     });
 
     const plannerInputPayload = {

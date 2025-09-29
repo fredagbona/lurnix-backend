@@ -332,6 +332,32 @@ const swaggerOptions: swaggerJsDoc.Options = {
             }
           }
         },
+        PlanLimits: {
+          type: 'object',
+          properties: {
+            planType: { type: 'string', enum: ['free', 'builder', 'master'] },
+            objectiveLimit: { type: 'integer', nullable: true },
+            objectiveCount: { type: 'integer' },
+            remainingObjectives: { type: 'integer', nullable: true },
+            canCreateObjective: { type: 'boolean' },
+            gatingReason: { type: 'string', nullable: true },
+            gatingMessageKey: { type: 'string', nullable: true },
+            upgradePlanType: { type: 'string', nullable: true }
+          }
+        },
+        ObjectiveSprintLimits: {
+          type: 'object',
+          properties: {
+            planType: { type: 'string', enum: ['free', 'builder', 'master'] },
+            sprintLimitPerObjective: { type: 'integer', nullable: true },
+            sprintCount: { type: 'integer' },
+            remainingSprints: { type: 'integer', nullable: true },
+            canGenerateSprint: { type: 'boolean' },
+            gatingReason: { type: 'string', nullable: true },
+            gatingMessageKey: { type: 'string', nullable: true },
+            upgradePlanType: { type: 'string', nullable: true }
+          }
+        },
         SprintPlan: {
           type: 'object',
           properties: {
@@ -520,7 +546,9 @@ const swaggerOptions: swaggerJsDoc.Options = {
           type: 'object',
           properties: {
             sprint: { $ref: '#/components/schemas/Sprint' },
-            plan: { $ref: '#/components/schemas/SprintPlan' }
+            plan: { $ref: '#/components/schemas/SprintPlan' },
+            planLimits: { $ref: '#/components/schemas/PlanLimits' },
+            objectiveLimits: { $ref: '#/components/schemas/ObjectiveSprintLimits' }
           }
         }
       },

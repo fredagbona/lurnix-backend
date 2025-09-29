@@ -23,6 +23,7 @@ export interface PlannerRequestPayload {
     goals: string[];
   } | null;
   preferLength?: number;
+  allowedResources?: string[] | null;
   context?: Record<string, unknown> | null;
   mode?: 'skeleton' | 'expansion';
   currentPlan?: Record<string, unknown> | null;
@@ -596,6 +597,10 @@ function buildPrompt(payload: PlannerRequestPayload) {
     guidelines.push('Append new microTasks and adjust metadata to satisfy the expansion goal while reflecting cumulative progress.');
   }
 
+  if (payload.allowedResources && payload.allowedResources.length) {
+    guidelines.push('Limit references and resource suggestions to the ALLOWED_RESOURCES list when possible.');
+  }
+
   if (payload.expansionGoal) {
     const goal = payload.expansionGoal;
     if (typeof goal.targetLengthDays === 'number') {
@@ -619,6 +624,11 @@ function buildPrompt(payload: PlannerRequestPayload) {
     '\nADDITIONAL CONTEXT:',
     JSON.stringify(context, null, 2)
   ];
+
+  if (payload.allowedResources && payload.allowedResources.length) {
+    promptSections.push('\nALLOWED RESOURCES:');
+    promptSections.push(JSON.stringify(payload.allowedResources, null, 2));
+  }
 
   if (mode === 'expansion') {
     promptSections.push('\nCURRENT PLAN SNAPSHOT:');

@@ -8,10 +8,14 @@
   "detail": {
     "success": "Objective retrieved successfully."
   },
+  "delete": {
+    "success": "Objective deleted successfully."
+  },
   "errors": {
     "profileRequired": "You need a learner profile snapshot before creating an objective.",
     "profileNotFound": "Learner profile snapshot not found.",
-    "notFound": "Objective not found."
+    "notFound": "Objective not found.",
+    "deleteHasSprints": "You can only delete objectives that don't have any sprints yet."
   },
   "sprint": {
     "generated": "Sprint generated successfully.",

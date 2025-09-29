@@ -81,6 +81,27 @@ export class ObjectiveController {
     });
   }
 
+  async deleteObjective(req: AuthRequest, res: Response): Promise<void> {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
+
+    const result = await objectiveService.deleteObjective({
+      userId: req.userId,
+      objectiveId: req.params.objectiveId
+    });
+
+    sendTranslatedResponse(res, 'objectives.delete.success', {
+      statusCode: 200,
+      data: result
+    });
+  }
+
   async generateSprint(req: AuthRequest, res: Response, _next: NextFunction): Promise<void> {
     if (!req.userId) {
       res.status(401).json({
@@ -112,7 +133,8 @@ export class ObjectiveController {
       userId: req.userId,
       objectiveId: validation.data.objectiveId,
       learnerProfileId: validation.data.learnerProfileId,
-      preferLength: validation.data.preferLength
+      preferLength: validation.data.preferLength,
+      allowedResources: validation.data.allowedResources
     });
 
     sendTranslatedResponse(res, 'objectives.sprint.generated', {

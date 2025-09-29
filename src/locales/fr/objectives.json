@@ -8,10 +8,14 @@
   "detail": {
     "success": "Objectif récupéré avec succès."
   },
+  "delete": {
+    "success": "Objectif supprimé avec succès."
+  },
   "errors": {
     "profileRequired": "Vous devez disposer d'un profil apprenant avant de créer un objectif.",
     "profileNotFound": "Profil apprenant introuvable.",
-    "notFound": "Objectif introuvable."
+    "notFound": "Objectif introuvable.",
+    "deleteHasSprints": "Seuls les objectifs sans sprint peuvent être supprimés."
   },
   "sprint": {
     "generated": "Sprint généré avec succès.",

@@ -26,6 +26,7 @@ export interface GenerateSprintPlanInput {
   learnerProfile?: LearnerProfile | null;
   preferLength?: number;
   profileContext?: ProfileContext;
+  allowedResources?: string[];
   plannerVersion?: string;
   requestedAt?: Date;
   objectivePriority?: number;
@@ -377,6 +378,8 @@ class PlannerService {
           }
         : null,
       preferLength: input.preferLength,
+      allowedResources: input.allowedResources ?? null,
+
       mode,
       currentPlan,
       expansionGoal: input.expansionGoal ?? null,
@@ -387,7 +390,9 @@ class PlannerService {
         profileContext,
         mode,
         currentPlan,
-        expansionGoal: input.expansionGoal ?? null
+        expansionGoal: input.expansionGoal ?? null,
+        allowedResources: input.allowedResources ?? null
+
       }
     };
   }
@@ -651,6 +656,10 @@ class PlannerService {
       'Write sprint retrospective'
     ];
 
+    const allowedResources = Array.isArray(input.allowedResources) && input.allowedResources.length
+      ? [...input.allowedResources]
+      : undefined;
+
     const project: SprintProjectPlan = {
       id: projectId,
       title: `${input.objectiveTitle} project`,
@@ -696,7 +705,8 @@ class PlannerService {
             title: 'Write smoke tests for critical flows',
             estimateMin: 30
           }
-        ]
+        ],
+        ...(allowedResources ? { allowedResources } : {})
       },
       reflection: {
         prompt: 'What did this sprint change about your understanding of the objective?',
@@ -762,6 +772,10 @@ class PlannerService {
     input: GenerateSprintPlanInput
   ): SprintMicroTaskPlan[] {
     const estimatedMinutes = 60;
+    const resources = Array.isArray(input.allowedResources) && input.allowedResources.length
+      ? [...input.allowedResources]
+      : undefined;
+
     const templates = [
       {
         title: `Plan a quick win for ${input.objectiveTitle}`,
@@ -806,8 +820,121 @@ class PlannerService {
       acceptanceTest: {
         type: 'checklist',
         spec: template.acceptance
-      }
+      },
+      ...(resources ? { resources } : {})
     }));
+  }
+
+  private resolveExpansionMicroTaskCount(
+    lengthDays: 1 | 3 | 7 | 14,
+    input: GenerateSprintPlanInput,
+    currentPlan: Partial<SprintPlanCore> | null,
+    existingCount: number
+  ): number {
+    if (input.expansionGoal?.additionalMicroTasks && input.expansionGoal.additionalMicroTasks > 0) {
+      return input.expansionGoal.additionalMicroTasks;
+    }
+
+    const currentLength = this.normalizeLength(currentPlan?.lengthDays) ?? 1;
+    const lengthDelta = Math.max(0, lengthDays - currentLength);
+
+    if (lengthDelta >= 7) {
+      return 6;
+    }
+    if (lengthDelta >= 4) {
+      return 4;
+    }
+    if (lengthDelta >= 2) {
+      return 3;
+    }
+    if (lengthDelta > 0) {
+      return 2;
+    }
+
+    return existingCount >= 6 ? 2 : 3;
+  }
+
+  private buildExpansionMicroTaskBatch(
+    planId: string,
+    projectId: string,
+    input: GenerateSprintPlanInput,
+    lengthDays: 1 | 3 | 7 | 14,
+    startIndex: number,
+    count: number
+  ): SprintMicroTaskPlan[] {
+    if (count <= 0) {
+      return [];
+    }
+
+    const estimatedMinutes = lengthDays >= 7 ? 90 : 75;
+    const resources = Array.isArray(input.allowedResources) && input.allowedResources.length
+      ? [...input.allowedResources]
+      : undefined;
+    const templates = [
+      {
+        title: `Extend the deliverable for ${input.objectiveTitle}`,
+        type: 'project' as const,
+        instructions:
+          'Add a stretch enhancement or robustness improvement. Focus on polish that showcases quality when you share the sprint.',
+        acceptance: [
+          'Document the enhancement in CHANGELOG or README',
+          'Record before/after screenshots or metrics',
+          'Note any trade-offs introduced by the enhancement'
+        ]
+      },
+      {
+        title: 'Quality sweep & peer feedback',
+        type: 'assessment' as const,
+        instructions:
+          'Run tests or manual QA, capture issues found, and share progress with a peer or community channel for quick feedback.',
+        acceptance: [
+          'List bugs or gaps discovered during QA',
+          'Summarize feedback received (or your own review notes)',
+          'Identify follow-up tasks to address in the next iteration'
+        ]
+      },
+      {
+        title: 'Evidence packaging sprint',
+        type: 'reflection' as const,
+        instructions:
+          'Produce supporting materials—demo video, screenshots, or walkthrough notes—to make your progress portfolio-ready.',
+        acceptance: [
+          'Capture at least two artifacts (video, screenshot, repo diff)',
+          'Write a narrative that highlights new capabilities',
+          'List questions to explore in the next planning cycle'
+        ]
+      },
+      {
+        title: 'Skill deep-dive booster',
+        type: 'concept' as const,
+        instructions:
+          'Study a targeted concept or tutorial that unlocks the next milestone. Summarize takeaways and how they apply to the project.',
+        acceptance: [
+          'Link to the resource consumed',
+          'Summarize top three insights',
+          'Describe how you will apply the insight in upcoming work'
+        ]
+
+      }
+    ];
+
+    return Array.from({ length: count }).map((_, index) => {
+      const template = templates[index % templates.length];
+      const idIndex = startIndex + index + 1;
+      return {
+        id: `${planId}_task_${idIndex}`,
+        projectId,
+        title: template.title,
+        type: template.type,
+        estimatedMinutes,
+        instructions: template.instructions,
+        acceptanceTest: {
+          type: 'checklist',
+          spec: template.acceptance
+        },
+        ...(resources ? { resources } : {})
+      } satisfies SprintMicroTaskPlan;
+    });
   }
 
   private resolveExpansionMicroTaskCount(
