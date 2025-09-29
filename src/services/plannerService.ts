@@ -326,6 +326,7 @@ class PlannerService {
       model: resolvedTelemetry?.model,
       latencyMs: resolvedTelemetry?.latencyMs,
       promptHash: resolvedTelemetry?.promptHash,
+      timedOut: resolvedTelemetry?.timedOut ?? false,
       error: error instanceof Error ? error.message : error
     });
   }

@@ -431,6 +431,7 @@ export interface PlannerRequestTelemetry {
   model: string;
   promptHash: string;
   latencyMs: number;
+  timedOut?: boolean;
 }
 
 export class PlannerRequestError extends Error {
@@ -470,9 +471,11 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
     latencyMs: 0
   };
   const startTime = Date.now();
+  const requestTimeoutMs = config.PLANNER_REQUEST_TIMEOUT_MS;
 
   if (providerConfig.provider === 'groq') {
     const client = getGroqClient(providerConfig.apiKey);
+    const signal = AbortSignal.timeout(requestTimeoutMs);
     try {
       const completion = await client.chat.completions.create({
         model: providerConfig.model,
@@ -482,8 +485,9 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
         messages: [
           { role: 'system', content: systemMessage },
           { role: 'user', content: userPrompt }
-        ]
-      });
+        ],
+        signal
+      } as any);
 
       const content = completion?.choices?.[0]?.message?.content;
       if (!content || typeof content !== 'string') {
@@ -503,6 +507,19 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
         throw error;
       }
 
+      if (isAbortError(error)) {
+        throw new PlannerRequestError({
+          reason: 'provider_error',
+          message: `Groq planner request timed out after ${requestTimeoutMs}ms`,
+          telemetry: {
+            ...baseTelemetry,
+            latencyMs: Date.now() - startTime,
+            timedOut: true
+          },
+          cause: error
+        });
+      }
+
       throw new PlannerRequestError({
         reason: 'provider_error',
         message: (error as Error)?.message ?? 'Groq planner request failed',
@@ -516,11 +533,13 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
   }
 
   const body = buildLmStudioRequest(providerConfig.model, systemMessage, userPrompt);
+  const lmStudioSignal = AbortSignal.timeout(requestTimeoutMs);
   try {
     const response = await fetch(providerConfig.baseUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: lmStudioSignal
     });
 
     if (!response.ok) {
@@ -554,6 +573,19 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
       throw error;
     }
 
+    if (isAbortError(error)) {
+      throw new PlannerRequestError({
+        reason: 'provider_error',
+        message: `LM Studio planner request timed out after ${requestTimeoutMs}ms`,
+        telemetry: {
+          ...baseTelemetry,
+          latencyMs: Date.now() - startTime,
+          timedOut: true
+        },
+        cause: error
+      });
+    }
+
     throw new PlannerRequestError({
       reason: 'provider_error',
       message: (error as Error)?.message ?? 'LM Studio planner request failed',
@@ -564,6 +596,23 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
       cause: error
     });
   }
+}
+
+function isAbortError(error: unknown): boolean {
+  if (!error) {
+    return false;
+  }
+
+  const DomExceptionCtor = globalThis.DOMException;
+  if (DomExceptionCtor && error instanceof DomExceptionCtor) {
+    return error.name === 'AbortError' || error.name === 'TimeoutError';
+  }
+
+  if (error instanceof Error) {
+    return error.name === 'AbortError' || error.name === 'TimeoutError';
+  }
+
+  return false;
 }
 
 function buildPrompt(payload: PlannerRequestPayload) {
