@@ -601,8 +601,6 @@ function buildPrompt(payload: PlannerRequestPayload) {
     }
   }
 
-  guidelines.push('Always return valid JSON matching the SprintPlan schema. Do not include commentary.');
-
   const promptSections: string[] = [
     `INCREMENTAL PLANNING MODE: ${mode.toUpperCase()}`,
     'GUIDELINES:',
@@ -627,7 +625,7 @@ function buildPrompt(payload: PlannerRequestPayload) {
 
   promptSections.push(`\nPREFERRED LENGTH: ${payload.preferLength ?? 'auto'}`);
   promptSections.push(
-    '\nReturn ONLY valid JSON with no commentary. Output must satisfy the SprintPlan schema (enforced by response_format when provided).'
+    '\nReturn ONLY valid JSON with no commentary. The SprintPlan schema is enforced via response_format.'
   );
 
   const userPrompt = promptSections.join('\n');
