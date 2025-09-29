@@ -40,6 +40,85 @@ Rules:
 5. Output MUST be valid JSON and match the SprintPlan schema exactly.
 `;
 
+const SCHEMA_PROMPT = `SprintPlan JSON structure (types shown for clarity):
+{
+  "id": string,
+  "title": string,
+  "description": string,
+  "lengthDays": 1 | 3 | 7 | 14,
+  "totalEstimatedHours": number,
+  "difficulty": "beginner" | "intermediate" | "advanced",
+  "projects": Array<{
+    "id": string,
+    "title": string,
+    "brief": string,
+    "requirements": string[],
+    "acceptanceCriteria": string[],
+    "deliverables": Array<{
+      "type": "repository" | "deployment" | "video" | "screenshot",
+      "title": string,
+      "artifactId": string
+    }>,
+    "evidenceRubric": {
+      "dimensions": Array<{
+        "name": string,
+        "weight": number,
+        "levels"?: string[]
+      }>,
+      "passThreshold": number
+    },
+    "checkpoints"?: Array<{
+      "id": string,
+      "title": string,
+      "type": "assessment" | "quiz" | "demo",
+      "spec": string
+    }>,
+    "support"?: {
+      "concepts"?: Array<{
+        "id": string,
+        "title": string,
+        "summary": string
+      }>,
+      "practiceKatas"?: Array<{
+        "id": string,
+        "title": string,
+        "estimateMin": number
+      }>,
+      "allowedResources"?: string[]
+    },
+    "reflection"?: {
+      "prompt": string,
+      "moodCheck"?: boolean
+    }
+  }>,
+  "microTasks": Array<{
+    "id": string,
+    "projectId": string,
+    "title": string,
+    "type": "concept" | "practice" | "project" | "assessment" | "reflection",
+    "estimatedMinutes": number,
+    "instructions": string,
+    "acceptanceTest": {
+      "type": "checklist" | "unit_tests" | "quiz" | "demo",
+      "spec": string | string[]
+    },
+    "resources": string[]
+  }>,
+  "portfolioCards"?: Array<{
+    "projectId": string,
+    "cover"?: string,
+    "headline": string,
+    "badges"?: string[],
+    "links"?: {
+      "repo"?: string,
+      "demo"?: string,
+      "video"?: string
+    }
+  }>,
+  "adaptationNotes": string
+}
+Every micro-task MUST populate "resources" with actionable references (usually URLs). Do not omit the field or leave it null—curate at least one link per task, prioritising ALLOWED_RESOURCES when provided.`;
+
 type SprintLength = 1 | 3 | 7 | 14;
 
 interface SprintPlan {
@@ -103,7 +182,7 @@ interface SprintPlan {
       type: "checklist" | "unit_tests" | "quiz" | "demo";
       spec: string | string[];
     };
-    resources?: string[];
+    resources: string[];
   }>;
   portfolioCards?: Array<{
     projectId: string;
@@ -379,7 +458,7 @@ const SprintPlanJsonSchema = {
           id: { type: "string" },
           projectId: { type: "string" },
           title: { type: "string" },
-          type: { 
+          type: {
             type: "string",
             enum: ["concept", "practice", "project", "assessment", "reflection"]
           },
@@ -406,7 +485,16 @@ const SprintPlanJsonSchema = {
             items: { type: "string" }
           }
         },
-        required: ["id", "projectId", "title", "type", "estimatedMinutes", "instructions", "acceptanceTest"]
+        required: [
+          "id",
+          "projectId",
+          "title",
+          "type",
+          "estimatedMinutes",
+          "instructions",
+          "acceptanceTest",
+          "resources"
+        ]
       }
     },
     portfolioCards: {
@@ -797,6 +885,8 @@ function buildPrompt(payload: PlannerRequestPayload): PromptBuildResult {
   promptSections.push(
     '\nReturn ONLY valid JSON with no commentary. The SprintPlan schema is enforced via response_format.'
   );
+  promptSections.push('\nSCHEMA REFERENCE:');
+  promptSections.push(SCHEMA_PROMPT);
 
   const userPrompt = promptSections.join('\n');
 
