@@ -15,8 +15,8 @@ const router = express.Router();
  * @swagger
  * /api/objectives:
  *   post:
- *     summary: Create an objective and generate the initial sprint
- *     description: Creates a learner objective linked to a profile snapshot, then generates the first sprint plan.
+ *     summary: Create an objective
+ *     description: Creates a learner objective linked to a profile snapshot. Initial sprint planning is triggered separately.
  *     tags: [Objectives]
  *     security:
  *       - bearerAuth: []
@@ -50,7 +50,7 @@ const router = express.Router();
  *                 maximum: 5
  *     responses:
  *       201:
- *         description: Objective created with initial sprint
+ *         description: Objective created successfully
  *         content:
  *           application/json:
  *             schema:
@@ -66,10 +66,8 @@ const router = express.Router();
  *                   properties:
  *                     objective:
  *                       $ref: '#/components/schemas/Objective'
- *                     sprint:
- *                       $ref: '#/components/schemas/Sprint'
- *                     plan:
- *                       $ref: '#/components/schemas/SprintPlan'
+ *                     planLimits:
+ *                       $ref: '#/components/schemas/PlanLimits'
  *                 timestamp:
  *                   type: string
  *       400:
@@ -120,10 +118,55 @@ router.get('/:objectiveId', authMiddleware, objectiveController.getObjective.bin
 
 /**
  * @swagger
+ * /api/objectives/{objectiveId}:
+ *   delete:
+ *     summary: Delete an objective without sprints
+ *     description: Removes an objective that has no associated sprints. Use this to clean up mistaken objectives before planning begins.
+ *     tags: [Objectives]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: objectiveId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Objective deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                   description: Localized success message using `objectives.delete.success`
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     planLimits:
+ *                       $ref: '#/components/schemas/PlanLimits'
+ *                 timestamp:
+ *                   type: string
+ *       400:
+ *         description: Objective has existing sprints
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Objective not found
+ */
+router.delete('/:objectiveId', authMiddleware, objectiveController.deleteObjective.bind(objectiveController));
+
+/**
+ * @swagger
  * /api/objectives/{objectiveId}/sprints/generate:
  *   post:
- *     summary: Generate a new sprint for an objective
- *     description: Uses the learner profile context to create the next sprint plan for a given objective.
+ *     summary: Generate the initial skeleton sprint for an objective
+ *     description: Creates a one-day, three micro-task sprint skeleton so learners can start immediately. Additional scope can be added later via the expansion endpoint.
  *     tags: [Objectives]
  *     security:
  *       - bearerAuth: []
@@ -146,7 +189,13 @@ router.get('/:objectiveId', authMiddleware, objectiveController.getObjective.bin
  *                 format: uuid
  *               preferLength:
  *                 type: integer
- *                 enum: [3, 7, 14]
+ *                 enum: [1, 3, 7, 14]
+ *                 description: Desired eventual sprint length (used as a target for future expansions). The initial skeleton is always 1 day.
+ *               allowedResources:
+ *                 type: array
+ *                 description: Restrict the generated sprint to this whitelist of resources.
+ *                 items:
+ *                   type: string
  *     responses:
  *       201:
  *         description: Sprint generated successfully
@@ -170,6 +219,62 @@ router.get('/:objectiveId', authMiddleware, objectiveController.getObjective.bin
  *         description: Unauthorized
  */
 router.post('/:objectiveId/sprints/generate', authMiddleware, objectiveController.generateSprint.bind(objectiveController));
+
+/**
+ * @swagger
+ * /api/objectives/{objectiveId}/sprints/{sprintId}/expand:
+ *   post:
+ *     summary: Expand an existing sprint incrementally
+ *     description: Extends the current sprint plan by adding more days or micro-tasks while preserving previously generated work.
+ *     tags: [Objectives]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: objectiveId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: sprintId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SprintExpansionRequest'
+ *     responses:
+ *       200:
+ *         description: Sprint expanded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                   description: Localized success message using `objectives.sprint.expanded`
+ *                 data:
+ *                   $ref: '#/components/schemas/SprintPlanResponse'
+ *                 timestamp:
+ *                   type: string
+ *       400:
+ *         description: Invalid payload
+ *       401:
+ *         description: Unauthorized
+ */
+router.post(
+  '/:objectiveId/sprints/:sprintId/expand',
+  authMiddleware,
+  objectiveController.expandSprint.bind(objectiveController)
+);
 
 /**
  * @swagger

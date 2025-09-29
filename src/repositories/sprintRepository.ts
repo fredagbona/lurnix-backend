@@ -20,6 +20,7 @@ export interface SprintCreateInput {
 }
 
 export interface SprintUpdateInput {
+  plannerInput?: Prisma.JsonValue;
   plannerOutput?: Prisma.JsonValue;
   status?: SprintStatus;
   startedAt?: Date | null;
