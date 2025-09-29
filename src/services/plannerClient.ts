@@ -317,11 +317,6 @@ const SprintPlanJsonSchema = {
   additionalProperties: false
 };
 
-function formatSchemaForPrompt(schema: unknown): string {
-  return `JSON Schema (SprintPlan):\n${JSON.stringify(schema, null, 2)}`;
-}
-
-
 type ProviderConfig =
   | {
       provider: 'groq';
@@ -404,9 +399,7 @@ export interface PlannerClientResult {
 
 export async function requestPlannerPlan(payload: PlannerRequestPayload): Promise<PlannerClientResult> {
   const providerConfig = buildProviderConfig();
-  const { systemMessage, userPrompt } = buildPrompt(payload, {
-    includeSchemaPrompt: providerConfig.provider !== 'lmstudio'
-  });
+  const { systemMessage, userPrompt } = buildPrompt(payload);
   const promptHash = createHash('sha256').update(`${systemMessage}\n${userPrompt}`).digest('hex');
   const baseTelemetry: PlannerRequestTelemetry = {
     provider: providerConfig.provider,
@@ -559,8 +552,7 @@ function isAbortError(error: unknown): boolean {
   return false;
 }
 
-function buildPrompt(payload: PlannerRequestPayload, options?: { includeSchemaPrompt?: boolean }) {
-  const { includeSchemaPrompt = false } = options ?? {};
+function buildPrompt(payload: PlannerRequestPayload) {
   const mode = payload.mode ?? 'skeleton';
   const objective = {
     id: payload.objective.id,
@@ -634,12 +626,9 @@ function buildPrompt(payload: PlannerRequestPayload, options?: { includeSchemaPr
   }
 
   promptSections.push(`\nPREFERRED LENGTH: ${payload.preferLength ?? 'auto'}`);
-  if (includeSchemaPrompt) {
-    promptSections.push('\nReturn ONLY valid JSON with no commentary. Schema is defined below.');
-    promptSections.push(formatSchemaForPrompt(SprintPlanJsonSchema));
-  } else {
-    promptSections.push('\nReturn ONLY valid JSON with no commentary. Follow the SprintPlan schema exactly.');
-  }
+  promptSections.push(
+    '\nReturn ONLY valid JSON with no commentary. Output must satisfy the SprintPlan schema (enforced by response_format when provided).'
+  );
 
   const userPrompt = promptSections.join('\n');
 
