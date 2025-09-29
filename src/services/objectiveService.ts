@@ -81,6 +81,7 @@ export interface DeleteObjectiveResponse {
   planLimits: PlanLimitsPayload;
 }
 
+
 export interface ExpandSprintRequest {
   userId: string;
   objectiveId: string;
@@ -259,6 +260,7 @@ export class ObjectiveService {
     });
 
     const objectiveRecord = (await db.objective.findFirst({
+
       where: { id: objective.id },
       include: {
         profileSnapshot: true,
@@ -331,6 +333,7 @@ export class ObjectiveService {
       ? request.allowedResources.filter((value) => typeof value === 'string' && value.trim().length > 0)
       : undefined;
 
+
     const { sprint, plan } = await this.generateAndPersistSprint({
       userId: request.userId,
       objectiveId: objective.id,
@@ -341,6 +344,7 @@ export class ObjectiveService {
       mode: 'skeleton',
       expansionGoal,
       allowedResources
+
     });
 
 
@@ -749,6 +753,7 @@ export class ObjectiveService {
     currentPlan?: Partial<SprintPlanCore> | null;
     expansionGoal?: SprintPlanExpansionGoal | null;
     allowedResources?: string[];
+
   }) {
     const objective = params.objective ?? (await db.objective.findUnique({ where: { id: params.objectiveId } }));
     if (!objective) {
@@ -780,6 +785,7 @@ export class ObjectiveService {
       currentPlan: params.currentPlan ?? null,
       expansionGoal: params.expansionGoal ?? null,
       allowedResources: params.allowedResources ?? undefined
+
     });
 
     const plannerInputPayload = {
