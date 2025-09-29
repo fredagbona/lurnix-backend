@@ -25,15 +25,6 @@ produce a numeric score (0..1), list achieved vs missing items, and propose **ne
 
 Return JSON strictly matching \`ReviewOutput\`.`;
 
-const SCHEMA_PROMPT = `JSON Schema (ReviewOutput):
-{
-  "score": number // 0..1,
-  "achieved": string[],
-  "missing": string[],
-  "nextRecommendations": string[],
-  "pass": boolean
-}`;
-
 type ProviderConfig =
   | {
       provider: 'groq';
@@ -139,9 +130,7 @@ function buildPrompt(payload: ReviewInput) {
     'Learner self-evaluation:',
     selfEvalJson,
     '',
-    SCHEMA_PROMPT,
-    '',
-    'Return valid JSON only.'
+    'Return ONLY valid JSON with no commentary. Output must match ReviewOutput { score (0..1), achieved[], missing[], nextRecommendations[], pass }. Schema checks are enforced by response_format when available.'
   ].join('\n');
 
   return {
