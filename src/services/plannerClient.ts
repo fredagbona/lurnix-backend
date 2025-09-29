@@ -42,68 +42,6 @@ Rules:
 
 type SprintLength = 1 | 3 | 7 | 14;
 
-const LENGTH_DAYS_LITERAL = '1 | 3 | 7 | 14';
-
-const SCHEMA_PROMPT = `JSON Schema (SprintPlan):
-{
-  "id": string,
-  "title": string,
-  "description": string,
-  "lengthDays": ${LENGTH_DAYS_LITERAL},
-  "totalEstimatedHours": number,
-  "difficulty": "beginner" | "intermediate" | "advanced",
-  "projects": [
-    {
-      "id": string,
-      "title": string,
-      "brief": string,
-      "requirements": string[],
-      "acceptanceCriteria": string[],
-      "deliverables": [
-        {
-          "type": "repository" | "deployment" | "video" | "screenshot",
-          "title": string,
-          "artifactId": string
-        }
-      ],
-      "evidenceRubric": {
-        "dimensions": [ { "name": string, "weight": number, "levels"?: string[] } ],
-        "passThreshold": number
-      },
-      "checkpoints"?: [ { "id": string, "title": string, "type": "assessment" | "quiz" | "demo", "spec": string } ],
-      "support"?: {
-        "concepts"?: [ { "id": string, "title": string, "summary": string } ],
-        "practiceKatas"?: [ { "id": string, "title": string, "estimateMin": number } ],
-        "allowedResources"?: string[]
-      },
-      "reflection"?: { "prompt": string, "moodCheck"?: boolean }
-    }
-  ],
-  "microTasks": [
-    {
-      "id": string,
-      "projectId": string,
-      "title": string,
-      "type": "concept" | "practice" | "project" | "assessment" | "reflection",
-      "estimatedMinutes": number,
-      "instructions": string,
-      "acceptanceTest": { "type": "checklist" | "unit_tests" | "quiz" | "demo", "spec": string | string[] },
-      "resources"?: string[]
-    }
-  ],
-  "portfolioCards"?: [
-    {
-      "projectId": string,
-      "cover"?: string,
-      "headline": string,
-      "badges"?: string[],
-      "links"?: { "repo"?: string, "demo"?: string, "video"?: string }
-    }
-  ],
-  "adaptationNotes": string
-}`;
-
-
 interface SprintPlan {
   id: string;
   title: string;
@@ -379,6 +317,10 @@ const SprintPlanJsonSchema = {
   additionalProperties: false
 };
 
+function formatSchemaForPrompt(schema: unknown): string {
+  return `JSON Schema (SprintPlan):\n${JSON.stringify(schema, null, 2)}`;
+}
+
 
 type ProviderConfig =
   | {
@@ -462,7 +404,9 @@ export interface PlannerClientResult {
 
 export async function requestPlannerPlan(payload: PlannerRequestPayload): Promise<PlannerClientResult> {
   const providerConfig = buildProviderConfig();
-  const { systemMessage, userPrompt } = buildPrompt(payload);
+  const { systemMessage, userPrompt } = buildPrompt(payload, {
+    includeSchemaPrompt: providerConfig.provider !== 'lmstudio'
+  });
   const promptHash = createHash('sha256').update(`${systemMessage}\n${userPrompt}`).digest('hex');
   const baseTelemetry: PlannerRequestTelemetry = {
     provider: providerConfig.provider,
@@ -615,7 +559,8 @@ function isAbortError(error: unknown): boolean {
   return false;
 }
 
-function buildPrompt(payload: PlannerRequestPayload) {
+function buildPrompt(payload: PlannerRequestPayload, options?: { includeSchemaPrompt?: boolean }) {
+  const { includeSchemaPrompt = false } = options ?? {};
   const mode = payload.mode ?? 'skeleton';
   const objective = {
     id: payload.objective.id,
@@ -689,8 +634,12 @@ function buildPrompt(payload: PlannerRequestPayload) {
   }
 
   promptSections.push(`\nPREFERRED LENGTH: ${payload.preferLength ?? 'auto'}`);
-  promptSections.push('\nReturn ONLY valid JSON with no commentary. Schema is defined below.');
-  promptSections.push(SCHEMA_PROMPT);
+  if (includeSchemaPrompt) {
+    promptSections.push('\nReturn ONLY valid JSON with no commentary. Schema is defined below.');
+    promptSections.push(formatSchemaForPrompt(SprintPlanJsonSchema));
+  } else {
+    promptSections.push('\nReturn ONLY valid JSON with no commentary. Follow the SprintPlan schema exactly.');
+  }
 
   const userPrompt = promptSections.join('\n');
 
@@ -705,11 +654,14 @@ function buildLmStudioRequest(model: string, systemMessage: string, userPrompt: 
     model,
     temperature: 0.2,
     max_tokens: 2048,
-    response_format: { type: 'json_schema', json_schema: {
-    name: "sprint_plan",
-    strict: true,
-    schema: SprintPlanJsonSchema
-  }  },
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'sprint_plan',
+        strict: true,
+        schema: SprintPlanJsonSchema
+      }
+    },
     messages: [
       { role: 'system', content: systemMessage },
       { role: 'user', content: userPrompt }
