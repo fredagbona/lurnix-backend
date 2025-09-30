@@ -243,7 +243,7 @@ export class EmailService {
     resetToken: string,
     language?: 'en' | 'fr'
   ): Promise<EmailResult> {
-    const resetUrl = `${config.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    const resetUrl = `${config.FRONTEND_URL}/auth/reset-password?token=${resetToken}`;
     const lang = language || 'en';
     await ensureEmailNamespaceLoaded(lang);
     const t = (key: string, params?: Record<string, unknown>) => getTranslation(key, lang, params ?? {});
