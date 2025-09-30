@@ -34,6 +34,7 @@ export interface GenerateSprintPlanInput {
   mode?: SprintPlanMode;
   currentPlan?: Partial<SprintPlanCore> | null;
   expansionGoal?: SprintPlanExpansionGoal | null;
+  userLanguage?: string;
 }
 
 type EvidenceRubric = {
@@ -394,7 +395,8 @@ class PlannerService {
     const { attempt, error, planId, objectiveId, telemetry } = params;
     const resolvedTelemetry =
       telemetry ?? (error instanceof PlannerRequestError ? error.telemetry : undefined);
-    console.error('[plannerService] Remote planner attempt failed', {
+    
+    const logData: Record<string, any> = {
       attempt,
       planId,
       objectiveId,
@@ -406,7 +408,17 @@ class PlannerService {
       timeoutMs: resolvedTelemetry?.timeoutMs,
       errorReason: error instanceof PlannerRequestError ? error.reason : undefined,
       error: error instanceof Error ? error.message : error
-    });
+    };
+    
+    if (error instanceof PlannerSchemaValidationError) {
+      logData.validationIssues = error.issues.map(issue => ({
+        path: issue.path.join('.'),
+        message: issue.message,
+        code: issue.code
+      }));
+    }
+    
+    console.error('[plannerService] Remote planner attempt failed', logData);
   }
 
   private logFallback(
@@ -458,7 +470,7 @@ class PlannerService {
         : null,
       preferLength: input.preferLength,
       allowedResources: input.allowedResources ?? null,
-
+      userLanguage: input.userLanguage ?? 'en',
       mode,
       currentPlan,
       expansionGoal: input.expansionGoal ?? null,
@@ -471,7 +483,6 @@ class PlannerService {
         currentPlan,
         expansionGoal: input.expansionGoal ?? null,
         allowedResources: input.allowedResources ?? null
-
       }
     };
   }
@@ -843,9 +854,7 @@ class PlannerService {
     input: GenerateSprintPlanInput
   ): SprintMicroTaskPlan[] {
     const estimatedMinutes = 60;
-    const resources = Array.isArray(input.allowedResources) && input.allowedResources.length
-      ? [...input.allowedResources]
-      : undefined;
+    const hasAllowedResources = Array.isArray(input.allowedResources) && input.allowedResources.length > 0;
 
     const templates = [
       {
@@ -856,6 +865,10 @@ class PlannerService {
           'Document a concise goal for the day',
           'List key steps and blockers',
           'Share the plan with an accountability partner or journal'
+        ],
+        defaultResources: [
+          'https://www.atlassian.com/agile/project-management/user-stories',
+          'https://www.smartsheet.com/content/project-planning-guide'
         ]
       },
       {
@@ -866,6 +879,10 @@ class PlannerService {
           'Produce a tangible artifact (code, notes, draft)',
           'Record what changed compared to yesterday',
           'Capture screenshots or repo links for evidence'
+        ],
+        defaultResources: [
+          'https://github.com/github/gitignore',
+          'https://docs.github.com/en/get-started/quickstart'
         ]
       },
       {
@@ -877,23 +894,33 @@ class PlannerService {
           'Attach at least one evidence link',
           'Write a short reflection with a next-step focus',
           'Identify one risk or question to explore next'
+        ],
+        defaultResources: [
+          'https://www.atlassian.com/agile/project-management/retrospectives',
+          'https://retrospectivewiki.org/index.php?title=Agile_Retrospective_Resource_Wiki'
         ]
       }
     ];
 
-    return templates.map((template, index) => ({
-      id: `${planId}_task_${index + 1}`,
-      projectId,
-      title: template.title,
-      type: template.type,
-      estimatedMinutes,
-      instructions: template.instructions,
-      acceptanceTest: {
-        type: 'checklist',
-        spec: template.acceptance
-      },
-      ...(resources ? { resources } : {})
-    }));
+    return templates.map((template, index) => {
+      const resources = hasAllowedResources 
+        ? input.allowedResources!
+        : template.defaultResources;
+      
+      return {
+        id: `${planId}_task_${index + 1}`,
+        projectId,
+        title: template.title,
+        type: template.type,
+        estimatedMinutes,
+        instructions: template.instructions,
+        acceptanceTest: {
+          type: 'checklist',
+          spec: template.acceptance
+        },
+        resources
+      };
+    });
   }
 
   private resolveExpansionMicroTaskCount(
@@ -1050,6 +1077,8 @@ class PlannerService {
     }
 
     const estimatedMinutes = lengthDays >= 7 ? 90 : 75;
+    const hasAllowedResources = Array.isArray(input.allowedResources) && input.allowedResources.length > 0;
+    
     const templates = [
       {
         title: `Extend the deliverable for ${input.objectiveTitle}`,
@@ -1060,6 +1089,10 @@ class PlannerService {
           'Document the enhancement in CHANGELOG or README',
           'Record before/after screenshots or metrics',
           'Note any trade-offs introduced by the enhancement'
+        ],
+        defaultResources: [
+          'https://keepachangelog.com/en/1.0.0/',
+          'https://semver.org/'
         ]
       },
       {
@@ -1071,6 +1104,10 @@ class PlannerService {
           'List bugs or gaps discovered during QA',
           'Summarize feedback received (or your own review notes)',
           'Identify follow-up tasks to address in the next iteration'
+        ],
+        defaultResources: [
+          'https://www.softwaretestinghelp.com/qa-testing-process/',
+          'https://martinfowler.com/articles/practical-test-pyramid.html'
         ]
       },
       {
@@ -1082,6 +1119,10 @@ class PlannerService {
           'Capture at least two artifacts (video, screenshot, repo diff)',
           'Write a narrative that highlights new capabilities',
           'List questions to explore in the next planning cycle'
+        ],
+        defaultResources: [
+          'https://www.loom.com/',
+          'https://obsproject.com/'
         ]
       },
       {
@@ -1093,6 +1134,10 @@ class PlannerService {
           'Link to the resource consumed',
           'Summarize top three insights',
           'Describe how you will apply the insight in upcoming work'
+        ],
+        defaultResources: [
+          'https://developer.mozilla.org/en-US/',
+          'https://www.freecodecamp.org/'
         ]
       }
     ];
@@ -1100,6 +1145,10 @@ class PlannerService {
     return Array.from({ length: count }).map((_, index) => {
       const template = templates[index % templates.length];
       const idIndex = startIndex + index + 1;
+      const resources = hasAllowedResources 
+        ? input.allowedResources!
+        : template.defaultResources;
+      
       return {
         id: `${planId}_task_${idIndex}`,
         projectId,
@@ -1110,7 +1159,8 @@ class PlannerService {
         acceptanceTest: {
           type: 'checklist',
           spec: template.acceptance
-        }
+        },
+        resources
       } satisfies SprintMicroTaskPlan;
     });
   }

@@ -28,6 +28,7 @@ export interface PlannerRequestPayload {
   mode?: 'skeleton' | 'expansion';
   currentPlan?: Record<string, unknown> | null;
   expansionGoal?: { targetLengthDays?: number | null; additionalMicroTasks?: number | null } | null;
+  userLanguage?: string;
 }
 
 const SYSTEM_PROMPT = `You are Lurnix Planner, an expert at generating short, portfolio-first learning sprints.
@@ -35,15 +36,52 @@ Given learner profile context, an objective, and optional preferred length, prod
 Rules:
 1. Portfolio-first: include at least one project with deliverables & evidence rubric.
 2. Keep microTasks 30-90 minutes and end with acceptance checks.
-3. Respect learner hours, strengths, gaps.
+3. Respect learner hours, strengths, gaps and provide resources.
 4. Use the context payload (profile quiz summary, streak, completed tasks) to adapt deliverables and pacing.
 5. Output MUST be valid JSON and match the SprintPlan schema exactly.
+6. Generate ALL content (titles, descriptions, instructions, notes) in the user's specified language. Keep JSON keys in English.
 `;
 type SprintLength = 1 | 3 | 7 | 14;
 
 const LENGTH_DAYS_LITERAL = '1 | 3 | 7 | 14';
 
-const SCHEMA_PROMPT = `JSON Schema (SprintPlan):
+const SKELETON_SCHEMA_PROMPT = `REQUIRED JSON STRUCTURE (all fields mandatory):
+{
+  "id": "<provided plan ID>",
+  "title": "<sprint title>",
+  "description": "<brief description>",
+  "lengthDays": 1,
+  "totalEstimatedHours": <number between 2-12>,
+  "difficulty": "beginner"|"intermediate"|"advanced",
+  "projects": [{
+    "id": "<project ID>",
+    "title": "<project title>",
+    "brief": "<project brief>",
+    "requirements": ["<req1>", "<req2>"],
+    "acceptanceCriteria": ["<criteria1>", "<criteria2>"],
+    "deliverables": [{"type": "repository"|"deployment"|"video"|"screenshot", "title": "<title>", "artifactId": "<id>"}]
+  }],
+  "microTasks": [
+    {
+      "id": "<task ID>",
+      "projectId": "<project ID>",
+      "title": "<task title>",
+      "type": "concept"|"practice"|"project"|"assessment"|"reflection",
+      "estimatedMinutes": <20-90>,
+      "instructions": "<clear instructions>",
+      "acceptanceTest": {"type": "checklist", "spec": ["<check1>", "<check2>"]},
+      "resources": ["<URL1>", "<URL2>"]
+    }
+  ],
+  "adaptationNotes": "<min 5 chars adaptation notes>"
+}
+CRITICAL REQUIREMENTS:
+1. Include exactly 3 microTasks (no more, no less)
+2. Each microTask MUST have "resources" array with 1-3 helpful URLs
+3. MUST include "adaptationNotes" field at the end
+4. Complete the entire JSON structure - do not stop early`;
+
+const FULL_SCHEMA_PROMPT = `JSON Schema (SprintPlan):
 
 {
   "id": string,
@@ -123,7 +161,7 @@ const SCHEMA_PROMPT = `JSON Schema (SprintPlan):
 }
 Every micro-task MUST populate "resources" with actionable references (usually URLs). Do not omit the field or leave it null—curate at least one link per task, prioritising ALLOWED_RESOURCES when provided.`;
 
-type SprintLength = 1 | 3 | 7 | 14;
+
 
 interface SprintPlan {
   id: string;
@@ -305,12 +343,18 @@ const SkeletonSprintPlanJsonSchema = {
               }
             },
             required: ['type', 'spec']
+          },
+          resources: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 3,
+            items: { type: 'string' }
           }
         },
-        required: ['id', 'projectId', 'title', 'type', 'estimatedMinutes', 'instructions', 'acceptanceTest']
+        required: ['id', 'projectId', 'title', 'type', 'estimatedMinutes', 'instructions', 'acceptanceTest', 'resources']
       }
     },
-    adaptationNotes: { type: 'string' }
+    adaptationNotes: { type: 'string', minLength: 5 }
   },
   required: [
     'id',
@@ -525,7 +569,7 @@ const SprintPlanJsonSchema = {
         required: ["projectId", "headline"]
       }
     },
-    adaptationNotes: { type: "string" }
+    adaptationNotes: { type: "string", minLength: 5 }
   },
   required: ["id", "title", "description", "lengthDays", "totalEstimatedHours", "difficulty", "projects", "microTasks", "adaptationNotes"],
   additionalProperties: false
@@ -630,7 +674,6 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
 
   if (providerConfig.provider === 'groq') {
     const client = getGroqClient(providerConfig.apiKey);
-    const signal = AbortSignal.timeout(requestTimeoutMs);
     try {
       const completion = await client.chat.completions.create({
         model: providerConfig.model,
@@ -640,8 +683,7 @@ export async function requestPlannerPlan(payload: PlannerRequestPayload): Promis
         messages: [
           { role: 'system', content: systemMessage },
           { role: 'user', content: userPrompt }
-        ],
-        signal
+        ]
       } as any);
 
       const content = completion?.choices?.[0]?.message?.content;
@@ -864,20 +906,20 @@ function buildPrompt(payload: PlannerRequestPayload): PromptBuildResult {
   }
 
   const promptSections: string[] = [
-    `INCREMENTAL PLANNING MODE: ${mode.toUpperCase()}`,
+    `MODE: ${mode.toUpperCase()}`,
     'GUIDELINES:',
     ...guidelines.map((line) => `- ${line}`),
-    'OBJECTIVE CONTEXT:',
-    JSON.stringify(objective, null, 2),
-    '\nLEARNER PROFILE:',
-    JSON.stringify(learnerProfile, null, 2),
-    '\nADDITIONAL CONTEXT:',
-    JSON.stringify(context, null, 2)
+    '\nOBJECTIVE:',
+    JSON.stringify(objective),
+    '\nPROFILE:',
+    JSON.stringify(learnerProfile),
+    '\nCONTEXT:',
+    JSON.stringify(context)
   ];
 
   if (payload.allowedResources && payload.allowedResources.length) {
-    promptSections.push('\nALLOWED RESOURCES:');
-    promptSections.push(JSON.stringify(payload.allowedResources, null, 2));
+    promptSections.push('\nRESOURCES:');
+    promptSections.push(JSON.stringify(payload.allowedResources));
   }
 
   if (mode === 'expansion') {
@@ -885,19 +927,37 @@ function buildPrompt(payload: PlannerRequestPayload): PromptBuildResult {
     promptSections.push(JSON.stringify(payload.currentPlan ?? null, null, 2));
   }
 
-  promptSections.push(`\nPREFERRED LENGTH: ${payload.preferLength ?? 'auto'}`);
+  const isSkeletonMode = mode === 'skeleton';
+  
+  if (!isSkeletonMode) {
+    promptSections.push(`\nPREFERRED LENGTH: ${payload.preferLength ?? 'auto'}`);
+  }
+  
+  const userLanguage = payload.userLanguage ?? 'en';
+  const languageMap: Record<string, string> = {
+    en: 'English',
+    fr: 'French'
+  };
+  const languageName = languageMap[userLanguage] || 'English';
+  
+  promptSections.push(`\nLANGUAGE: Generate all content in ${languageName}. Keep JSON keys in English.`);
+  
   promptSections.push(
-    '\nReturn ONLY valid JSON with no commentary. The SprintPlan schema is enforced via response_format.'
+    '\nReturn ONLY valid, COMPLETE JSON. Include ALL required fields. Do not truncate the response.'
   );
-  promptSections.push('\nSCHEMA REFERENCE:');
-  promptSections.push(SCHEMA_PROMPT);
+  
+  if (isSkeletonMode) {
+    promptSections.push('\nSCHEMA:');
+    promptSections.push(SKELETON_SCHEMA_PROMPT);
+  } else {
+    promptSections.push('\nSCHEMA REFERENCE:');
+    promptSections.push(FULL_SCHEMA_PROMPT);
+  }
 
   const userPrompt = promptSections.join('\n');
-
-  const isSkeletonMode = mode === 'skeleton';
   const responseSchema = isSkeletonMode ? SkeletonSprintPlanJsonSchema : SprintPlanJsonSchema;
   const responseSchemaName = isSkeletonMode ? 'skeleton_sprint_plan' : 'sprint_plan';
-  const maxTokens = isSkeletonMode ? 640 : 2048;
+  const maxTokens = isSkeletonMode ? 1024 : 2048;
 
   return {
     systemMessage: SYSTEM_PROMPT,

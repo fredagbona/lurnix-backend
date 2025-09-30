@@ -31,6 +31,7 @@ import { planLimitationService, type PlanLimitsSummary } from './planLimitationS
 import { evidenceService, SubmittedArtifactInput } from './evidenceService.js';
 import { reviewerService } from './reviewerService.js';
 import { ReviewerSummary, zReviewerSummary } from '../types/reviewer.js';
+import { objectiveEstimationService } from './objectiveEstimationService.js';
 
 export interface CreateObjectiveRequest {
   userId: string;
@@ -241,10 +242,45 @@ export class ObjectiveService {
 
   async createObjective(request: CreateObjectiveRequest): Promise<CreateObjectiveResponse> {
     const { summary } = await planLimitationService.ensureCanCreateObjective(request.userId);
-    const learnerProfile = await this.resolveLearnerProfile(request.userId, request.learnerProfileId);
+    const [learnerProfile, user] = await Promise.all([
+      this.resolveLearnerProfile(request.userId, request.learnerProfileId),
+      db.user.findUnique({
+        where: { id: request.userId },
+        select: { language: true }
+      })
+    ]);
 
     if (!learnerProfile) {
       throw new AppError('objectives.errors.profileRequired', 400, 'LEARNER_PROFILE_REQUIRED');
+    }
+
+    // Estimate objective duration using AI
+    let estimate;
+    try {
+      estimate = await objectiveEstimationService.estimateObjectiveDuration({
+        objectiveTitle: request.title,
+        objectiveDescription: request.description,
+        successCriteria: request.successCriteria ?? [],
+        requiredSkills: request.requiredSkills ?? [],
+        learnerProfile,
+        userLanguage: user?.language ?? 'en'
+      });
+      console.log('[objectiveService] Duration estimated', {
+        objectiveTitle: request.title,
+        estimatedDays: estimate.estimatedTotalDays,
+        difficulty: estimate.difficulty,
+        confidence: estimate.confidence
+      });
+    } catch (error) {
+      console.warn('[objectiveService] AI estimation failed, using fallback', error);
+      estimate = objectiveEstimationService.generateFallbackEstimate({
+        objectiveTitle: request.title,
+        objectiveDescription: request.description,
+        successCriteria: request.successCriteria ?? [],
+        requiredSkills: request.requiredSkills ?? [],
+        learnerProfile,
+        userLanguage: user?.language ?? 'en'
+      });
     }
 
     const objective = await db.objective.create({
@@ -255,9 +291,26 @@ export class ObjectiveService {
         status: ObjectiveStatus.active,
         priority: request.priority ?? 2,
         successCriteria: request.successCriteria ?? [],
-        requiredSkills: request.requiredSkills ?? []
+        requiredSkills: request.requiredSkills ?? [],
+        // Add estimation data
+        estimatedTotalDays: estimate.estimatedTotalDays,
+        estimatedDailyHours: estimate.estimatedDailyHours,
+        estimationReasoning: estimate.reasoning,
+        estimatedAt: new Date()
       }
     });
+
+    // Create milestones (will be available after Prisma client regeneration)
+    // if (estimate.milestones.length > 0) {
+    //   await db.objectiveMilestone.createMany({
+    //     data: estimate.milestones.map(milestone => ({
+    //       objectiveId: objective.id,
+    //       title: milestone.title,
+    //       description: milestone.description,
+    //       targetDay: milestone.targetDay
+    //     }))
+    //   });
+    // }
 
     const objectiveRecord = (await db.objective.findFirst({
 
@@ -296,14 +349,18 @@ export class ObjectiveService {
   }
 
   async generateSprint(request: GenerateSprintRequest): Promise<GenerateSprintResponse> {
-    const [objective, learnerProfile] = await Promise.all([
+    const [objective, learnerProfile, user] = await Promise.all([
       db.objective.findFirst({
         where: {
           id: request.objectiveId,
           profileSnapshot: { userId: request.userId }
         }
       }),
-      this.resolveLearnerProfile(request.userId, request.learnerProfileId)
+      this.resolveLearnerProfile(request.userId, request.learnerProfileId),
+      db.user.findUnique({
+        where: { id: request.userId },
+        select: { language: true }
+      })
     ]);
 
     if (!objective) {
@@ -343,8 +400,8 @@ export class ObjectiveService {
       objective,
       mode: 'skeleton',
       expansionGoal,
-      allowedResources
-
+      allowedResources,
+      userLanguage: user?.language ?? 'en'
     });
 
 
@@ -390,7 +447,14 @@ export class ObjectiveService {
       throw new AppError('objectives.sprint.errors.profileRequired', 400, 'LEARNER_PROFILE_REQUIRED');
     }
 
-    const learnerProfile = await learnerProfileService.getProfileById(profileSnapshotId);
+    const [learnerProfile, user] = await Promise.all([
+      learnerProfileService.getProfileById(profileSnapshotId),
+      db.user.findUnique({
+        where: { id: request.userId },
+        select: { language: true }
+      })
+    ]);
+    
     if (!learnerProfile) {
       throw new AppError('objectives.sprint.errors.profileRequired', 400, 'LEARNER_PROFILE_REQUIRED');
     }
@@ -414,7 +478,8 @@ export class ObjectiveService {
       existingSprintId: sprint.id,
       mode: 'expansion',
       currentPlan,
-      expansionGoal
+      expansionGoal,
+      userLanguage: user?.language ?? 'en'
     });
 
     await this.applyPlanEstimates(sprint.objectiveId, plan.lengthDays, {
@@ -753,7 +818,7 @@ export class ObjectiveService {
     currentPlan?: Partial<SprintPlanCore> | null;
     expansionGoal?: SprintPlanExpansionGoal | null;
     allowedResources?: string[];
-
+    userLanguage?: string;
   }) {
     const objective = params.objective ?? (await db.objective.findUnique({ where: { id: params.objectiveId } }));
     if (!objective) {
@@ -784,8 +849,8 @@ export class ObjectiveService {
       mode,
       currentPlan: params.currentPlan ?? null,
       expansionGoal: params.expansionGoal ?? null,
-      allowedResources: params.allowedResources ?? undefined
-
+      allowedResources: params.allowedResources ?? undefined,
+      userLanguage: params.userLanguage ?? 'en'
     });
 
     const plannerInputPayload = {
