@@ -902,6 +902,18 @@ export class ObjectiveService {
       return { sprint, plan };
     }
 
+    // Calculate the next day number for this objective
+    const existingSprints = await db.sprint.findMany({
+      where: { objectiveId: params.objectiveId },
+      select: { dayNumber: true },
+      orderBy: { dayNumber: 'desc' },
+      take: 1
+    });
+
+    const nextDayNumber = existingSprints.length > 0 
+      ? (existingSprints[0].dayNumber ?? 0) + 1 
+      : 1;
+
     const sprint = await sprintService.createSprint({
       objectiveId: params.objectiveId,
       profileSnapshotId: params.learnerProfile.id,
@@ -910,7 +922,8 @@ export class ObjectiveService {
       lengthDays: plan.lengthDays,
       totalEstimatedHours: plan.totalEstimatedHours,
       difficulty: plan.difficulty as SprintDifficulty,
-      status: SprintStatus.planned
+      status: SprintStatus.planned,
+      dayNumber: nextDayNumber
     });
 
     await db.progress.create({

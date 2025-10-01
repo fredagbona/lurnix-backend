@@ -11,6 +11,7 @@ export interface SprintCreateInput {
   totalEstimatedHours: number;
   difficulty?: SprintDifficulty;
   status?: SprintStatus;
+  dayNumber?: number;
   startedAt?: Date | null;
   completedAt?: Date | null;
   score?: number | null;
@@ -32,6 +33,8 @@ export interface SprintUpdateInput {
   difficulty?: SprintDifficulty;
   selfEvaluationConfidence?: number | null;
   selfEvaluationReflection?: string | null;
+  dayNumber?: number;
+  completionPercentage?: number;
 }
 
 export class SprintRepository {
@@ -46,6 +49,7 @@ export class SprintRepository {
         totalEstimatedHours: input.totalEstimatedHours,
         difficulty: input.difficulty ?? SprintDifficulty.beginner,
         status: input.status ?? SprintStatus.planned,
+        dayNumber: input.dayNumber ?? 1,
         startedAt: input.startedAt ?? null,
         completedAt: input.completedAt ?? null,
         score: input.score ?? null,

@@ -93,6 +93,11 @@ export interface ObjectiveUiPayload {
   priority: number;
   status: string;
   estimatedTotalWeeks: { min: number | null; max: number | null };
+  estimatedTotalDays?: number | null;
+  estimatedDailyHours?: number | null;
+  currentDay?: number;
+  completedDays?: number;
+  progressPercentage?: number;
   successCriteria: string[];
   requiredSkills: string[];
   currentSprintId: string | null;
@@ -172,6 +177,11 @@ export function serializeObjective(
       min: objective.estimatedWeeksMin ?? null,
       max: objective.estimatedWeeksMax ?? null
     },
+    estimatedTotalDays: objective.estimatedTotalDays ?? null,
+    estimatedDailyHours: objective.estimatedDailyHours ?? null,
+    currentDay: objective.currentDay ?? 1,
+    completedDays: objective.completedDays ?? 0,
+    progressPercentage: objective.progressPercentage ?? 0,
     successCriteria: objective.successCriteria ?? [],
     requiredSkills: objective.requiredSkills ?? [],
     currentSprintId,

@@ -216,9 +216,13 @@ class ObjectiveEstimationService {
         throw new Error('Empty response from AI estimation service');
       }
 
-      // Parse and validate
+      // Parse and transform AI response to expected format
       const rawEstimate = JSON.parse(content);
-      const validated = ObjectiveDurationEstimateSchema.parse(rawEstimate);
+      console.log('[objectiveEstimation] Raw AI response:', JSON.stringify(rawEstimate, null, 2));
+      
+      // Transform AI response to match our schema
+      const transformed = this.transformAIResponse(rawEstimate);
+      const validated = ObjectiveDurationEstimateSchema.parse(transformed);
 
       // Ensure breakdown sums to total days
       const breakdownSum = Object.values(validated.breakdown).reduce((a, b) => a + b, 0);
@@ -256,6 +260,107 @@ class ObjectiveEstimationService {
       console.error('[objectiveEstimation] Estimation failed:', error);
       throw error;
     }
+  }
+
+  /**
+   * Transform AI response to match our expected schema using smart pattern matching
+   */
+  private transformAIResponse(raw: any): any {
+    // Smart field finder - matches fields by pattern
+    const findField = (patterns: string[]): any => {
+      for (const key of Object.keys(raw)) {
+        const lowerKey = key.toLowerCase();
+        if (patterns.some(pattern => lowerKey.includes(pattern))) {
+          return raw[key];
+        }
+      }
+      return null;
+    };
+
+    // Find total days (matches: total_days, total_days_needed, totalDays, etc.)
+    const totalDays = findField(['total', 'days']) || 30;
+    
+    // Find daily hours (matches: daily_hours, daily_hours_required, dailyHours, hours_per_day, etc.)
+    const dailyHours = findField(['daily', 'hours']) || findField(['hours', 'day']) || 2;
+    
+    // Find difficulty (matches: difficulty_level, difficulty, difficultyLevel, etc.)
+    const difficultyRaw = findField(['difficulty']) || 'medium';
+    const difficulty = difficultyRaw === 'high' ? 'advanced' : 
+                      difficultyRaw === 'medium' ? 'intermediate' : 'beginner';
+    
+    // Find reasoning (matches: detailed_reasoning, reasoning, rationale, etc.)
+    const reasoning = findField(['reasoning', 'rationale']) || 'AI-generated estimation';
+    
+    // Find confidence (matches: confidence_level, confidence, confidenceLevel, etc.)
+    const confidence = findField(['confidence']) || 'medium';
+    
+    // Find breakdown (matches: breakdown_by_phase, breakdown_by_learning_phase, breakdown, phases, etc.)
+    const breakdownRaw = findField(['breakdown']) || findField(['phase']) || [];
+    
+    // Handle both array and object formats
+    let breakdown: any;
+    if (Array.isArray(breakdownRaw)) {
+      // Array format: [{phase: "...", days: 30}, ...]
+      breakdown = {
+        fundamentals: breakdownRaw[0]?.days || 0,
+        intermediate: breakdownRaw[1]?.days || 0,
+        advanced: breakdownRaw[2]?.days || 0,
+        projects: breakdownRaw[3]?.days || 0,
+        review: breakdownRaw[4]?.days || 0
+      };
+    } else if (typeof breakdownRaw === 'object' && breakdownRaw !== null) {
+      // Object format: {phase1: {days: 30}, phase2: {days: 20}, ...}
+      const phases = Object.values(breakdownRaw);
+      breakdown = {
+        fundamentals: (phases[0] as any)?.days || 0,
+        intermediate: (phases[1] as any)?.days || 0,
+        advanced: (phases[2] as any)?.days || 0,
+        projects: (phases[3] as any)?.days || 0,
+        review: (phases[4] as any)?.days || 0
+      };
+    } else {
+      // Fallback
+      breakdown = {
+        fundamentals: 0,
+        intermediate: 0,
+        advanced: 0,
+        projects: 0,
+        review: 0
+      };
+    }
+
+    // Transform milestones with smart field matching
+    const milestones = (raw.milestones || []).map((m: any, index: number) => {
+      // Find deliverable field (matches: deliverables, deliverable, output, etc.)
+      const deliverableRaw = m.deliverables || m.deliverable || m.output || `Milestone ${index + 1} deliverable`;
+      const deliverableArray = typeof deliverableRaw === 'string' ? [deliverableRaw] : deliverableRaw;
+      
+      // Find target day (matches: target_days, targetDay, day, target, etc.)
+      const targetDay = m.target_days || m.targetDay || m.day || m.target || 0;
+      
+      // Ensure description is at least 10 characters
+      const description = typeof deliverableRaw === 'string' && deliverableRaw.length >= 10 
+        ? deliverableRaw 
+        : `Complete milestone ${index + 1}: ${deliverableRaw}`;
+      
+      return {
+        title: `Milestone ${index + 1}`,
+        description,
+        targetDay,
+        estimatedHours: Math.max(0.5, dailyHours * 7), // Ensure minimum 0.5 hours
+        deliverables: deliverableArray
+      };
+    });
+
+    return {
+      estimatedTotalDays: Math.max(1, Number(totalDays) || 30), // Ensure minimum 1 day
+      estimatedDailyHours: Math.max(0.5, Number(dailyHours) || 2), // Ensure minimum 0.5 hours
+      difficulty,
+      reasoning,
+      confidence,
+      breakdown,
+      milestones
+    };
   }
 
   /**

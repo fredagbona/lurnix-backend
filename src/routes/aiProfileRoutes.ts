@@ -7,6 +7,73 @@ const router = express.Router();
 /**
  * @swagger
  * /api/ai/profile:
+ *   get:
+ *     summary: Get authenticated user's learner profile
+ *     description: Retrieves the latest learner profile for the authenticated user
+ *     tags: [AI, Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Learner profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     userId:
+ *                       type: string
+ *                     source:
+ *                       type: string
+ *                       example: "quiz"
+ *                     hoursPerWeek:
+ *                       type: number
+ *                       example: 10
+ *                     strengths:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["JavaScript", "Problem Solving"]
+ *                     gaps:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["Backend Development", "Databases"]
+ *                     passionTags:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["Web Development", "AI"]
+ *                     blockers:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["Time constraints"]
+ *                     goals:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["Get a job as a frontend developer"]
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *       404:
+ *         description: No learner profile found for user
+ *       401:
+ *         description: Unauthorized - User not authenticated
+ *       500:
+ *         description: Server error
  *   post:
  *     summary: Generate a learner profile
  *     description: Generates a personalized learner profile using AI based on user information
@@ -106,6 +173,7 @@ const router = express.Router();
  *       500:
  *         description: Server error
  */
+router.get('/', authMiddleware, aiProfileController.getProfile.bind(aiProfileController));
 router.post('/', authMiddleware, aiProfileController.generateProfile.bind(aiProfileController));
 
 export default router;

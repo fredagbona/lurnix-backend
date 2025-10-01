@@ -1,4 +1,5 @@
-import { Request, Response } from 'express';
+import { Response, NextFunction } from 'express';
+import { AuthRequest } from '../middlewares/authMiddleware.js';
 import { sprintCompletionHandler } from '../services/sprintCompletionHandler.js';
 import { sprintAutoGenerationService } from '../services/sprintAutoGenerationService.js';
 import { AppError } from '../errors/AppError.js';
@@ -12,10 +13,10 @@ class SprintController {
    * POST /api/sprints/:sprintId/complete
    * Mark sprint as complete and trigger auto-generation
    */
-  async completeSprint(req: Request, res: Response): Promise<void> {
+  async completeSprint(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { sprintId } = req.params;
-      const userId = (req as any).user?.id;
+      const userId = req.userId;
 
       if (!userId) {
         throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
@@ -92,10 +93,10 @@ class SprintController {
    * GET /api/sprints/:sprintId/completion-status
    * Get completion status for a sprint
    */
-  async getCompletionStatus(req: Request, res: Response): Promise<void> {
+  async getCompletionStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { sprintId } = req.params;
-      const userId = (req as any).user?.id;
+      const userId = req.userId;
 
       if (!userId) {
         throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
@@ -133,10 +134,10 @@ class SprintController {
    * PUT /api/sprints/:sprintId/progress
    * Update partial completion progress
    */
-  async updateProgress(req: Request, res: Response): Promise<void> {
+  async updateProgress(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { sprintId } = req.params;
-      const userId = (req as any).user?.id;
+      const userId = req.userId;
 
       if (!userId) {
         throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
@@ -187,10 +188,10 @@ class SprintController {
    * POST /api/objectives/:objectiveId/sprints/generate-next
    * Manually generate next sprint
    */
-  async generateNextSprint(req: Request, res: Response): Promise<void> {
+  async generateNextSprint(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { objectiveId } = req.params;
-      const userId = (req as any).user?.id;
+      const userId = req.userId;
 
       if (!userId) {
         throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
@@ -242,10 +243,10 @@ class SprintController {
    * POST /api/objectives/:objectiveId/sprints/generate-batch
    * Generate multiple sprints ahead
    */
-  async generateSprintBatch(req: Request, res: Response): Promise<void> {
+  async generateSprintBatch(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { objectiveId } = req.params;
-      const userId = (req as any).user?.id;
+      const userId = req.userId;
 
       if (!userId) {
         throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
@@ -301,10 +302,10 @@ class SprintController {
    * GET /api/objectives/:objectiveId/sprints/generation-status
    * Get sprint generation status
    */
-  async getGenerationStatus(req: Request, res: Response): Promise<void> {
+  async getGenerationStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { objectiveId } = req.params;
-      const userId = (req as any).user?.id;
+      const userId = req.userId;
 
       if (!userId) {
         throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');

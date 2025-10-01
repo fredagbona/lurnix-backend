@@ -1,6 +1,8 @@
-import { Request, Response } from 'express';
+import { Response, NextFunction } from 'express';
+import { AuthRequest } from '../middlewares/authMiddleware.js';
 import { objectiveProgressService } from '../services/objectiveProgressService.js';
 import { learningAnalyticsService } from '../services/learningAnalyticsService.js';
+import { sprintAutoGenerationService } from '../services/sprintAutoGenerationService.js';
 import { AppError } from '../errors/AppError.js';
 
 // ============================================
@@ -12,10 +14,10 @@ class ProgressController {
    * GET /api/objectives/:objectiveId/progress
    * Get comprehensive progress for an objective
    */
-  async getObjectiveProgress(req: Request, res: Response): Promise<void> {
+  async getObjectiveProgress(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { objectiveId } = req.params;
-      const userId = (req as any).user?.id;
+      const userId = req.userId;
 
       if (!userId) {
         throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
@@ -53,10 +55,10 @@ class ProgressController {
    * GET /api/objectives/:objectiveId/analytics
    * Get detailed analytics for an objective
    */
-  async getObjectiveAnalytics(req: Request, res: Response): Promise<void> {
+  async getObjectiveAnalytics(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { objectiveId } = req.params;
-      const userId = (req as any).user?.id;
+      const userId = req.userId;
 
       if (!userId) {
         throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
@@ -108,10 +110,10 @@ class ProgressController {
    * GET /api/objectives/:objectiveId/timeline
    * Get timeline of events for an objective
    */
-  async getObjectiveTimeline(req: Request, res: Response): Promise<void> {
+  async getObjectiveTimeline(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { objectiveId } = req.params;
-      const userId = (req as any).user?.id;
+      const userId = req.userId;
 
       if (!userId) {
         throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
@@ -151,10 +153,10 @@ class ProgressController {
    * GET /api/users/:userId/learning-stats
    * Get user-level learning statistics
    */
-  async getUserLearningStats(req: Request, res: Response): Promise<void> {
+  async getUserLearningStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId } = req.params;
-      const requestUserId = (req as any).user?.id;
+      const requestUserId = req.userId;
 
       if (!requestUserId || requestUserId !== userId) {
         throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
@@ -189,14 +191,55 @@ class ProgressController {
   }
 
   /**
+   * GET /api/objectives/:objectiveId/sprints/generation-status
+   * Check if next sprint can be generated
+   */
+  async getGenerationStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { objectiveId } = req.params;
+      const userId = req.userId;
+
+      if (!userId) {
+        throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
+      }
+
+      const status = await sprintAutoGenerationService.getGenerationStatus(objectiveId);
+
+      res.json({
+        success: true,
+        data: status
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          error: {
+            code: error.code,
+            message: error.message
+          }
+        });
+      } else {
+        console.error('[progressController] getGenerationStatus error:', error);
+        res.status(500).json({
+          success: false,
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: 'Failed to get generation status'
+          }
+        });
+      }
+    }
+  }
+
+  /**
    * GET /api/objectives/:objectiveId/export
    * Export progress data (JSON or CSV)
    */
-  async exportProgress(req: Request, res: Response): Promise<void> {
+  async exportProgress(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { objectiveId } = req.params;
       const { format = 'json' } = req.query;
-      const userId = (req as any).user?.id;
+      const userId = req.userId;
 
       if (!userId) {
         throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
