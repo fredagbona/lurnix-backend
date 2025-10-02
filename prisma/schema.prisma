@@ -101,18 +101,20 @@ model User {
   resetTokenExpiry DateTime?
 
   // Relations
-  quizResults      QuizResult[]
-  roadmaps         Roadmap[]
-  progresses       Progress[]
-  subscriptions    UserSubscription[]
-  CouponRedemption CouponRedemption[]
-  BillingInvoice   BillingInvoice[]
-  featureUsages    FeatureUsage[]
-  featureRequests  FeatureRequest[]
-  featureVotes     FeatureVote[]
+  quizResults          QuizResult[]
+  roadmaps             Roadmap[]
+  progresses           Progress[]
+  subscriptions        UserSubscription[]
+  BillingInvoice       BillingInvoice[]
+  featureUsages        FeatureUsage[]
+  featureRequests      FeatureRequest[]
+  featureVotes         FeatureVote[]
   featureStatusChanges FeatureStatusChange[] @relation("FeatureStatusChangedByUser")
-  learnerProfiles  LearnerProfile[]
-
+  learnerProfiles      LearnerProfile[]
+  userSkills           UserSkill[]
+  quizAttempts         QuizAttempt[]
+  reviewSchedules      ReviewSchedule[]
+  CouponRedemption     CouponRedemption[]
 }
 
 model Admin {
@@ -134,30 +136,30 @@ model Admin {
 }
 
 model FeatureRequest {
-  id            BigInt          @id @default(autoincrement()) @map("id")
-  title         String          @db.VarChar(100) @map("title")
-  description   String          @map("description")
-  category      FeatureCategory @default(Other) @map("category")
-  status        FeatureStatus   @default(open) @map("status")
-  authorId      String          @map("author_id")
-  votesCount    Int             @default(0) @map("votes_count")
-  tags          String[]        @default([]) @map("tags")
-  mergedIntoId  BigInt?         @map("merged_into_id")
-  locale        Language        @default(en) @map("locale")
-  createdAt     DateTime        @default(now()) @map("created_at")
-  updatedAt     DateTime        @updatedAt @map("updated_at")
-  deletedAt     DateTime?       @map("deleted_at")
+  id           BigInt          @id @default(autoincrement()) @map("id")
+  title        String          @map("title") @db.VarChar(100)
+  description  String          @map("description")
+  category     FeatureCategory @default(Other) @map("category")
+  status       FeatureStatus   @default(open) @map("status")
+  authorId     String          @map("author_id")
+  votesCount   Int             @default(0) @map("votes_count")
+  tags         String[]        @default([]) @map("tags")
+  mergedIntoId BigInt?         @map("merged_into_id")
+  locale       Language        @default(en) @map("locale")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+  deletedAt    DateTime?       @map("deleted_at")
 
-  author       User                @relation(fields: [authorId], references: [id], onDelete: Restrict)
-  votes        FeatureVote[]
-  statusHistory FeatureStatusChange[]
-  modNotes     FeatureModNote[]
-  mergedInto   FeatureRequest?     @relation("FeatureRequestMerge", fields: [mergedIntoId], references: [id])
-  mergedChildren FeatureRequest[]  @relation("FeatureRequestMerge")
+  author         User                  @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  votes          FeatureVote[]
+  statusHistory  FeatureStatusChange[]
+  modNotes       FeatureModNote[]
+  mergedInto     FeatureRequest?       @relation("FeatureRequestMerge", fields: [mergedIntoId], references: [id])
+  mergedChildren FeatureRequest[]      @relation("FeatureRequestMerge")
 
-  @@map("feature_requests")
   @@index([status, votesCount, createdAt], map: "feature_requests_status_votes_created_idx")
   @@index([category, status], map: "feature_requests_category_status_idx")
+  @@map("feature_requests")
 }
 
 model FeatureVote {
@@ -168,40 +170,40 @@ model FeatureVote {
   user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   feature FeatureRequest @relation(fields: [featureId], references: [id], onDelete: Cascade)
 
-  @@map("feature_votes")
   @@id([userId, featureId])
+  @@map("feature_votes")
 }
 
 model FeatureStatusChange {
-  id         BigInt         @id @default(autoincrement()) @map("id")
-  featureId  BigInt         @map("feature_id")
-  oldStatus  FeatureStatus? @map("old_status")
-  newStatus  FeatureStatus  @map("new_status")
-  changedByUserId String?   @map("changed_by_user_id")
-  changedByAdminId String?  @map("changed_by_admin_id")
-  note       String?        @map("note")
-  createdAt  DateTime       @default(now()) @map("created_at")
+  id               BigInt         @id @default(autoincrement()) @map("id")
+  featureId        BigInt         @map("feature_id")
+  oldStatus        FeatureStatus? @map("old_status")
+  newStatus        FeatureStatus  @map("new_status")
+  changedByUserId  String?        @map("changed_by_user_id")
+  changedByAdminId String?        @map("changed_by_admin_id")
+  note             String?        @map("note")
+  createdAt        DateTime       @default(now()) @map("created_at")
 
-  feature   FeatureRequest @relation(fields: [featureId], references: [id], onDelete: Cascade)
-  changedByUser User?      @relation("FeatureStatusChangedByUser", fields: [changedByUserId], references: [id], onDelete: Restrict)
-  changedByAdmin Admin?    @relation("FeatureStatusChangedByAdmin", fields: [changedByAdminId], references: [id], onDelete: Restrict)
+  feature        FeatureRequest @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  changedByUser  User?          @relation("FeatureStatusChangedByUser", fields: [changedByUserId], references: [id], onDelete: Restrict)
+  changedByAdmin Admin?         @relation("FeatureStatusChangedByAdmin", fields: [changedByAdminId], references: [id], onDelete: Restrict)
 
-  @@map("feature_status_changes")
   @@index([featureId], map: "feature_status_changes_feature_idx")
+  @@map("feature_status_changes")
 }
 
 model FeatureModNote {
-  id        BigInt   @id @default(autoincrement()) @map("id")
-  featureId BigInt   @map("feature_id")
-  authorAdminId  String   @map("author_admin_id")
-  note      String   @map("note")
-  createdAt DateTime @default(now()) @map("created_at")
+  id            BigInt   @id @default(autoincrement()) @map("id")
+  featureId     BigInt   @map("feature_id")
+  authorAdminId String   @map("author_admin_id")
+  note          String   @map("note")
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  feature FeatureRequest @relation(fields: [featureId], references: [id], onDelete: Cascade)
-  authorAdmin  Admin     @relation(fields: [authorAdminId], references: [id], onDelete: Restrict)
+  feature     FeatureRequest @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  authorAdmin Admin          @relation(fields: [authorAdminId], references: [id], onDelete: Restrict)
 
-  @@map("feature_mod_notes")
   @@index([featureId], map: "feature_mod_notes_feature_idx")
+  @@map("feature_mod_notes")
 }
 
 enum AdminRole {
@@ -317,54 +319,59 @@ model Objective {
   description       String?
   dueDate           DateTime?
   priority          Int             @default(3)
-  status            ObjectiveStatus @default(draft)
+  status            ObjectiveStatus @default(todo)
   estimatedWeeksMin Int?
   estimatedWeeksMax Int?
   successCriteria   String[]        @default([])
   requiredSkills    String[]        @default([])
-  
-  // Duration estimation fields
-  estimatedTotalDays    Int?
-  estimatedDailyHours   Float?
-  estimationReasoning   String?
-  estimatedAt           DateTime?
-  
-  // Progress tracking fields
-  currentDay            Int       @default(1)
-  completedDays         Int       @default(0)
-  totalSprintsGenerated Int       @default(0)
-  progressPercentage    Float     @default(0)
-  
-  // Auto-generation settings
-  autoGenerateNextSprint Boolean  @default(true)
-  sprintGenerationMode   SprintGenerationMode @default(DAILY)
-  
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  roadmap           Roadmap?        @relation(fields: [roadmapId], references: [id], onDelete: SetNull)
-  profileSnapshot   LearnerProfile? @relation(fields: [profileSnapshotId], references: [id], onDelete: SetNull)
-  sprints           Sprint[]
-  milestones        ObjectiveMilestone[]
-  primaryRoadmap    Roadmap?        @relation("RoadmapObjective")
 
-  @@map("objectives")
+  // Duration estimation fields
+  estimatedTotalDays  Int?
+  estimatedDailyHours Float?
+  estimationReasoning String?
+  estimatedAt         DateTime?
+
+  // Progress tracking fields
+  currentDay            Int   @default(1)
+  completedDays         Int   @default(0)
+  totalSprintsGenerated Int   @default(0)
+  progressPercentage    Float @default(0)
+
+  // Auto-generation settings
+  autoGenerateNextSprint Boolean              @default(true)
+  sprintGenerationMode   SprintGenerationMode @default(DAILY)
+  profileSnapshot        LearnerProfile?      @relation(fields: [profileSnapshotId], references: [id], onDelete: SetNull)
+  sprints                Sprint[]
+  milestones             ObjectiveMilestone[]
+  primaryRoadmap         Roadmap?             @relation("RoadmapObjective")
+
+  // Brain-adaptive learning
+  learningVelocity    Float                 @default(1.0) // Multiplier (1.5 = 50% faster)
+  currentDifficulty   Int                   @default(50) // 0-100 scale
+  lastRecalibrationAt DateTime?
+  recalibrationCount  Int                   @default(0)
+  adaptations         ObjectiveAdaptation[]
+  quizzes             KnowledgeQuiz[]
+  Roadmap             Roadmap?              @relation(fields: [roadmapId], references: [id])
+
   @@index([currentDay, status])
+  @@map("objectives")
 }
 
 model ObjectiveMilestone {
-  id            String   @id @default(uuid())
-  objectiveId   String
-  objective     Objective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
-  
-  title         String
-  description   String?
-  targetDay     Int      // Day this milestone should be reached
-  isCompleted   Boolean  @default(false)
-  completedAt   DateTime?
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
+  id          String    @id @default(uuid())
+  objectiveId String
+  objective   Objective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  targetDay   Int // Day this milestone should be reached
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([objectiveId])
   @@index([objectiveId, targetDay])
   @@map("objective_milestones")
@@ -406,10 +413,10 @@ enum ObjectiveStatus {
 }
 
 enum SprintGenerationMode {
-  DAILY        // Generate 1-day sprints
-  WEEKLY       // Generate 7-day sprints
-  MILESTONE    // Generate based on milestones
-  MANUAL       // User triggers generation
+  DAILY // Generate 1-day sprints
+  WEEKLY // Generate 7-day sprints
+  MILESTONE // Generate based on milestones
+  MANUAL // User triggers generation
 }
 
 enum SprintStatus {
@@ -425,41 +432,70 @@ enum SprintDifficulty {
   advanced
 }
 
+enum SkillDifficulty {
+  beginner
+  intermediate
+  advanced
+  expert
+}
+
+enum SkillStatus {
+  not_started
+  learning
+  practicing
+  proficient
+  mastered
+  struggling
+}
+
 model Sprint {
-  id                  String            @id @default(uuid())
-  objectiveId         String
-  profileSnapshotId   String?
-  plannerInput        Json
-  plannerOutput       Json
-  lengthDays          Int
-  totalEstimatedHours Int
-  difficulty          SprintDifficulty @default(beginner)
-  status              SprintStatus     @default(planned)
-  startedAt           DateTime?
-  completedAt         DateTime?
-  score               Float?
-  reviewerSummary     Json?
+  id                       String           @id @default(uuid())
+  objectiveId              String
+  profileSnapshotId        String?
+  plannerInput             Json
+  plannerOutput            Json
+  lengthDays               Int
+  totalEstimatedHours      Int
+  difficulty               SprintDifficulty @default(beginner)
+  status                   SprintStatus     @default(planned)
+  startedAt                DateTime?
+  completedAt              DateTime?
+  score                    Float?
+  reviewerSummary          Json?
   selfEvaluationConfidence Int?
   selfEvaluationReflection String?
-  
+
   // Day tracking fields
-  dayNumber           Int              // Which day in the objective sequence
-  isAutoGenerated     Boolean          @default(false)
-  
+  dayNumber       Int // Which day in the objective sequence
+  isAutoGenerated Boolean @default(false)
+
   // Completion tracking
-  completionPercentage Float           @default(0)
-  
+  completionPercentage Float @default(0)
+
   // Sprint sequence (linked list)
-  nextSprintId        String?          @unique
-  nextSprint          Sprint?          @relation("SprintSequence", fields: [nextSprintId], references: [id], onDelete: SetNull)
-  previousSprint      Sprint?          @relation("SprintSequence")
-  
-  artifacts          SprintArtifact[]
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-  objective           Objective        @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
-  profileSnapshot     LearnerProfile?  @relation(fields: [profileSnapshotId], references: [id], onDelete: SetNull)
-  progresses          Progress[]
+  nextSprintId   String? @unique
+  nextSprint     Sprint? @relation("SprintSequence", fields: [nextSprintId], references: [id], onDelete: SetNull)
+  previousSprint Sprint? @relation("SprintSequence")
+
+  artifacts       SprintArtifact[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  objective       Objective        @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+  profileSnapshot LearnerProfile?  @relation(fields: [profileSnapshotId], references: [id], onDelete: SetNull)
+  progresses      Progress[]
+
+  // Brain-adaptive learning
+  skills           SprintSkill[]
+  targetSkills     String[]          @default([]) // Skill IDs this sprint targets
+  difficultyScore  Float             @default(50) // 0-100 scale
+  adaptedFrom      String? // "increased" | "decreased" | "maintained"
+  adaptationReason String? // Why difficulty was adjusted
+  adaptation       SprintAdaptation?
+
+  // Knowledge validation & spaced repetition
+  quizzes        KnowledgeQuiz[]
+  reviewSprint   ReviewSprint?
+  isReviewSprint Boolean         @default(false)
 
   @@index([objectiveId, status])
   @@index([objectiveId, dayNumber])
@@ -481,19 +517,19 @@ enum ArtifactStatus {
 }
 
 model SprintArtifact {
-  id          String         @id @default(uuid())
-  sprintId    String
-  projectId   String
-  artifactId  String
-  title       String?
-  type        ArtifactType
-  url         String?
-  status      ArtifactStatus @default(unknown)
-  notes       String?
-  metadata    Json?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  sprint      Sprint         @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  id         String         @id @default(uuid())
+  sprintId   String
+  projectId  String
+  artifactId String
+  title      String?
+  type       ArtifactType
+  url        String?
+  status     ArtifactStatus @default(unknown)
+  notes      String?
+  metadata   Json?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  sprint     Sprint         @relation(fields: [sprintId], references: [id], onDelete: Cascade)
 
   @@unique([sprintId, artifactId])
   @@index([sprintId, projectId])
@@ -641,4 +677,340 @@ model BillingInvoice {
   @@index([subscriptionId])
   @@index([couponId])
   @@index([status])
+}
+
+// ============================================
+// BRAIN-ADAPTIVE LEARNING SYSTEM
+// ============================================
+
+// Knowledge validation enums
+enum QuizType {
+  pre_sprint // Before starting sprint
+  post_sprint // After completing sprint
+  skill_check // Check specific skill
+  review // Spaced repetition review
+  milestone // Milestone validation
+}
+
+enum QuestionType {
+  multiple_choice
+  multiple_select
+  code_completion
+  code_output
+  true_false
+  short_answer
+}
+
+enum ReviewType {
+  spaced_repetition // Scheduled review
+  struggling_skill // Extra practice for weak areas
+  milestone_prep // Review before milestone
+  comprehensive // Full review sprint
+}
+
+// Skill tracking models
+model Skill {
+  id            String  @id @default(uuid())
+  name          String  @unique
+  category      String // e.g., "java_fundamentals", "oop", "spring_boot"
+  description   String?
+  parentSkillId String?
+  parentSkill   Skill?  @relation("SkillHierarchy", fields: [parentSkillId], references: [id], onDelete: SetNull)
+  childSkills   Skill[] @relation("SkillHierarchy")
+
+  prerequisites String[]        @default([]) // Skill IDs that must be mastered first
+  difficulty    SkillDifficulty @default(beginner)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userSkills      UserSkill[]
+  sprintSkills    SprintSkill[]
+  reviewSchedules ReviewSchedule[]
+
+  @@index([category])
+  @@map("skills")
+}
+
+model UserSkill {
+  id      String @id @default(uuid())
+  userId  String
+  skillId String
+
+  // Skill proficiency (0-100)
+  level  Int         @default(0)
+  status SkillStatus @default(not_started)
+
+  // Performance tracking
+  practiceCount   Int       @default(0)
+  successRate     Float     @default(0) // 0-1
+  lastPracticedAt DateTime?
+  masteredAt      DateTime?
+
+  // Spaced repetition
+  nextReviewAt   DateTime?
+  reviewInterval Int       @default(1) // Days until next review
+
+  // Struggle detection
+  consecutiveFailures Int     @default(0)
+  needsReview         Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillId])
+  @@index([userId, status])
+  @@index([userId, nextReviewAt])
+  @@map("user_skills")
+}
+
+model SprintSkill {
+  id       String @id @default(uuid())
+  sprintId String
+  skillId  String
+
+  // What this sprint teaches/practices
+  targetLevel  Int // Expected level after sprint
+  practiceType String // "introduction", "practice", "review", "mastery"
+
+  // Performance in this sprint
+  preSprintLevel  Int? // Level before sprint
+  postSprintLevel Int? // Level after sprint
+  scoreAchieved   Float? // 0-100
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sprint Sprint @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  skill  Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([sprintId, skillId])
+  @@index([sprintId])
+  @@map("sprint_skills")
+}
+
+// Adaptive learning models
+model ObjectiveAdaptation {
+  id          String    @id @default(uuid())
+  objectiveId String
+  objective   Objective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  // Learning velocity tracking
+  initialEstimatedDays Int
+  currentEstimatedDays Int
+  adjustmentReason     String
+
+  // Performance metrics
+  averageScore       Float // 0-100
+  completionRate     Float // 0-1
+  velocityMultiplier Float @default(1.0) // 1.5 = 50% faster
+
+  // Difficulty adjustments
+  difficultyLevel Int      @default(50) // 0-100 scale
+  lastAdjustedAt  DateTime
+  adjustmentCount Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([objectiveId])
+  @@map("objective_adaptations")
+}
+
+model SprintAdaptation {
+  id       String @id @default(uuid())
+  sprintId String @unique
+  sprint   Sprint @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+
+  // Difficulty adjustment
+  baseDifficulty     Int // Original difficulty (0-100)
+  adjustedDifficulty Int // Adapted difficulty (0-100)
+  adjustmentReason   String
+
+  // What was changed
+  adjustments Json // { "addedConcepts": [], "removedBasics": [], "increasedComplexity": true }
+
+  // Performance prediction
+  predictedScore     Float? // AI prediction before sprint
+  actualScore        Float? // Actual score after sprint
+  predictionAccuracy Float? // How accurate was the prediction
+
+  createdAt DateTime @default(now())
+
+  @@map("sprint_adaptations")
+}
+
+// ============================================
+// KNOWLEDGE VALIDATION SYSTEM
+// ============================================
+
+model KnowledgeQuiz {
+  id          String   @id @default(uuid())
+  sprintId    String?
+  objectiveId String?
+  skillIds    String[] @default([])
+
+  type        QuizType
+  title       String
+  description String?
+
+  passingScore    Int  @default(80) // Percentage
+  timeLimit       Int? // Minutes
+  attemptsAllowed Int  @default(3)
+
+  // Blocking behavior
+  blocksProgression Boolean @default(true)
+  isRequired        Boolean @default(true)
+
+  questions KnowledgeQuizQuestion[]
+  attempts  QuizAttempt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sprint    Sprint?    @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  objective Objective? @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  @@index([sprintId])
+  @@index([objectiveId])
+  @@map("knowledge_quizzes")
+}
+
+model KnowledgeQuizQuestion {
+  id     String        @id @default(uuid())
+  quizId String
+  quiz   KnowledgeQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  type        QuestionType
+  question    String
+  explanation String? // Shown after answer
+
+  // For multiple choice/select
+  options Json? // [{ id: "a", text: "...", isCorrect: true }]
+
+  // For code questions
+  codeTemplate   String?
+  expectedOutput String?
+
+  // Difficulty and skills
+  difficulty SkillDifficulty @default(beginner)
+  skillIds   String[]        @default([])
+
+  points    Int @default(1)
+  sortOrder Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  answers QuizAnswer[]
+
+  @@index([quizId])
+  @@map("knowledge_quiz_questions")
+}
+
+model QuizAttempt {
+  id     String        @id @default(uuid())
+  quizId String
+  quiz   KnowledgeQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  userId String
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  attemptNumber Int
+
+  score     Float // 0-100
+  passed    Boolean
+  timeSpent Int? // Seconds
+
+  startedAt   DateTime
+  completedAt DateTime?
+
+  answers QuizAnswer[]
+
+  // Skill performance in this attempt
+  skillScores Json? // { skillId: score }
+
+  @@unique([quizId, userId, attemptNumber])
+  @@index([userId])
+  @@index([quizId])
+  @@map("quiz_attempts")
+}
+
+model QuizAnswer {
+  id         String                @id @default(uuid())
+  attemptId  String
+  attempt    QuizAttempt           @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  question   KnowledgeQuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  answer       Json // User's answer
+  isCorrect    Boolean
+  pointsEarned Int
+
+  createdAt DateTime @default(now())
+
+  @@index([attemptId])
+  @@index([questionId])
+  @@map("quiz_answers")
+}
+
+// ============================================
+// SPACED REPETITION SYSTEM
+// ============================================
+
+model ReviewSchedule {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  skillId String
+  skill   Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  // Spaced repetition intervals (days)
+  firstReview  Int @default(1) // Review after 1 day
+  secondReview Int @default(7) // Review after 1 week
+  thirdReview  Int @default(14) // Review after 2 weeks
+  fourthReview Int @default(30) // Review after 1 month
+  fifthReview  Int @default(60) // Review after 2 months
+
+  // Current state
+  currentInterval Int       @default(1)
+  nextReviewAt    DateTime
+  lastReviewedAt  DateTime?
+  reviewCount     Int       @default(0)
+
+  // Performance tracking
+  averageReviewScore Float   @default(0)
+  isRetained         Boolean @default(false) // Skill retained in memory
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, skillId])
+  @@index([userId, nextReviewAt])
+  @@map("review_schedules")
+}
+
+model ReviewSprint {
+  id       String @id @default(uuid())
+  sprintId String @unique
+  sprint   Sprint @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+
+  type     ReviewType
+  skillIds String[] // Skills being reviewed
+
+  // What triggered this review
+  triggerReason String
+  scheduledFor  DateTime
+
+  // Review effectiveness
+  preReviewScores  Json? // { skillId: score }
+  postReviewScores Json? // { skillId: score }
+  improvement      Float? // Percentage improvement
+
+  createdAt DateTime @default(now())
+
+  @@map("review_sprints")
 }

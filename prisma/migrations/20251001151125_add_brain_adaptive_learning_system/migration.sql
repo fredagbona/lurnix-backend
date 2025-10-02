@@ -19,13 +19,19 @@ CREATE TYPE "public"."SprintStatus" AS ENUM ('planned', 'in_progress', 'submitte
 CREATE TYPE "public"."SprintDifficulty" AS ENUM ('beginner', 'intermediate', 'advanced');
 
 -- CreateEnum
+CREATE TYPE "public"."SkillDifficulty" AS ENUM ('beginner', 'intermediate', 'advanced', 'expert');
+
+-- CreateEnum
+CREATE TYPE "public"."SkillStatus" AS ENUM ('not_started', 'learning', 'practicing', 'proficient', 'mastered', 'struggling');
+
+-- CreateEnum
 CREATE TYPE "public"."ArtifactType" AS ENUM ('repository', 'deployment', 'video', 'screenshot');
 
 -- CreateEnum
 CREATE TYPE "public"."ArtifactStatus" AS ENUM ('ok', 'broken', 'missing', 'unknown');
 
 -- AlterEnum
--- Enum values already added in separate transaction
+-- Enum values will be added in a separate migration to avoid transaction issues
 
 -- DropForeignKey
 ALTER TABLE "public"."Objective" DROP CONSTRAINT "Objective_roadmapId_fkey";
@@ -69,7 +75,7 @@ CREATE TABLE "public"."objectives" (
     "description" TEXT,
     "dueDate" TIMESTAMP(3),
     "priority" INTEGER NOT NULL DEFAULT 3,
-    "status" "public"."ObjectiveStatus" NOT NULL DEFAULT 'draft',
+    "status" "public"."ObjectiveStatus" NOT NULL DEFAULT 'todo',
     "estimatedWeeksMin" INTEGER,
     "estimatedWeeksMax" INTEGER,
     "successCriteria" TEXT[] DEFAULT ARRAY[]::TEXT[],
@@ -86,6 +92,10 @@ CREATE TABLE "public"."objectives" (
     "sprintGenerationMode" "public"."SprintGenerationMode" NOT NULL DEFAULT 'DAILY',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "learningVelocity" DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+    "currentDifficulty" INTEGER NOT NULL DEFAULT 50,
+    "lastRecalibrationAt" TIMESTAMP(3),
+    "recalibrationCount" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "objectives_pkey" PRIMARY KEY ("id")
 );
@@ -128,6 +138,10 @@ CREATE TABLE "public"."Sprint" (
     "nextSprintId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "targetSkills" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "difficultyScore" DOUBLE PRECISION NOT NULL DEFAULT 50,
+    "adaptedFrom" TEXT,
+    "adaptationReason" TEXT,
 
     CONSTRAINT "Sprint_pkey" PRIMARY KEY ("id")
 );
@@ -148,6 +162,93 @@ CREATE TABLE "public"."SprintArtifact" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "SprintArtifact_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."skills" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "category" TEXT NOT NULL,
+    "description" TEXT,
+    "parentSkillId" TEXT,
+    "prerequisites" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "difficulty" "public"."SkillDifficulty" NOT NULL DEFAULT 'beginner',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "skills_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."user_skills" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "skillId" TEXT NOT NULL,
+    "level" INTEGER NOT NULL DEFAULT 0,
+    "status" "public"."SkillStatus" NOT NULL DEFAULT 'not_started',
+    "practiceCount" INTEGER NOT NULL DEFAULT 0,
+    "successRate" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "lastPracticedAt" TIMESTAMP(3),
+    "masteredAt" TIMESTAMP(3),
+    "nextReviewAt" TIMESTAMP(3),
+    "reviewInterval" INTEGER NOT NULL DEFAULT 1,
+    "consecutiveFailures" INTEGER NOT NULL DEFAULT 0,
+    "needsReview" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "user_skills_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."sprint_skills" (
+    "id" TEXT NOT NULL,
+    "sprintId" TEXT NOT NULL,
+    "skillId" TEXT NOT NULL,
+    "targetLevel" INTEGER NOT NULL,
+    "practiceType" TEXT NOT NULL,
+    "preSprintLevel" INTEGER,
+    "postSprintLevel" INTEGER,
+    "scoreAchieved" DOUBLE PRECISION,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "sprint_skills_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."objective_adaptations" (
+    "id" TEXT NOT NULL,
+    "objectiveId" TEXT NOT NULL,
+    "initialEstimatedDays" INTEGER NOT NULL,
+    "currentEstimatedDays" INTEGER NOT NULL,
+    "adjustmentReason" TEXT NOT NULL,
+    "averageScore" DOUBLE PRECISION NOT NULL,
+    "completionRate" DOUBLE PRECISION NOT NULL,
+    "velocityMultiplier" DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+    "difficultyLevel" INTEGER NOT NULL DEFAULT 50,
+    "lastAdjustedAt" TIMESTAMP(3) NOT NULL,
+    "adjustmentCount" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "objective_adaptations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."sprint_adaptations" (
+    "id" TEXT NOT NULL,
+    "sprintId" TEXT NOT NULL,
+    "baseDifficulty" INTEGER NOT NULL,
+    "adjustedDifficulty" INTEGER NOT NULL,
+    "adjustmentReason" TEXT NOT NULL,
+    "adjustments" JSONB NOT NULL,
+    "predictedScore" DOUBLE PRECISION,
+    "actualScore" DOUBLE PRECISION,
+    "predictionAccuracy" DOUBLE PRECISION,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "sprint_adaptations_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -179,6 +280,33 @@ CREATE INDEX "SprintArtifact_sprintId_projectId_idx" ON "public"."SprintArtifact
 
 -- CreateIndex
 CREATE UNIQUE INDEX "SprintArtifact_sprintId_artifactId_key" ON "public"."SprintArtifact"("sprintId", "artifactId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "skills_name_key" ON "public"."skills"("name");
+
+-- CreateIndex
+CREATE INDEX "skills_category_idx" ON "public"."skills"("category");
+
+-- CreateIndex
+CREATE INDEX "user_skills_userId_status_idx" ON "public"."user_skills"("userId", "status");
+
+-- CreateIndex
+CREATE INDEX "user_skills_userId_nextReviewAt_idx" ON "public"."user_skills"("userId", "nextReviewAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_skills_userId_skillId_key" ON "public"."user_skills"("userId", "skillId");
+
+-- CreateIndex
+CREATE INDEX "sprint_skills_sprintId_idx" ON "public"."sprint_skills"("sprintId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "sprint_skills_sprintId_skillId_key" ON "public"."sprint_skills"("sprintId", "skillId");
+
+-- CreateIndex
+CREATE INDEX "objective_adaptations_objectiveId_idx" ON "public"."objective_adaptations"("objectiveId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "sprint_adaptations_sprintId_key" ON "public"."sprint_adaptations"("sprintId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Progress_userId_sprintId_key" ON "public"."Progress"("userId", "sprintId");
@@ -215,3 +343,24 @@ ALTER TABLE "public"."Sprint" ADD CONSTRAINT "Sprint_profileSnapshotId_fkey" FOR
 
 -- AddForeignKey
 ALTER TABLE "public"."SprintArtifact" ADD CONSTRAINT "SprintArtifact_sprintId_fkey" FOREIGN KEY ("sprintId") REFERENCES "public"."Sprint"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."skills" ADD CONSTRAINT "skills_parentSkillId_fkey" FOREIGN KEY ("parentSkillId") REFERENCES "public"."skills"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."user_skills" ADD CONSTRAINT "user_skills_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."user_skills" ADD CONSTRAINT "user_skills_skillId_fkey" FOREIGN KEY ("skillId") REFERENCES "public"."skills"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."sprint_skills" ADD CONSTRAINT "sprint_skills_sprintId_fkey" FOREIGN KEY ("sprintId") REFERENCES "public"."Sprint"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."sprint_skills" ADD CONSTRAINT "sprint_skills_skillId_fkey" FOREIGN KEY ("skillId") REFERENCES "public"."skills"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."objective_adaptations" ADD CONSTRAINT "objective_adaptations_objectiveId_fkey" FOREIGN KEY ("objectiveId") REFERENCES "public"."objectives"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."sprint_adaptations" ADD CONSTRAINT "sprint_adaptations_sprintId_fkey" FOREIGN KEY ("sprintId") REFERENCES "public"."Sprint"("id") ON DELETE CASCADE ON UPDATE CASCADE;
