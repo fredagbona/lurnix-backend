@@ -4,7 +4,7 @@ import { PrismaClient, SkillDifficulty, QuizType, QuestionType } from '@prisma/c
 import { config } from '../config/environment.js';
 
 const prisma = new PrismaClient();
-const groq = new Groq({ apiKey: config.groqApiKey });
+const groq = new Groq({ apiKey: config.GROQ_API_KEY });
 
 // ============================================
 // INTERFACES
@@ -28,6 +28,7 @@ export interface QuizGenerationParams {
   questionCount: number;
   type: QuizType;
   context?: string;
+  language?: string;
 }
 
 // ============================================
@@ -92,7 +93,7 @@ class QuizGenerationService {
    * Generate quiz questions using AI
    */
   async generateQuestions(params: QuizGenerationParams): Promise<GeneratedQuestion[]> {
-    const { skills, difficulty, questionCount, type, context } = params;
+    const { skills, difficulty, questionCount, type, context, language = 'en' } = params;
 
     // Build skill context
     const skillsContext = skills
@@ -102,7 +103,14 @@ class QuizGenerationService {
     // Build quiz type context
     const typeContext = this.getQuizTypeContext(type);
 
-    const userPrompt = `QUIZ CONTEXT:
+    // Language instruction
+    const languageInstruction = language === 'fr'
+      ? '\n\nIMPORTANT: Generate ALL questions, options, explanations, and feedback in FRENCH. Use proper French grammar and technical terminology.'
+      : '\n\nIMPORTANT: Generate ALL questions, options, explanations, and feedback in ENGLISH.';
+
+    const userPrompt = `${languageInstruction}
+
+QUIZ CONTEXT:
 ${typeContext}
 ${context ? `\nAdditional Context: ${context}` : ''}
 

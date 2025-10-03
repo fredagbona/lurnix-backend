@@ -1,0 +1,96 @@
+{
+  "notifications": {
+    "skillMastered": "Skill Mastered! 🏆",
+    "skillMasteredMessage": "You've mastered {{skillName}}!",
+    "difficultyIncreased": "Difficulty Increased! 🚀",
+    "difficultyIncreasedMessage": "You're doing great! We've increased the difficulty to challenge you more.",
+    "difficultyDecreased": "Pace Adjusted 📚",
+    "difficultyDecreasedMessage": "We've adjusted the pace to help you master the fundamentals.",
+    "reviewNeeded": "Review Sprint Recommended 🔄",
+    "reviewNeededMessage": "{{count}} skills are overdue for review to ensure retention.",
+    "sprintCompleted": "Day {{dayNumber}} Complete! 🎉",
+    "sprintCompletedMessage": "Score: {{score}}/100"
+  },
+  "quiz": {
+    "required": "Quiz Required",
+    "requiredMessage": "You must complete the readiness quiz before starting this sprint.",
+    "passed": "Quiz Passed! ✅",
+    "passedMessage": "Score: {{score}}% - You're ready to continue!",
+    "failed": "Quiz Not Passed",
+    "failedMessage": "Score: {{score}}% (Required: {{required}}%). {{attempts}} attempts remaining.",
+    "readinessCheck": "Readiness Check",
+    "validationQuiz": "Validation Quiz",
+    "preSprintTitle": "Readiness Check: {{topic}}",
+    "postSprintTitle": "Validation Quiz: {{topic}}",
+    "skillCheckTitle": "Skill Assessment: {{topic}}",
+    "reviewTitle": "Review Quiz: {{topic}}",
+    "milestoneTitle": "Milestone Assessment: {{topic}}",
+    "preSprintDescription": "Test your prerequisite knowledge before starting this sprint.",
+    "postSprintDescription": "Validate your understanding of the concepts covered in this sprint.",
+    "skillCheckDescription": "Assess your current proficiency in these skills.",
+    "reviewDescription": "Review previously learned skills to ensure retention.",
+    "milestoneDescription": "Comprehensive assessment of all skills learned up to this point.",
+    "greatJob": "Great job! You're ready to start.",
+    "reviewConcepts": "Review {{concept}} concepts for better understanding.",
+    "needsImprovement": "Review the material and try again.",
+    "focusOn": "Focus on improving: {{skills}}",
+    "practiceMore": "Practice more exercises in these areas."
+  },
+  "skills": {
+    "status": {
+      "notStarted": "Not Started",
+      "learning": "Learning",
+      "practicing": "Practicing",
+      "proficient": "Proficient",
+      "mastered": "Mastered",
+      "struggling": "Struggling"
+    },
+    "updated": "Skills Updated",
+    "levelIncreased": "{{skillName}}: {{previousLevel}} → {{newLevel}} ({{status}})",
+    "overallProgress": "Overall Progress: {{progress}}%",
+    "masteredSkills": "Mastered Skills",
+    "strugglingAreas": "Struggling Areas",
+    "inProgress": "In Progress",
+    "needsReview": "Needs Review"
+  },
+  "performance": {
+    "trend": {
+      "improving": "Improving",
+      "stable": "Stable",
+      "declining": "Declining"
+    },
+    "action": {
+      "speedUp": "Speed Up",
+      "slowDown": "Slow Down",
+      "maintain": "Maintain",
+      "review": "Review"
+    },
+    "averageScore": "Average Score: {{score}}%",
+    "currentDifficulty": "Current Difficulty: {{difficulty}}/100",
+    "learningVelocity": "Learning Pace: {{velocity}}x",
+    "estimatedCompletion": "Estimated Completion: {{date}}"
+  },
+  "adaptation": {
+    "recalibrating": "Recalibrating learning path...",
+    "adjustingDifficulty": "Adjusting difficulty...",
+    "analyzingPerformance": "Analyzing performance...",
+    "speedingUp": "Speeding up learning pace",
+    "slowingDown": "Slowing down for better understanding",
+    "maintaining": "Maintaining current pace"
+  },
+  "review": {
+    "sprintInserted": "Review sprint inserted",
+    "skillsDue": "{{count}} skills due for review",
+    "overdueSkills": "{{count}} overdue skills",
+    "scheduledFor": "Scheduled for: {{date}}",
+    "reviewInterval": "Review interval: {{days}} days",
+    "lastReviewed": "Last reviewed: {{date}}",
+    "nextReview": "Next review: {{date}}"
+  },
+  "errors": {
+    "skillExtractionFailed": "Failed to extract skills from sprint content",
+    "adaptationFailed": "Failed to recalibrate learning path",
+    "quizGenerationFailed": "Failed to generate quiz",
+    "reviewScheduleFailed": "Failed to update review schedule"
+  }
+}

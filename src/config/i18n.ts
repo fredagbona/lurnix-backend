@@ -17,7 +17,7 @@ export async function initI18n() {
         debug: false,
         fallbackLng: 'en',
         supportedLngs: ['en', 'fr'],
-        ns: ['auth', 'common', 'errors', 'admin', 'quiz', 'routes', 'features', 'objectives'],
+        ns: ['auth', 'common', 'errors', 'admin', 'quiz', 'routes', 'features', 'objectives', 'brainAdaptive'],
         defaultNS: 'auth',
         preload: ['en', 'fr'],
         load: 'languageOnly',

@@ -5,6 +5,7 @@ import adaptiveLearningService from './adaptiveLearningService.js';
 import knowledgeValidationService from './knowledgeValidationService.js';
 import spacedRepetitionService from './spacedRepetitionService.js';
 import quizGenerationService from './quizGenerationService.js';
+import { translateKey } from '../utils/translationUtils.js';
 
 const prisma = new PrismaClient();
 
@@ -57,8 +58,9 @@ class BrainAdaptiveIntegrationService {
     userId: string;
     score: number;
     completionData: any;
+    userLanguage?: string;
   }): Promise<BrainAdaptiveCompletionResult> {
-    const { sprintId, userId, score } = params;
+    const { sprintId, userId, score, userLanguage = 'en' } = params;
 
     console.log(`🧠 [Brain-Adaptive] Processing sprint completion for sprint ${sprintId}`);
 
@@ -92,6 +94,7 @@ class BrainAdaptiveIntegrationService {
           sprintTasks: (sprint.plannerOutput as any).microTasks || [],
           objectiveContext: sprint.objective.title,
           dayNumber: (sprint as any).dayNumber,
+          language: userLanguage,
         });
 
         // Link extracted skills to sprint
@@ -138,10 +141,16 @@ class BrainAdaptiveIntegrationService {
     // Add notifications for mastered skills
     for (const update of skillUpdates) {
       if (update.masteredNow) {
+        const title = translateKey('brainAdaptive.notifications.skillMastered', { language: userLanguage });
+        const message = translateKey('brainAdaptive.notifications.skillMasteredMessage', {
+          language: userLanguage,
+          interpolation: { skillName: update.skillName },
+        });
+        
         notifications.push({
           type: 'skill_mastered',
-          title: 'Skill Mastered! 🏆',
-          message: `You've mastered ${update.skillName}!`,
+          title: title.message,
+          message: message.message,
         });
       }
     }
@@ -187,16 +196,22 @@ class BrainAdaptiveIntegrationService {
 
           // Add notification
           if (adaptationDecision.adjustmentType === 'increase') {
+            const title = translateKey('brainAdaptive.notifications.difficultyIncreased', { language: userLanguage });
+            const message = translateKey('brainAdaptive.notifications.difficultyIncreasedMessage', { language: userLanguage });
+            
             notifications.push({
               type: 'difficulty_increased',
-              title: 'Difficulty Increased! 🚀',
-              message: "You're doing great! We've increased the difficulty to challenge you more.",
+              title: title.message,
+              message: message.message,
             });
           } else if (adaptationDecision.adjustmentType === 'decrease') {
+            const title = translateKey('brainAdaptive.notifications.difficultyDecreased', { language: userLanguage });
+            const message = translateKey('brainAdaptive.notifications.difficultyDecreasedMessage', { language: userLanguage });
+            
             notifications.push({
               type: 'difficulty_decreased',
-              title: 'Pace Adjusted 📚',
-              message: "We've adjusted the pace to help you master the fundamentals.",
+              title: title.message,
+              message: message.message,
             });
           }
         }
@@ -253,10 +268,16 @@ class BrainAdaptiveIntegrationService {
       console.log(`⚠️ [Brain-Adaptive] ${reviewCheck.reason}`);
       reviewSkills = reviewCheck.skillsToReview;
 
+      const title = translateKey('brainAdaptive.notifications.reviewNeeded', { language: userLanguage });
+      const message = translateKey('brainAdaptive.notifications.reviewNeededMessage', {
+        language: userLanguage,
+        interpolation: { count: reviewCheck.skillsToReview.length },
+      });
+
       notifications.push({
         type: 'review_needed',
-        title: 'Review Sprint Recommended 🔄',
-        message: reviewCheck.reason || 'Some skills need review to ensure retention.',
+        title: title.message,
+        message: message.message,
       });
     } else {
       console.log('✅ [Brain-Adaptive] No review sprint needed yet');

@@ -4,7 +4,7 @@ import { PrismaClient, SkillDifficulty } from '@prisma/client';
 import { config } from '../config/environment.js';
 
 const prisma = new PrismaClient();
-const groq = new Groq({ apiKey: config.groqApiKey });
+const groq = new Groq({ apiKey: config.GROQ_API_KEY });
 
 // ============================================
 // INTERFACES
@@ -77,8 +77,9 @@ class SkillExtractionService {
     objectiveContext: string;
     dayNumber?: number;
     previousSkills?: string[]; // Skills from previous sprints
+    language?: string;
   }): Promise<ExtractedSkill[]> {
-    const { sprintTitle, sprintDescription, sprintTasks, objectiveContext, dayNumber, previousSkills } = params;
+    const { sprintTitle, sprintDescription, sprintTasks, objectiveContext, dayNumber, previousSkills, language = 'en' } = params;
 
     // Build context for AI
     const tasksContext = sprintTasks
@@ -93,7 +94,14 @@ class SkillExtractionService {
       ? `\n\nPreviously covered skills: ${previousSkills.join(', ')}`
       : '';
 
-    const userPrompt = `OBJECTIVE CONTEXT:
+    // Language instruction
+    const languageInstruction = language === 'fr'
+      ? '\n\nIMPORTANT: Provide skill names and descriptions in FRENCH. Use proper French technical terminology.'
+      : '\n\nIMPORTANT: Provide skill names and descriptions in ENGLISH.';
+
+    const userPrompt = `${languageInstruction}
+
+OBJECTIVE CONTEXT:
 ${objectiveContext}
 
 SPRINT INFORMATION:
@@ -179,6 +187,7 @@ Consider what the learner will actually learn and be able to do after completing
     objectiveContext: string;
     dayNumber?: number;
     previousSkills?: string[];
+    language?: string;
   }): Promise<SkillExtractionResult> {
     // Extract skills
     const extractedSkills = await this.extractSkillsFromSprint(params);

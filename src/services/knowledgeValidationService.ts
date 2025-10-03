@@ -51,8 +51,9 @@ class KnowledgeValidationService {
     difficulty: SkillDifficulty;
     questionCount: number;
     passingScore?: number;
+    language?: string;
   }) {
-    const { sprintId, objectiveId, skillIds, type, difficulty, questionCount, passingScore = 80 } = params;
+    const { sprintId, objectiveId, skillIds, type, difficulty, questionCount, passingScore = 80, language = 'en' } = params;
 
     // Get skill details
     const skills = await prisma.skill.findMany({
@@ -69,6 +70,7 @@ class KnowledgeValidationService {
       difficulty,
       questionCount,
       type,
+      language,
     });
 
     // Create quiz title based on type
