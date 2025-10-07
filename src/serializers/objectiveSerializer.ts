@@ -112,8 +112,12 @@ export interface ObjectiveUiPayload {
 
 export interface ObjectiveWithRelations extends Objective {
   sprints: (Sprint & { progresses?: Progress[]; artifacts?: SprintArtifact[] })[];
-
   profileSnapshot?: LearnerProfile | null;
+  estimatedTotalDays?: number | null;
+  estimatedDailyHours?: number | null;
+  currentDay?: number | null;
+  completedDays?: number | null;
+  progressPercentage?: number | null;
 }
 
 interface SprintPlanDetails {

@@ -67,31 +67,31 @@ class LearningAnalyticsService {
     });
 
     const totalObjectives = objectives.length;
-    const activeObjectives = objectives.filter(o => 
+    const activeObjectives = objectives.filter((o: any) => 
       o.status === 'active' && o.completedDays < (o.estimatedTotalDays ?? 30)
     ).length;
-    const completedObjectives = objectives.filter(o =>
+    const completedObjectives = objectives.filter((o: any) =>
       o.completedDays >= (o.estimatedTotalDays ?? 30) || o.status === 'completed'
     ).length;
 
     // Time stats
-    const allSprints = objectives.flatMap(o => o.sprints);
+    const allSprints = objectives.flatMap((o: any) => o.sprints);
     const totalDaysLearning = allSprints.length;
-    const totalHoursSpent = allSprints.reduce((sum, s) => sum + (s.totalEstimatedHours ?? 0), 0);
+    const totalHoursSpent = allSprints.reduce((sum: number, s: any) => sum + (s.totalEstimatedHours ?? 0), 0);
     const averageHoursPerDay = totalDaysLearning > 0 ? totalHoursSpent / totalDaysLearning : 0;
 
     // Calculate streaks across all objectives
     const { currentStreak, longestStreak } = this.calculateGlobalStreaks(allSprints);
 
     // Performance metrics
-    const completionRates = allSprints.map(s => s.completionPercentage ?? 0);
+    const completionRates = allSprints.map((s: any) => s.completionPercentage ?? 0);
     const averageCompletionRate = completionRates.length > 0
-      ? completionRates.reduce((sum, rate) => sum + rate, 0) / completionRates.length
+      ? completionRates.reduce((sum: number, rate: number) => sum + rate, 0) / completionRates.length
       : 0;
 
     // Calculate average velocity
     const velocities = await Promise.all(
-      objectives.map(async o => {
+      objectives.map(async (o: any) => {
         if (o.sprints.length < 2) return 0;
         const firstSprint = o.sprints[0];
         const lastSprint = o.sprints[o.sprints.length - 1];
@@ -108,8 +108,8 @@ class LearningAnalyticsService {
 
     // Skills acquired
     const skillsAcquired = [...new Set(
-      objectives.flatMap(o => o.requiredSkills)
-    )];
+      objectives.flatMap((o: any) => o.requiredSkills)
+    )] as string[];
 
     // Weekly progress
     const weeklyProgress = this.calculateWeeklyProgress(allSprints);
@@ -220,7 +220,7 @@ class LearningAnalyticsService {
           description: `Completed: ${objective.title}`,
           metadata: {
             totalDays: objective.completedDays,
-            totalHours: objective.sprints.reduce((sum, s) => sum + (s.totalEstimatedHours ?? 0), 0)
+            totalHours: objective.sprints.reduce((sum: number, s: any) => sum + (s.totalEstimatedHours ?? 0), 0)
           }
         });
       }
@@ -260,13 +260,13 @@ class LearningAnalyticsService {
           completedDays: objective.completedDays,
           progressPercentage: objective.progressPercentage
         },
-        sprints: objective.sprints.map(s => ({
+        sprints: objective.sprints.map((s: any) => ({
           dayNumber: s.dayNumber,
           completedAt: s.completedAt,
           completionPercentage: s.completionPercentage,
           hoursSpent: s.totalEstimatedHours
         })),
-        milestones: objective.milestones.map(m => ({
+        milestones: objective.milestones.map((m: any) => ({
           title: m.title,
           targetDay: m.targetDay,
           isCompleted: m.isCompleted,

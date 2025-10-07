@@ -68,7 +68,7 @@ class SprintEventEmitter extends EventEmitter {
    * Unsubscribe from event
    */
   offSprintEvent(event: SprintEvent, handler: Function): void {
-    this.off(event, handler);
+    this.off(event, handler as (...args: any[]) => void);
   }
 }
 

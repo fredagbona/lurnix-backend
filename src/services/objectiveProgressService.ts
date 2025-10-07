@@ -113,7 +113,7 @@ class ObjectiveProgressService {
       throw new AppError('Objective not found', 404, 'OBJECTIVE_NOT_FOUND');
     }
 
-    const completedSprints = objective.sprints.filter(s => s.completedAt !== null);
+    const completedSprints = objective.sprints.filter((s: any) => s.completedAt !== null);
     const totalSprints = objective.sprints.length;
     const estimatedTotalDays = objective.estimatedTotalDays ?? 30;
     const completedDays = objective.completedDays;
@@ -128,11 +128,11 @@ class ObjectiveProgressService {
 
     // Milestone progress
     const milestonesTotal = objective.milestones.length;
-    const milestonesCompleted = objective.milestones.filter(m => m.isCompleted).length;
-    const nextMilestone = objective.milestones.find(m => !m.isCompleted);
+    const milestonesCompleted = objective.milestones.filter((m: any) => m.isCompleted).length;
+    const nextMilestone = objective.milestones.find((m: any) => !m.isCompleted);
 
     // Time tracking
-    const totalHoursSpent = completedSprints.reduce((sum, s) => {
+    const totalHoursSpent = completedSprints.reduce((sum: number, s: any) => {
       return sum + (s.totalEstimatedHours ?? 0);
     }, 0);
     const averageHoursPerDay = completedDays > 0 ? totalHoursSpent / completedDays : 0;
@@ -203,7 +203,7 @@ class ObjectiveProgressService {
     });
 
     if (objective) {
-      const totalCompletion = objective.sprints.reduce((sum, s) => {
+      const totalCompletion = objective.sprints.reduce((sum: number, s: any) => {
         return sum + (s.completionPercentage ?? 0);
       }, 0);
       const avgCompletion = objective.sprints.length > 0 
@@ -352,9 +352,9 @@ class ObjectiveProgressService {
     }
 
     // Calculate completion rate (average task completion per sprint)
-    const completionRates = objective.sprints.map(s => s.completionPercentage ?? 0);
+    const completionRates = objective.sprints.map((s: any) => s.completionPercentage ?? 0);
     const completionRate = completionRates.length > 0
-      ? completionRates.reduce((sum, rate) => sum + rate, 0) / completionRates.length
+      ? completionRates.reduce((sum: number, rate: number) => sum + rate, 0) / completionRates.length
       : 0;
 
     // Calculate velocity (days completed per week)
@@ -427,7 +427,7 @@ class ObjectiveProgressService {
     const strengthAreas: string[] = [];
 
     // Low completion rate sprints indicate struggling
-    const lowCompletionSprints = objective.sprints.filter(s => 
+    const lowCompletionSprints = objective.sprints.filter((s: any) => 
       (s.completionPercentage ?? 0) < 70
     );
 
@@ -436,7 +436,7 @@ class ObjectiveProgressService {
     }
 
     // High completion rate sprints indicate mastery
-    const highCompletionSprints = objective.sprints.filter(s =>
+    const highCompletionSprints = objective.sprints.filter((s: any) =>
       (s.completionPercentage ?? 0) >= 90
     );
 
