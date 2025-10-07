@@ -1,0 +1,96 @@
+{
+  "notifications": {
+    "skillMastered": "Compétence Maîtrisée! 🏆",
+    "skillMasteredMessage": "Vous avez maîtrisé {{skillName}}!",
+    "difficultyIncreased": "Difficulté Augmentée! 🚀",
+    "difficultyIncreasedMessage": "Vous vous débrouillez très bien! Nous avons augmenté la difficulté pour vous défier davantage.",
+    "difficultyDecreased": "Rythme Ajusté 📚",
+    "difficultyDecreasedMessage": "Nous avons ajusté le rythme pour vous aider à maîtriser les fondamentaux.",
+    "reviewNeeded": "Sprint de Révision Recommandé 🔄",
+    "reviewNeededMessage": "{{count}} compétences nécessitent une révision pour assurer la rétention.",
+    "sprintCompleted": "Jour {{dayNumber}} Terminé! 🎉",
+    "sprintCompletedMessage": "Score: {{score}}/100"
+  },
+  "quiz": {
+    "required": "Quiz Requis",
+    "requiredMessage": "Vous devez compléter le quiz de préparation avant de commencer ce sprint.",
+    "passed": "Quiz Réussi! ✅",
+    "passedMessage": "Score: {{score}}% - Vous êtes prêt à continuer!",
+    "failed": "Quiz Non Réussi",
+    "failedMessage": "Score: {{score}}% (Requis: {{required}}%). {{attempts}} tentatives restantes.",
+    "readinessCheck": "Vérification de Préparation",
+    "validationQuiz": "Quiz de Validation",
+    "preSprintTitle": "Vérification de Préparation: {{topic}}",
+    "postSprintTitle": "Quiz de Validation: {{topic}}",
+    "skillCheckTitle": "Évaluation de Compétence: {{topic}}",
+    "reviewTitle": "Quiz de Révision: {{topic}}",
+    "milestoneTitle": "Évaluation Jalon: {{topic}}",
+    "preSprintDescription": "Testez vos connaissances préalables avant de commencer ce sprint.",
+    "postSprintDescription": "Validez votre compréhension des concepts couverts dans ce sprint.",
+    "skillCheckDescription": "Évaluez votre maîtrise actuelle de ces compétences.",
+    "reviewDescription": "Révisez les compétences apprises précédemment pour assurer la rétention.",
+    "milestoneDescription": "Évaluation complète de toutes les compétences apprises jusqu'à ce point.",
+    "greatJob": "Excellent travail! Vous êtes prêt à commencer.",
+    "reviewConcepts": "Révisez les concepts de {{concept}} pour une meilleure compréhension.",
+    "needsImprovement": "Révisez le matériel et réessayez.",
+    "focusOn": "Concentrez-vous sur l'amélioration: {{skills}}",
+    "practiceMore": "Pratiquez plus d'exercices dans ces domaines."
+  },
+  "skills": {
+    "status": {
+      "notStarted": "Non Commencé",
+      "learning": "Apprentissage",
+      "practicing": "Pratique",
+      "proficient": "Compétent",
+      "mastered": "Maîtrisé",
+      "struggling": "En Difficulté"
+    },
+    "updated": "Compétences Mises à Jour",
+    "levelIncreased": "{{skillName}}: {{previousLevel}} → {{newLevel}} ({{status}})",
+    "overallProgress": "Progrès Global: {{progress}}%",
+    "masteredSkills": "Compétences Maîtrisées",
+    "strugglingAreas": "Domaines en Difficulté",
+    "inProgress": "En Cours",
+    "needsReview": "Nécessite une Révision"
+  },
+  "performance": {
+    "trend": {
+      "improving": "En Amélioration",
+      "stable": "Stable",
+      "declining": "En Déclin"
+    },
+    "action": {
+      "speedUp": "Accélérer",
+      "slowDown": "Ralentir",
+      "maintain": "Maintenir",
+      "review": "Réviser"
+    },
+    "averageScore": "Score Moyen: {{score}}%",
+    "currentDifficulty": "Difficulté Actuelle: {{difficulty}}/100",
+    "learningVelocity": "Rythme d'Apprentissage: {{velocity}}x",
+    "estimatedCompletion": "Achèvement Estimé: {{date}}"
+  },
+  "adaptation": {
+    "recalibrating": "Recalibrage du parcours d'apprentissage...",
+    "adjustingDifficulty": "Ajustement de la difficulté...",
+    "analyzingPerformance": "Analyse des performances...",
+    "speedingUp": "Accélération du rythme d'apprentissage",
+    "slowingDown": "Ralentissement pour une meilleure compréhension",
+    "maintaining": "Maintien du rythme actuel"
+  },
+  "review": {
+    "sprintInserted": "Sprint de révision inséré",
+    "skillsDue": "{{count}} compétences à réviser",
+    "overdueSkills": "{{count}} compétences en retard",
+    "scheduledFor": "Prévu pour: {{date}}",
+    "reviewInterval": "Intervalle de révision: {{days}} jours",
+    "lastReviewed": "Dernière révision: {{date}}",
+    "nextReview": "Prochaine révision: {{date}}"
+  },
+  "errors": {
+    "skillExtractionFailed": "Échec de l'extraction des compétences du contenu du sprint",
+    "adaptationFailed": "Échec du recalibrage du parcours d'apprentissage",
+    "quizGenerationFailed": "Échec de la génération du quiz",
+    "reviewScheduleFailed": "Échec de la mise à jour du calendrier de révision"
+  }
+}

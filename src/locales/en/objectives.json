@@ -1,0 +1,39 @@
+{
+  "create": {
+    "success": "Objective created successfully."
+  },
+  "list": {
+    "success": "Objectives retrieved successfully."
+  },
+  "detail": {
+    "success": "Objective retrieved successfully."
+  },
+  "delete": {
+    "success": "Objective deleted successfully."
+  },
+  "errors": {
+    "profileRequired": "You need a learner profile snapshot before creating an objective.",
+    "profileNotFound": "Learner profile snapshot not found.",
+    "notFound": "Objective not found.",
+    "deleteHasSprints": "You can only delete objectives that don't have any sprints yet."
+  },
+  "sprint": {
+    "generated": "Sprint generated successfully.",
+    "expanded": "Sprint expanded successfully.",
+    "retrieved": "Sprint retrieved successfully.",
+    "evidenceSaved": "Sprint evidence submitted successfully.",
+    "reviewCompleted": "Sprint reviewed successfully.",
+    "reviewRetrieved": "Sprint review retrieved successfully.",
+    "errors": {
+      "profileRequired": "You need a learner profile snapshot before generating a sprint.",
+      "notFound": "Sprint not found."
+    }
+  },
+  "planLimits": {
+    "objectiveLimitReached": "You've reached the objective limit for your current plan. Upgrade to create more objectives.",
+    "sprintLimitReached": "You've reached the sprint limit for this objective on your current plan. Upgrade to unlock more sprints.",
+    "errors": {
+      "freePlanMissing": "Subscription configuration for the free plan is missing. Please contact support."
+    }
+  }
+}

@@ -67,18 +67,29 @@ export class AuthController {
   }
 
   private buildSuccessRedirect(token: string, redirectPath?: string, extras?: Record<string, string | undefined>): string {
-    const path = redirectPath || this.defaultSuccessPath;
-    const url = new URL(path, config.FRONTEND_URL);
+    // ALWAYS redirect to /auth/success, not to the final destination
+    const path = this.defaultSuccessPath; // Remove: redirectPath || 
+    
+    // Get locale from query or default to 'en'
+    const locale = extras?.locale || 'en';
+    
+    // Build URL with locale prefix
+    const url = new URL(`/${locale}${path}`, config.FRONTEND_URL);
     url.searchParams.set('token', token);
-
+  
+    // Add the final redirect destination as a query parameter
+    if (redirectPath) {
+      url.searchParams.set('redirect', redirectPath);
+    }
+  
     if (extras) {
       Object.entries(extras).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
+        if (value !== undefined && value !== null && key !== 'locale') {
           url.searchParams.set(key, String(value));
         }
       });
     }
-
+  
     return url.toString();
   }
 
@@ -90,16 +101,23 @@ export class AuthController {
   }
 
   private startOAuth(provider: OAuthProvider, req: Request, res: Response, next: NextFunction): void {
-    const validatedQuery = (req as any).validatedQuery as { redirect?: string } | undefined;
+    const validatedQuery = (req as any).validatedQuery as { redirect?: string; locale?: string } | undefined;
     const redirectParam = validatedQuery?.redirect ?? (typeof req.query.redirect === 'string' ? req.query.redirect : undefined);
+    const localeParam = validatedQuery?.locale ?? (typeof req.query.locale === 'string' ? req.query.locale : 'en');
+    
     const redirectPath = this.normalizeRedirectPath(redirectParam);
-    const state = redirectPath ? this.encodeStatePayload({ redirect: redirectPath }) : undefined;
-
+    
+    // Include locale in state
+    const state = this.encodeStatePayload({ 
+      redirect: redirectPath,
+      locale: localeParam 
+    });
+  
     const authenticator = oauthPassport.authenticate(provider, {
       session: false,
       state,
     });
-
+  
     authenticator(req, res, next);
   }
 
@@ -107,20 +125,24 @@ export class AuthController {
     const state = typeof req.query.state === 'string' ? req.query.state : undefined;
     const statePayload = this.decodeStatePayload(state);
     const redirectPath = this.normalizeRedirectPath(statePayload?.redirect as string | undefined);
-
+    const locale = (statePayload?.locale as string) || 'en';
+  
     const authenticator = oauthPassport.authenticate(provider, { session: false }, async (err: any, payload?: OAuthVerifyCallbackPayload | false, info?: any) => {
       if (err || !payload) {
         console.error(`[OAuth] ${provider} callback error:`, err);
         res.redirect(this.buildFailureRedirect('oauth_failed', redirectPath));
         return;
       }
-
+  
       try {
         const result: OAuthLoginResult = await authService.handleOAuthLogin(provider, payload);
         const successUrl = this.buildSuccessRedirect(result.token, redirectPath, {
           newUser: result.isNewUser ? '1' : undefined,
           requiresPassword: result.requiresPassword ? '1' : undefined,
+          locale, // Pass locale to buildSuccessRedirect
         });
+        
+        console.log('[OAuth] Redirecting to:', successUrl); // Debug log
         res.redirect(successUrl);
       } catch (error) {
         if (error instanceof AuthServiceError) {
@@ -130,7 +152,7 @@ export class AuthController {
         next(error);
       }
     });
-
+  
     authenticator(req, res, next);
   }
 

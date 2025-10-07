@@ -20,7 +20,7 @@ export const initI18n = async () => {
       defaultNS: 'common',
       
       // Namespaces for different areas of the application
-      ns: ['common', 'auth', 'quiz', 'errors', 'admin', 'pricing', 'coupons', 'billing', 'emails'],
+      ns: ['common', 'auth', 'quiz', 'errors', 'admin', 'pricing', 'coupons', 'billing', 'emails', 'objectives'],
       
       // Backend configuration for loading translations
       backend: {
