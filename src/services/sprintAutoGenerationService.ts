@@ -106,7 +106,7 @@ class SprintAutoGenerationService {
     const nextDayNumber = currentDay ?? (lastSprint ? lastSprint.dayNumber + 1 : 1);
 
     // Check if sprint already exists for this day
-    const existingSprint = objective.sprints.find(s => s.dayNumber === nextDayNumber);
+    const existingSprint = objective.sprints.find((s: any) => s.dayNumber === nextDayNumber);
     if (existingSprint) {
       console.log('[sprintAutoGeneration] Sprint already exists for day', {
         objectiveId,

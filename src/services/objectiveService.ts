@@ -265,7 +265,10 @@ export class ObjectiveService {
         objectiveDescription: request.description,
         successCriteria: request.successCriteria ?? [],
         requiredSkills: request.requiredSkills ?? [],
-        learnerProfile,
+        learnerProfile: learnerProfile ? {
+          ...learnerProfile,
+          hoursPerWeek: learnerProfile.hoursPerWeek ?? null
+        } as any : undefined,
         userLanguage: user?.language ?? 'en'
       });
       console.log('[objectiveService] Duration estimated', {
@@ -281,7 +284,10 @@ export class ObjectiveService {
         objectiveDescription: request.description,
         successCriteria: request.successCriteria ?? [],
         requiredSkills: request.requiredSkills ?? [],
-        learnerProfile,
+        learnerProfile: learnerProfile ? {
+          ...learnerProfile,
+          hoursPerWeek: learnerProfile.hoursPerWeek ?? null
+        } as any : undefined,
         userLanguage: user?.language ?? 'en'
       });
     }

@@ -5,7 +5,7 @@ import { config } from '../config/environment.js';
 import skillTrackingService from './skillTrackingService.js';
 
 const prisma = new PrismaClient();
-const groq = new Groq({ apiKey: config.groqApiKey });
+const groq = new Groq({ apiKey: config.GROQ_API_KEY });
 
 // ============================================
 // INTERFACES
