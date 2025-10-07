@@ -57,16 +57,22 @@ app.use(i18nextMiddleware);
 
 // Root endpoint
 app.get('/', (req: Request, res: Response) => {
-  res.json({
+  const response: any = {
     success: true,
     message: '🚀 Lurnix API running with TypeScript!',
     version: '1.0.0',
     environment: config.NODE_ENV,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    documentation: '/api-docs',
     health: '/health'
-  });
+  };
+
+  // Only include documentation link in development
+  if (config.NODE_ENV !== 'production') {
+    response.documentation = '/api-docs';
+  }
+
+  res.json(response);
 });
 
 // Health check endpoints
@@ -129,7 +135,12 @@ const server = app.listen(PORT, async () => {
   console.log('🚀 Lurnix API Server Started');
   console.log('─'.repeat(50));
   console.log(`🌐 Server running on port ${PORT}`);
-  console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
+  
+  // Only show API documentation in development
+  if (config.NODE_ENV !== 'production') {
+    console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
+  }
+  
   console.log(`🔍 Health Check: http://localhost:${PORT}/health`);
   console.log(`⚡ Quick Health: http://localhost:${PORT}/health/quick`);
   console.log(`📊 System Info: http://localhost:${PORT}/system-info`);

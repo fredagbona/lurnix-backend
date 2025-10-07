@@ -8,6 +8,9 @@ type PrismaModels = {
   roadmap: any;
   progress: any;
   objective: any;
+  sprint: any;
+  sprintArtifact: any;
+  learnerProfile: any;
   quizResult: any;
   quizQuestion: any;
   quizOption: any;

@@ -7,6 +7,7 @@ import {
   quizProfileNameKey,
   quizProfileSummaryKey
 } from '../config/quizScoring';
+import { profileContextBuilder } from './profileContextBuilder.js';
 
 // Define types for quiz-related data
 export interface QuizSection {
@@ -246,8 +247,15 @@ export class QuizService {
       }
     });
 
+    const learnerProfileSnapshot = await profileContextBuilder.recordSnapshotFromComputedProfile({
+      userId: submission.userId,
+      computedProfile,
+      quizResultId: quizResult.id
+    });
+
     return {
       quizResultId: quizResult.id,
+      learnerProfileSnapshotId: learnerProfileSnapshot.id,
       profile: computedProfile
     };
   }
