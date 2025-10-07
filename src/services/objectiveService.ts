@@ -144,7 +144,10 @@ export class ObjectiveService {
             }
           }
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: [
+          { status: 'asc' },
+          { priority: 'desc' }
+        ]
       })
     ]);
 

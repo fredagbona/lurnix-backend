@@ -649,6 +649,14 @@ const swaggerOptions: swaggerJsDoc.Options = {
 export const swaggerSpec = swaggerJsDoc(swaggerOptions);
 
 export const setupSwagger = (app: Application) => {
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+
+  // Only enable Swagger in development environment
+  if (!isDevelopment) {
+    console.log('🔒 Swagger documentation disabled in production environment');
+    return;
+  }
+
   // Swagger UI options
   const swaggerUiOptions = {
     explorer: true,

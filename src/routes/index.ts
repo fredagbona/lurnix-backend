@@ -5,6 +5,7 @@ import adminRoutes from "./admin/adminRoutes";
 import healthRoutes from "./health/healthRoutes";
 import quizRoutes from "./quizRoutes";
 import quizAdminRoutes from "./quizAdminRoutes";
+import adaptiveQuizRoutes from "./adaptiveQuizRoutes";
 import subscriptionRoutes from "./subscriptionRoutes";
 import planRoutes from "./planRoutes";
 import pricingRoutes from "./pricingRoutes";
@@ -29,6 +30,7 @@ router.use(`${API_VERSION}/admin`, adminRoutes);
 router.use("/health", healthRoutes);
 router.use(`${API_VERSION}/quiz`, quizRoutes);
 router.use(`${API_VERSION}/admin/quiz`, quizAdminRoutes);
+router.use(`${API_VERSION}/quizzes`, adaptiveQuizRoutes);
 router.use(`${API_VERSION}/subscriptions`, subscriptionRoutes);
 router.use(`${API_VERSION}/plans`, planRoutes);
 router.use(`${API_VERSION}/pricing`, pricingRoutes);
@@ -51,9 +53,20 @@ router.get("/health", (req, res) => {
   });
 });
 
-// API documentation endpoint
+// API documentation endpoint (only in development)
 router.get("/docs", (req, res) => {
-  res.redirect("/api-docs");
+  if (process.env.NODE_ENV !== 'production') {
+    res.redirect("/api-docs");
+  } else {
+    res.status(404).json({
+      success: false,
+      error: {
+        code: 'NOT_FOUND',
+        message: 'API documentation is not available in production'
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 export default router;

@@ -354,6 +354,9 @@ model Objective {
   quizzes             KnowledgeQuiz[]
   Roadmap             Roadmap?              @relation(fields: [roadmapId], references: [id])
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([currentDay, status])
   @@map("objectives")
 }

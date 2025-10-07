@@ -161,7 +161,7 @@ export class PlanLimitationService {
       where: {
         OR: [
           { profileSnapshot: { userId } },
-          { roadmap: { userId } },
+          { Roadmap: { userId } },
         ],
       },
     });

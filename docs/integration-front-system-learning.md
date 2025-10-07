@@ -35,29 +35,216 @@ Backend automatically:
 
 ### **Flow 1: Starting an Objective**
 
-#### Step 1: User Selects/Creates Objective
-**What happens:**
-- User browses objectives or creates new one
-- Backend generates initial sprints
-
-**Existing Endpoints:**
+#### Step 1A: List All Objectives
+**Endpoint:**
 ```
 GET /api/objectives
+```
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Objectives retrieved successfully",
+  "data": [
+    {
+      "id": "obj-123",
+      "title": "Master Java Backend Development",
+      "description": "Learn Java from basics to advanced",
+      "passionTags": ["backend", "java"],
+      "priority": 3,
+      "status": "todo",
+      "estimatedTotalWeeks": { "min": 12, "max": 16 },
+      "estimatedTotalDays": 240,
+      "estimatedDailyHours": 2.5,
+      "currentDay": 1,
+      "completedDays": 0,
+      "progressPercentage": 0,
+      "successCriteria": ["Build REST API", "Deploy to production"],
+      "requiredSkills": ["Java", "Spring Boot"],
+      "currentSprintId": null,
+      "currentSprint": null,
+      "pastSprints": [],
+      "progress": {
+        "sprintsDone": 0,
+        "sprintsPlanned": 0,
+        "percent": 0
+      },
+      "totalSprints": 0,
+      "createdAt": "2025-10-03T10:00:00Z",
+      "updatedAt": "2025-10-03T10:00:00Z",
+      "limits": {
+        "canGenerateSprint": true,
+        "sprintsRemaining": 10,
+        "reason": null
+      }
+    }
+  ]
+}
+```
+
+---
+
+#### Step 1B: Create New Objective
+**Endpoint:**
+```
 POST /api/objectives
+```
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "title": "Master Java Backend Development",
+  "description": "Learn Java from basics to advanced backend development",
+  "learnerProfileId": "profile-uuid" // Optional
+  "successCriteria": ["Build REST API", "Deploy to production"],
+  "requiredSkills": ["Java", "Spring Boot"],
+  "priority": 3 // 1-5, optional, default: 3
+}
+```
+
+**Validation Rules:**
+- `title`: Required, minimum 3 characters
+- `description`: Optional string
+- `learnerProfileId`: Optional UUID
+- `successCriteria`: Optional array of strings
+- `requiredSkills`: Optional array of strings
+- `priority`: Optional integer 1-5
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Objective created successfully",
+  "data": {
+    "id": "obj-123",
+    "title": "Master Java Backend Development",
+    "description": "Learn Java from basics to advanced",
+    "passionTags": [],
+    "priority": 3,
+    "status": "todo",
+    "estimatedTotalWeeks": { "min": null, "max": null },
+    "estimatedTotalDays": null,
+    "estimatedDailyHours": null,
+    "currentDay": 1,
+    "completedDays": 0,
+    "progressPercentage": 0,
+    "successCriteria": ["Build REST API", "Deploy to production"],
+    "requiredSkills": ["Java", "Spring Boot"],
+    "currentSprintId": null,
+    "currentSprint": null,
+    "pastSprints": [],
+    "progress": {
+      "sprintsDone": 0,
+      "sprintsPlanned": 0,
+      "percent": 0
+    },
+    "totalSprints": 0,
+    "createdAt": "2025-10-03T10:00:00Z",
+    "updatedAt": "2025-10-03T10:00:00Z",
+    "limits": {
+      "canGenerateSprint": true,
+      "sprintsRemaining": 10,
+      "reason": null
+    }
+  }
+}
+```
+
+---
+
+#### Step 1C: Get Single Objective
+**Endpoint:**
+```
 GET /api/objectives/:objectiveId
 ```
 
-**Response includes:**
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
 ```json
 {
-  "objective": {
+  "success": true,
+  "message": "Objective retrieved successfully",
+  "data": {
     "id": "obj-123",
     "title": "Master Java Backend Development",
+    "description": "Learn Java from basics to advanced",
+    "passionTags": ["backend", "java"],
+    "priority": 3,
+    "status": "in_progress",
+    "estimatedTotalWeeks": { "min": 12, "max": 16 },
     "estimatedTotalDays": 240,
-    "currentDay": 1,
-    "currentDifficulty": 50,
-    "learningVelocity": 1.0,
-    "progressPercentage": 0
+    "estimatedDailyHours": 2.5,
+    "currentDay": 5,
+    "completedDays": 4,
+    "progressPercentage": 2.5,
+    "successCriteria": ["Build REST API", "Deploy to production"],
+    "requiredSkills": ["Java", "Spring Boot"],
+    "currentSprintId": "sprint-456",
+    "currentSprint": {
+      "id": "sprint-456",
+      "objectiveId": "obj-123",
+      "title": "Java OOP - Inheritance",
+      "description": "Learn object-oriented programming concepts",
+      "lengthDays": 1,
+      "totalEstimatedHours": 2.5,
+      "difficulty": "medium",
+      "status": "in_progress",
+      "projects": [],
+      "microTasks": [],
+      "portfolioCards": [],
+      "adaptationNotes": null,
+      "progress": {
+        "completedTasks": 3,
+        "completedDays": 0,
+        "scoreEstimate": null
+      },
+      "startedAt": "2025-10-03T08:00:00Z",
+      "completedAt": null,
+      "score": null,
+      "metadata": null,
+      "evidence": {
+        "artifacts": [],
+        "selfEvaluation": null
+      },
+      "review": {
+        "status": "not_requested",
+        "reviewedAt": null,
+        "score": null,
+        "summary": null,
+        "projectSummaries": [],
+        "metadata": null
+      }
+    },
+    "pastSprints": [],
+    "progress": {
+      "sprintsDone": 4,
+      "sprintsPlanned": 5,
+      "percent": 80
+    },
+    "totalSprints": 5,
+    "createdAt": "2025-10-01T10:00:00Z",
+    "updatedAt": "2025-10-03T10:00:00Z",
+    "limits": {
+      "canGenerateSprint": true,
+      "sprintsRemaining": 5,
+      "reason": null
+    }
   }
 }
 ```
@@ -65,7 +252,9 @@ GET /api/objectives/:objectiveId
 **Frontend Action:**
 - Display objective details
 - Show estimated timeline
-- Show current difficulty level (new field)
+- Show current difficulty level (from currentSprint)
+- Display progress percentage
+- Show current sprint if exists
 
 ---
 
@@ -795,3 +984,30 @@ Add these indicators:
 4. Phase 4 (Dashboard) - Analytics
 
 **All endpoints are ready on the backend!** Frontend just needs to consume them. 🎉
+
+---
+
+## 📋 Backend Implementation Status
+
+### ✅ Completed Endpoints
+
+#### Adaptive Quiz Endpoints
+- ✅ `GET /api/quizzes/:quizId` - Get quiz questions
+- ✅ `POST /api/quizzes/:quizId/submit` - Submit quiz answers
+- ✅ `GET /api/quizzes/:quizId/attempts` - Get user's quiz attempts
+- ✅ `GET /api/quizzes/attempts/:attemptId` - Get quiz attempt details
+- ✅ `GET /api/sprints/:sprintId/readiness` - Check sprint readiness (pre-sprint quiz)
+- ✅ `GET /api/sprints/:sprintId/validation` - Check sprint validation (post-sprint quiz)
+
+#### Implementation Details
+- **Controller:** `/src/controllers/adaptiveQuizController.ts`
+- **Routes:** `/src/routes/adaptiveQuizRoutes.ts`
+- **Validation Schemas:** `/src/schemas/adaptiveQuizSchemas.ts`
+- **Service:** `/src/services/knowledgeValidationService.ts`
+
+All endpoints are:
+- ✅ Fully implemented with proper error handling
+- ✅ Protected with authentication middleware
+- ✅ Validated with Zod schemas
+- ✅ Documented with Swagger annotations
+- ✅ Integrated with brain-adaptive learning system
