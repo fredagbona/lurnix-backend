@@ -35,6 +35,7 @@ export interface GenerateSprintPlanInput {
   currentPlan?: Partial<SprintPlanCore> | null;
   expansionGoal?: SprintPlanExpansionGoal | null;
   userLanguage?: string;
+  customInstructions?: string[];
 }
 
 type EvidenceRubric = {
@@ -340,7 +341,49 @@ class PlannerService {
     const plan = parsed.data;
     plan.id = planId;
 
+    this.ensureDistinctProjectTitles(plan, input);
+
     return plan;
+  }
+
+  private ensureDistinctProjectTitles(plan: SprintPlanCore, input: GenerateSprintPlanInput): void {
+    if (!plan.projects?.length) {
+      return;
+    }
+
+    const objectiveTitle = (input.objectiveTitle ?? '').trim().toLowerCase();
+
+    plan.projects = plan.projects.map((project, index) => {
+      const normalizedProjectTitle = project.title?.trim().toLowerCase?.() ?? '';
+      const updatedProject = { ...project };
+
+      if (objectiveTitle && normalizedProjectTitle === objectiveTitle) {
+        updatedProject.title = this.resolveFallbackProjectTitle(input, index);
+      }
+
+      if (!updatedProject.acceptanceCriteria?.length) {
+        updatedProject.acceptanceCriteria = [
+          'Feature is demoed end-to-end following the defined scenario',
+          'All acceptance commands/tests pass and evidence is linked',
+          'Reflection notes capture learnings and next experiment'
+        ];
+      }
+
+      return updatedProject;
+    });
+  }
+
+  private resolveFallbackProjectTitle(input: GenerateSprintPlanInput, index: number): string {
+    const candidates = [
+      ...(input.successCriteria ?? []),
+      ...(input.requiredSkills ?? [])
+    ]
+      .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+      .filter((entry) => entry.length > 0);
+
+    const base = candidates[index] ?? candidates[0] ?? input.objectiveTitle ?? 'Feature';
+    const cleaned = base.replace(/^[^a-zA-Z0-9]+/, '').replace(/[:.]+$/, '');
+    return `Feature Focus ${index + 1}: ${cleaned}`;
   }
 
   private shouldRetry(error: unknown): boolean {
@@ -474,6 +517,7 @@ class PlannerService {
       mode,
       currentPlan,
       expansionGoal: input.expansionGoal ?? null,
+      customInstructions: input.customInstructions ?? [],
       context: {
         plannerVersion,
         requestedAt: requestedAt.toISOString(),
@@ -482,7 +526,8 @@ class PlannerService {
         mode,
         currentPlan,
         expansionGoal: input.expansionGoal ?? null,
-        allowedResources: input.allowedResources ?? null
+        allowedResources: input.allowedResources ?? null,
+        customInstructions: input.customInstructions ?? []
       }
     };
   }
@@ -752,12 +797,14 @@ class PlannerService {
 
     const project: SprintProjectPlan = {
       id: projectId,
-      title: `${input.objectiveTitle} project`,
-      brief: input.objectiveDescription ?? `Ship a tangible artifact for ${input.objectiveTitle}.`,
+      title: this.resolveFallbackProjectTitle(input, 0),
+      brief:
+        input.objectiveDescription ??
+        `Deliver a measurable feature that proves progress toward "${input.objectiveTitle}" and verify it with tests and demo.`,
       requirements: [
-        'Follow accessible and inclusive best practices',
-        'Document project decisions in README',
-        `Highlight how this work contributes to ${input.objectiveTitle}`
+        'Define a single shippable feature with a user scenario',
+        'Document verification steps in the README (commands, expected output)',
+        `Capture evidence (recording, screenshots) that the feature works`
       ],
       acceptanceCriteria,
       deliverables: [

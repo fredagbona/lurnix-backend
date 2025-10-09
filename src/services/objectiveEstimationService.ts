@@ -245,6 +245,32 @@ class ObjectiveEstimationService {
       // Sort milestones by target day
       validated.milestones.sort((a, b) => a.targetDay - b.targetDay);
 
+      const availabilityHours = params.learnerProfile?.hoursPerWeek ?? null;
+      if (availabilityHours) {
+        const hoursPerDay = availabilityHours / 7;
+        const maxDailyHours = Math.min(Math.max(hoursPerDay, 1), 4);
+        if (validated.estimatedDailyHours > maxDailyHours) {
+          validated.estimatedDailyHours = Number(maxDailyHours.toFixed(1));
+        }
+      }
+
+      const MAX_TOTAL_DAYS = 120;
+      if (validated.estimatedTotalDays > MAX_TOTAL_DAYS) {
+        const ratio = MAX_TOTAL_DAYS / validated.estimatedTotalDays;
+        validated.estimatedTotalDays = MAX_TOTAL_DAYS;
+        validated.breakdown = {
+          fundamentals: Math.round(validated.breakdown.fundamentals * ratio),
+          intermediate: Math.round(validated.breakdown.intermediate * ratio),
+          advanced: Math.round(validated.breakdown.advanced * ratio),
+          projects: Math.round(validated.breakdown.projects * ratio),
+          review: Math.round(validated.breakdown.review * ratio)
+        };
+        validated.milestones = validated.milestones.map((milestone) => ({
+          ...milestone,
+          targetDay: Math.min(Math.round(milestone.targetDay * ratio), MAX_TOTAL_DAYS)
+        }));
+      }
+
       return validated;
     } catch (error) {
       if (error instanceof z.ZodError) {

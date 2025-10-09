@@ -143,9 +143,22 @@ class ObjectiveProgressService {
       estimatedTotalDays
     );
 
-    // Performance metrics
+    // Performance metrics and pace snapshot
     const metrics = await this.calculatePerformanceMetrics(objectiveId);
     const projectedCompletionDate = metrics.projectedEndDate;
+
+    const normalizedVelocity = Number.isFinite(metrics.velocity) ? metrics.velocity : 0;
+    const normalizedCompletionRate = Number.isFinite(metrics.completionRate) ? metrics.completionRate : 0;
+
+    await db.objective.update({
+      where: { id: objectiveId },
+      data: {
+        learningVelocity: normalizedVelocity,
+        currentDifficulty: Math.max(0, Math.min(100, Math.round(normalizedCompletionRate))),
+        lastRecalibrationAt: new Date(),
+        recalibrationCount: { increment: 1 }
+      }
+    });
 
     // Learning insights
     const insights = await this.getLearningInsights(objectiveId);
@@ -252,7 +265,7 @@ class ObjectiveProgressService {
       ? (completionData.tasksCompleted / completionData.totalTasks) * 100
       : 100;
 
-    // Mark sprint as completed
+    // Mark sprint as completed (status recorded as reviewed; completion metadata tracks actual done state)
     await db.sprint.update({
       where: { id: sprintId },
       data: {

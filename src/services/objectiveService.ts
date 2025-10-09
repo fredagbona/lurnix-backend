@@ -671,6 +671,11 @@ export class ObjectiveService {
     }) | null;
 
     if (!sprint) {
+      console.warn('[objectiveService] Sprint lookup failed', {
+        userId: params.userId,
+        objectiveId: params.objectiveId,
+        sprintId: params.sprintId
+      });
       throw new AppError('objectives.sprint.errors.notFound', 404, 'SPRINT_NOT_FOUND');
     }
 

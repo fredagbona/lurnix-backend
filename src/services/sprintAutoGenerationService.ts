@@ -132,6 +132,8 @@ class SprintAutoGenerationService {
       objectiveId
     });
 
+    const customInstructions = this.buildCustomInstructions(objective.profileSnapshot);
+
     // Generate sprint plan with sequential context
     const plannerInput: GenerateSprintPlanInput = {
       objectiveId,
@@ -145,7 +147,8 @@ class SprintAutoGenerationService {
       objectivePriority: objective.priority,
       objectiveStatus: objective.status,
       mode: 'skeleton',
-      userLanguage: user?.language ?? 'en'
+      userLanguage: user?.language ?? 'en',
+      customInstructions
     };
 
     const plan = await plannerService.generateSprintPlan(plannerInput);
@@ -191,6 +194,42 @@ class SprintAutoGenerationService {
     });
 
     return sprint;
+  }
+
+  private buildCustomInstructions(profile: LearnerProfile): string[] {
+    const formatList = (items?: string[]) => (items && items.length ? items.join(', ') : 'n/a');
+
+    const instructions: string[] = [
+      'ACTIONABLE TASKS: Use strong verbs (e.g., "Build", "Configure", "Deploy"). Avoid generic titles like "Introduction to...".',
+      'CONCISE TEXT: Keep descriptions and instructions to a maximum of 3 sentences.',
+      'PROJECT FOCUS: Define one concrete desktop feature set (e.g., "Offline to-do manager that syncs to local JSON store") with a measurable outcome and list the exact verification steps (cargo build, tauri dev/bundle run, manual user flow).',
+      'MEASURABLE TASKS: Every microTask must end with a validation step (tests, command output, screenshot, repository checkpoint) so completion can be observed.',
+      'PROJECT NAMING: Give the project a distinctive feature-based name (not the objective title) and mention the target user scenario in the brief.'
+    ];
+
+    if (profile.gaps?.length) {
+      instructions.push(
+        `ADDRESS GAPS (${formatList(profile.gaps)}): Convert each gap into a concrete micro-task with a build-or-do deliverable.`
+      );
+    }
+
+    if (profile.strengths?.length) {
+      instructions.push(
+        `LEVERAGE STRENGTHS (${formatList(profile.strengths)}): Frame at least one requirement or deliverable so the learner showcases these strengths.`
+      );
+    }
+
+    if (profile.passionTags?.length || profile.goals?.length) {
+      instructions.push(
+        `ALIGN WITH MOTIVATORS (${formatList(profile.passionTags)} | goals: ${formatList(profile.goals)}): Anchor the sprint narrative and examples in these interests.`
+      );
+    }
+
+    instructions.push(
+      'REFLECTION LOOP: Include a final microTask that captures learnings, blockers, and metrics (time spent, build status) to feed the next sprint.'
+    );
+
+    return instructions;
   }
 
   /**
