@@ -1,7 +1,7 @@
 import { db } from '../prisma/prismaWrapper.js';
 import { AppError } from '../errors/AppError.js';
-import { plannerService } from './plannerService.js';
-import type { GenerateSprintPlanInput } from './plannerService.js';
+import { plannerService, extractPreviousSprintContext } from './plannerService.js';
+import type { GenerateSprintPlanInput, PreviousSprintContext } from './plannerService.js';
 import { learnerProfileService } from './learnerProfileService.js';
 import { profileContextBuilder } from './profileContextBuilder.js';
 import type { Objective, Sprint, LearnerProfile } from '@prisma/client';
@@ -132,7 +132,16 @@ class SprintAutoGenerationService {
       objectiveId
     });
 
-    const customInstructions = this.buildCustomInstructions(objective.profileSnapshot);
+    const previousSprintContext = lastSprint
+      ? extractPreviousSprintContext({
+          dayNumber: lastSprint.dayNumber,
+          plannerOutput: lastSprint.plannerOutput,
+          reflection: lastSprint.selfEvaluationReflection,
+          completionPercentage: lastSprint.completionPercentage
+        })
+      : null;
+
+    const customInstructions = this.buildCustomInstructions(objective.profileSnapshot, previousSprintContext);
 
     // Generate sprint plan with sequential context
     const plannerInput: GenerateSprintPlanInput = {
@@ -148,7 +157,8 @@ class SprintAutoGenerationService {
       objectiveStatus: objective.status,
       mode: 'skeleton',
       userLanguage: user?.language ?? 'en',
-      customInstructions
+      customInstructions,
+      previousSprint: previousSprintContext
     };
 
     const plan = await plannerService.generateSprintPlan(plannerInput);
@@ -196,7 +206,7 @@ class SprintAutoGenerationService {
     return sprint;
   }
 
-  private buildCustomInstructions(profile: LearnerProfile): string[] {
+  private buildCustomInstructions(profile: LearnerProfile, previousSprint?: PreviousSprintContext | null): string[] {
     const formatList = (items?: string[]) => (items && items.length ? items.join(', ') : 'n/a');
 
     const instructions: string[] = [
@@ -206,6 +216,29 @@ class SprintAutoGenerationService {
       'MEASURABLE TASKS: Every microTask must end with a validation step (tests, command output, screenshot, repository checkpoint) so completion can be observed.',
       'PROJECT NAMING: Give the project a distinctive feature-based name (not the objective title) and mention the target user scenario in the brief.'
     ];
+
+    if (previousSprint) {
+      const deliverableSummary = previousSprint.deliverables && previousSprint.deliverables.length
+        ? previousSprint.deliverables.slice(0, 3).join('; ')
+        : 'previous deliverables';
+
+      instructions.push(
+        `CONTINUATION: Reference Day ${previousSprint.dayNumber}'s outcome "${previousSprint.title ?? 'Prior Sprint'}" and design the next increment that advances that work rather than restarting.`
+      );
+      instructions.push(
+        `DO NOT REPEAT: Avoid recreating prior deliverables (${deliverableSummary}). Ship a complementary feature or enhancement.`
+      );
+
+      if (previousSprint.reflection) {
+        const normalizedReflection = previousSprint.reflection.replace(/\s+/g, ' ').trim();
+        const truncatedReflection = normalizedReflection.length > 160
+          ? `${normalizedReflection.slice(0, 157)}...`
+          : normalizedReflection;
+        instructions.push(
+          `ADDRESS REFLECTION: The learner noted "${truncatedReflection}". Incorporate a task that tackles this insight or blocker.`
+        );
+      }
+    }
 
     if (profile.gaps?.length) {
       instructions.push(

@@ -17,6 +17,16 @@ export interface SprintPlanExpansionGoal {
   additionalMicroTasks?: number | null;
 }
 
+export interface PreviousSprintContext {
+  dayNumber: number;
+  title?: string | null;
+  summary?: string | null;
+  reflection?: string | null;
+  deliverables?: string[];
+  projectTitles?: string[];
+  completionPercentage?: number | null;
+}
+
 export interface GenerateSprintPlanInput {
   objectiveId: string;
   objectiveTitle: string;
@@ -36,6 +46,7 @@ export interface GenerateSprintPlanInput {
   expansionGoal?: SprintPlanExpansionGoal | null;
   userLanguage?: string;
   customInstructions?: string[];
+  previousSprint?: PreviousSprintContext | null;
 }
 
 type EvidenceRubric = {
@@ -165,6 +176,41 @@ const cloneValue = <T>(value: T): T => {
 
   return JSON.parse(JSON.stringify(value));
 };
+
+export function extractPreviousSprintContext(params: {
+  dayNumber: number;
+  plannerOutput: unknown;
+  reflection?: string | null;
+  completionPercentage?: number | null;
+}): PreviousSprintContext {
+  const clonedPlan = params.plannerOutput ? cloneValue(params.plannerOutput) : {};
+  const plan = clonedPlan && typeof clonedPlan === 'object' ? (clonedPlan as Record<string, any>) : {};
+
+  const projects = Array.isArray(plan.projects) ? plan.projects : [];
+  const projectTitles = projects
+    .map(project => (project && typeof project.title === 'string' ? project.title : null))
+    .filter((title): title is string => Boolean(title));
+
+  const deliverables = projects
+    .flatMap(project => (Array.isArray(project?.deliverables) ? project.deliverables : []))
+    .map(deliverable => (deliverable && typeof deliverable.title === 'string' ? deliverable.title : null))
+    .filter((title): title is string => Boolean(title));
+
+  const summary = typeof plan.adaptationNotes === 'string' ? plan.adaptationNotes : null;
+  const title = typeof plan.title === 'string' ? plan.title : null;
+
+  return {
+    dayNumber: params.dayNumber,
+    title,
+    summary,
+    reflection: params.reflection ?? null,
+    deliverables,
+    projectTitles,
+    completionPercentage: typeof params.completionPercentage === 'number'
+      ? params.completionPercentage
+      : null
+  };
+}
 
 const ensureProjectEvidenceRubrics = (rawPlan: unknown): unknown => {
   if (!rawPlan || typeof rawPlan !== 'object') {
@@ -383,7 +429,15 @@ class PlannerService {
 
     const base = candidates[index] ?? candidates[0] ?? input.objectiveTitle ?? 'Feature';
     const cleaned = base.replace(/^[^a-zA-Z0-9]+/, '').replace(/[:.]+$/, '');
-    return `Feature Focus ${index + 1}: ${cleaned}`;
+    let candidateTitle = `Feature Focus ${index + 1}: ${cleaned}`;
+    const previousTitles = input.previousSprint?.projectTitles ?? [];
+    const normalizedPrev = previousTitles.map((title) => title.toLowerCase());
+
+    if (normalizedPrev.includes(candidateTitle.toLowerCase())) {
+      candidateTitle = `${candidateTitle} Next Iteration`;
+    }
+
+    return candidateTitle;
   }
 
   private shouldRetry(error: unknown): boolean {
@@ -518,6 +572,9 @@ class PlannerService {
       currentPlan,
       expansionGoal: input.expansionGoal ?? null,
       customInstructions: input.customInstructions ?? [],
+      previousSprint: input.previousSprint
+        ? JSON.parse(JSON.stringify(input.previousSprint))
+        : null,
       context: {
         plannerVersion,
         requestedAt: requestedAt.toISOString(),
@@ -527,7 +584,10 @@ class PlannerService {
         currentPlan,
         expansionGoal: input.expansionGoal ?? null,
         allowedResources: input.allowedResources ?? null,
-        customInstructions: input.customInstructions ?? []
+        customInstructions: input.customInstructions ?? [],
+        previousSprint: input.previousSprint
+          ? JSON.parse(JSON.stringify(input.previousSprint))
+          : null
       }
     };
   }

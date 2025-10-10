@@ -16,6 +16,22 @@
       "challenges": {
         "title": "Your Relationship with Challenges",
         "description": "How do you react when things get tough?"
+      },
+      "cognitiveRhythm": {
+        "title": "Your Cognitive Rhythm",
+        "description": "When and how do you focus best?"
+      },
+      "learningHabits": {
+        "title": "Your Learning Habits",
+        "description": "How do you plan, review, and capture your learnings?"
+      },
+      "supportEcosystem": {
+        "title": "Your Support Ecosystem",
+        "description": "Which support channels keep you motivated?"
+      },
+      "timeCommitment": {
+        "title": "Your Time Commitment",
+        "description": "Let's calibrate the pace around your schedule"
       }
     },
     "questions": {
@@ -169,6 +185,106 @@
           "technology_explorer": "I explore a new technology to feel renewed",
           "community_joiner": "I join a community/team to learn from others",
           "strategic_breaker": "I take a strategic break for a fresh perspective"
+        }
+      },
+      "focus_session_preference": {
+        "title": "How do you prefer to structure a focus session?",
+        "description": "Pick the rhythm that keeps you in flow.",
+        "options": {
+          "micro_bursts": "Short micro-bursts (20–30 minutes) with frequent resets",
+          "steady_blocks": "Steady blocks (45–60 minutes) with consistent pacing",
+          "deep_immersion": "Deep immersion (90+ minutes) to stay in the zone",
+          "flexible_flow": "Flexible flow—switching between tasks based on energy"
+        }
+      },
+      "context_switch_energy": {
+        "title": "How do you handle context switching during a work session?",
+        "description": "Some people thrive on variety, others lose momentum.",
+        "options": {
+          "low_switch": "I lose momentum—keep switches minimal",
+          "moderate_switch": "I can juggle a few contexts without stress",
+          "high_switch": "I thrive on variety and quick pivots"
+        }
+      },
+      "energy_peak_time": {
+        "title": "When do you naturally feel the most focused?",
+        "description": "Helps us schedule deep work windows.",
+        "options": {
+          "morning_peak": "Early morning (5–10am)",
+          "afternoon_peak": "Midday to afternoon (11am–4pm)",
+          "evening_peak": "Evening (5–9pm)",
+          "night_owl": "Night owl (10pm onward)"
+        }
+      },
+      "planning_style_preference": {
+        "title": "How do you prefer to plan your learning week?",
+        "description": "Planning style shapes how we structure sprints.",
+        "options": {
+          "daily_checklist": "Daily checklist—cross things off every day",
+          "weekly_map": "Weekly map—set goals at the start of the week",
+          "kanban_flow": "Kanban flow—move tasks across stages",
+          "freestyle": "Freestyle—intuitive and flexible"
+        }
+      },
+      "review_cadence": {
+        "title": "How often do you like to reflect or review progress?",
+        "description": "Reflection cadence impacts adaptive pacing.",
+        "options": {
+          "after_every_session": "After every learning session",
+          "end_of_day": "At the end of each day",
+          "twice_per_week": "Twice per week",
+          "when_blocked": "Only when I feel blocked"
+        }
+      },
+      "note_taking_method": {
+        "title": "How do you usually capture your learnings?",
+        "description": "Understanding note habits helps with retention prompts.",
+        "options": {
+          "code_snippets": "Code snippets and inline comments",
+          "diagram_sketches": "Diagrams or sketches",
+          "long_form_journal": "Long-form journal or blog post",
+          "quick_checklists": "Quick checklists or bullet notes"
+        }
+      },
+      "support_channels": {
+        "title": "What support channels keep you most motivated?",
+        "description": "Select all that energize you.",
+        "options": {
+          "discord": "Discord or real-time chat communities",
+          "mentorship": "Mentorship or coach check-ins",
+          "study_buddy": "Study buddy or pair partner",
+          "asynchronous_forum": "Asynchronous forum or Q&A board",
+          "self_reflection": "Self reflection or private journaling"
+        }
+      },
+      "accountability_style": {
+        "title": "How do you stay accountable to your learning goals?",
+        "description": "Accountability style influences nudges.",
+        "options": {
+          "public_share": "Public updates (social media, community posts)",
+          "small_circle": "Small circle (friends, peers)",
+          "self_report": "Self-reporting or private tracker",
+          "mentor_checkins": "Mentor or coach check-ins"
+        }
+      },
+      "weekly_hours_commitment": {
+        "title": "Realistically, how many hours per week can you invest?",
+        "description": "We’ll use this to size your sprints.",
+        "options": {
+          "under_5": "Under 5 hours",
+          "five_to_eight": "5 – 8 hours",
+          "nine_to_twelve": "9 – 12 hours",
+          "thirteen_plus": "13+ hours"
+        }
+      },
+      "weekly_rhythm": {
+        "title": "What does your weekly rhythm look like?",
+        "description": "Knowing your cadence helps with pacing.",
+        "options": {
+          "consistent_blocks": "Consistent blocks distributed across the week",
+          "short_sprints": "Short weekday sprints (e.g., 30 minutes twice a day)",
+          "weekend_push": "Weekend pushes with lighter weekdays",
+          "unpredictable_flow": "Unpredictable flow—varies week to week"
         }
       }
     },

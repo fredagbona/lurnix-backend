@@ -30,6 +30,15 @@ export interface PlannerRequestPayload {
   expansionGoal?: { targetLengthDays?: number | null; additionalMicroTasks?: number | null } | null;
   userLanguage?: string;
   customInstructions?: string[];
+  previousSprint?: {
+    dayNumber: number;
+    title?: string | null;
+    summary?: string | null;
+    reflection?: string | null;
+    deliverables?: string[];
+    projectTitles?: string[];
+    completionPercentage?: number | null;
+  } | null;
 }
 
 const SYSTEM_PROMPT = `You are Lurnix Planner, an expert at generating short, portfolio-first learning sprints.

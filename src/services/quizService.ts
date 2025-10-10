@@ -362,6 +362,9 @@ export class QuizService {
     const motivationType = summarizeDimension(quizPersonalityDimensions.motivation_type);
     const resilienceStyle = summarizeDimension(quizPersonalityDimensions.resilience_style);
     const techAffinity = summarizeDimension(quizPersonalityDimensions.tech_affinity);
+    const focusPreference = summarizeDimension(quizPersonalityDimensions.focus_preference);
+    const planningStyle = summarizeDimension(quizPersonalityDimensions.planning_style);
+    const accountabilityStyle = summarizeDimension(quizPersonalityDimensions.accountability_style);
 
     const topTraits = Object.entries(traitScores)
       .sort((a, b) => b[1] - a[1])
@@ -374,15 +377,22 @@ export class QuizService {
       .map(item => item.trait);
 
     const timeAvailability = answers.time_availability || answers.time_per_day;
-    const timeMap: Record<string, number> = {
-      intensive_time: 150,
-      balanced_time: 90,
-      constrained_time: 45,
-      irregular_time: 60
+    const weeklyHoursKey = answers.weekly_hours_commitment || timeAvailability;
+    const weeklyHoursMap: Record<string, number> = {
+      under_5: 4,
+      five_to_eight: 7,
+      nine_to_twelve: 11,
+      thirteen_plus: 16,
+      intensive_time: 16,
+      balanced_time: 9,
+      constrained_time: 5,
+      irregular_time: 6
     };
 
     const goal = answers.coding_dream || answers.learning_goal || 'general';
-    const timePerDay = timeMap[timeAvailability] || 60;
+    const hoursPerWeek = weeklyHoursKey ? weeklyHoursMap[weeklyHoursKey] ?? 7 : 7;
+    const assumedStudyDays = answers.weekly_rhythm === 'weekend_push' ? 2 : answers.weekly_rhythm === 'short_sprints' ? 5 : 4;
+    const timePerDay = Math.max(45, Math.round((hoursPerWeek / assumedStudyDays) * 60));
 
     const learningTotal = ['visual', 'analytical', 'practical'].reduce(
       (sum, trait) => sum + Math.max(learningStyle.normalizedScores[trait] || 0, 0),
@@ -395,6 +405,24 @@ export class QuizService {
 
     const recommendedProfile = this.determineProfileRecommendation(traitScores);
 
+    const supportChannels = Array.isArray(answers.support_channels)
+      ? answers.support_channels
+      : typeof answers.support_channels === 'string'
+        ? [answers.support_channels]
+        : [];
+
+    const availabilitySnapshot = {
+      hoursPerWeek,
+      weeklyRhythm: answers.weekly_rhythm || null,
+      energyPeak: answers.energy_peak_time || null,
+      focusPreference: focusPreference.dominant,
+      contextSwitch: answers.context_switch_energy || null,
+      preferredSessionLength: focusPreference.dominant,
+      timePerDayMinutes: timePerDay,
+      noteStyle: answers.note_taking_method || null,
+      reviewCadence: answers.review_cadence || null
+    };
+
     return {
       style: learningStyle.dominant || 'balanced',
       visual: Number((legacyVisual / learningTotal).toFixed(3)),
@@ -402,12 +430,22 @@ export class QuizService {
       handsOn: Number((legacyHandsOn / learningTotal).toFixed(3)),
       level: answers.experience_level || 'beginner',
       timePerDay,
+      hoursPerWeek,
       goal,
       preferredStack: preferredStack.length > 0 ? preferredStack : ['javascript'],
       motivations: motivationType.ordered.slice(0, 3),
       resilience: resilienceStyle.dominant,
       problemApproach: problemApproach.dominant,
       techAffinity: techAffinity.ordered,
+       focusPreference,
+       planningStyle,
+       accountabilityStyle,
+       supportChannels,
+       energyPeak: answers.energy_peak_time || null,
+       weeklyRhythm: answers.weekly_rhythm || null,
+       noteTaking: answers.note_taking_method || null,
+       reviewCadence: answers.review_cadence || null,
+       contextSwitch: answers.context_switch_energy || null,
       traitScores,
       topTraits,
       dimensions: {
@@ -415,8 +453,12 @@ export class QuizService {
         problemApproach,
         motivationType,
         resilienceStyle,
-        techAffinity
+        techAffinity,
+        focusPreference,
+        planningStyle,
+        accountabilityStyle
       },
+      availability: availabilitySnapshot,
       profileRecommendation: recommendedProfile
     };
   }

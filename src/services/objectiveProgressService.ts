@@ -1,6 +1,10 @@
 import { db } from '../prisma/prismaWrapper.js';
 import { AppError } from '../errors/AppError.js';
-import type { Objective, Sprint } from '@prisma/client';
+import type { Objective, ObjectiveMilestone, Sprint, LearnerProfile } from '@prisma/client';
+import {
+  objectiveEstimationService,
+  type ObjectiveDurationEstimate
+} from './objectiveEstimationService.js';
 
 // ============================================
 // TYPES & INTERFACES
@@ -64,6 +68,7 @@ export interface MarkSprintCompleteParams {
     totalTasks: number;
     hoursSpent: number;
     evidenceSubmitted: boolean;
+    reflection?: string | null;
   };
 }
 
@@ -271,7 +276,8 @@ class ObjectiveProgressService {
       data: {
         completedAt: new Date(),
         completionPercentage,
-        status: 'reviewed'
+        status: 'reviewed',
+        selfEvaluationReflection: completionData.reflection?.trim?.() || null
       }
     });
 
@@ -297,12 +303,185 @@ class ObjectiveProgressService {
     const { currentStreak } = this.calculateStreaks(objective.sprints);
     const streakUpdated = currentStreak > 0;
 
+    const actualPerformanceRatio = completionData.totalTasks > 0
+      ? Math.min(Math.max(completionData.tasksCompleted / completionData.totalTasks, 0), 1)
+      : 1;
+
+    this.recalibrateObjectiveTimeline({
+      objectiveId: objective.id,
+      completedDays: newCompletedDays,
+      actualPerformance: actualPerformanceRatio
+    }).catch((error) => {
+      console.error('[objectiveProgress] Failed to recalibrate estimate', {
+        objectiveId: objective.id,
+        error
+      });
+    });
+
     return {
       dayCompleted: sprint.dayNumber,
       nextDayNumber: sprint.dayNumber + 1,
       milestoneReached: milestoneReached[0],
       streakUpdated
     };
+  }
+
+  private async recalibrateObjectiveTimeline(params: {
+    objectiveId: string;
+    completedDays: number;
+    actualPerformance: number;
+  }): Promise<void> {
+    const { objectiveId, completedDays, actualPerformance } = params;
+
+    const objective = await db.objective.findUnique({
+      where: { id: objectiveId },
+      include: {
+        milestones: {
+          orderBy: { targetDay: 'asc' }
+        },
+        profileSnapshot: true
+      }
+    });
+
+    if (!objective || !objective.estimatedTotalDays || objective.estimatedTotalDays <= 0) {
+      return;
+    }
+
+    const originalEstimate = this.buildDurationEstimateFromObjective(objective);
+
+    const recalibrated = await objectiveEstimationService.recalibrateEstimate({
+      originalEstimate,
+      completedDays,
+      actualPerformance,
+      strugglingAreas: Array.isArray(objective.profileSnapshot?.gaps)
+        ? (objective.profileSnapshot!.gaps as string[])
+        : []
+    });
+
+    const updates: Record<string, unknown> = {
+      estimatedTotalDays: recalibrated.estimatedTotalDays,
+      estimatedDailyHours: recalibrated.estimatedDailyHours,
+      estimationReasoning: recalibrated.reasoning,
+      estimatedAt: new Date()
+    };
+
+    const totalWeeks = recalibrated.estimatedTotalDays / 7;
+    updates.estimatedWeeksMin = Math.max(1, Math.floor(totalWeeks));
+    updates.estimatedWeeksMax = Math.max(updates.estimatedWeeksMin as number, Math.ceil(totalWeeks));
+
+    await db.objective.update({
+      where: { id: objectiveId },
+      data: updates
+    });
+
+    const milestones = objective.milestones;
+    const recalibratedMilestones = recalibrated.milestones;
+
+    await Promise.all(
+      milestones.map((milestone: ObjectiveMilestone, index: number) => {
+        const recalibratedMilestone = recalibratedMilestones[index];
+        if (!recalibratedMilestone) {
+          return Promise.resolve();
+        }
+
+        const newTargetDay = Math.max(completedDays, recalibratedMilestone.targetDay);
+
+        if (milestone.targetDay === newTargetDay) {
+          return Promise.resolve();
+        }
+
+        return db.objectiveMilestone.update({
+          where: { id: milestone.id },
+          data: {
+            targetDay: newTargetDay
+          }
+        });
+      })
+    );
+  }
+
+  private buildDurationEstimateFromObjective(objective: Objective & {
+    milestones: ObjectiveMilestone[];
+    profileSnapshot: LearnerProfile | null;
+  }): ObjectiveDurationEstimate {
+    const totalDays = Math.max(objective.estimatedTotalDays ?? 1, 1);
+    const dailyHours = Math.max(
+      objective.estimatedDailyHours ?? (objective.profileSnapshot?.hoursPerWeek ?? 14) / 7,
+      0.5
+    );
+
+    return {
+      estimatedTotalDays: totalDays,
+      estimatedDailyHours: Number(dailyHours.toFixed(1)),
+      difficulty: this.estimateDifficultyLevel(objective.currentDifficulty),
+      reasoning: objective.estimationReasoning ?? 'Initial reasoning unavailable.',
+      confidence: 'medium',
+      breakdown: this.estimateBreakdown(totalDays),
+      milestones: this.mapMilestonesToEstimates(objective.milestones, dailyHours)
+    };
+  }
+
+  private estimateDifficultyLevel(score?: number | null): 'beginner' | 'intermediate' | 'advanced' {
+    if (typeof score !== 'number') {
+      return 'intermediate';
+    }
+
+    if (score < 34) {
+      return 'beginner';
+    }
+
+    if (score < 67) {
+      return 'intermediate';
+    }
+
+    return 'advanced';
+  }
+
+  private estimateBreakdown(totalDays: number): ObjectiveDurationEstimate['breakdown'] {
+    const fundamentals = Math.round(totalDays * 0.3);
+    const intermediate = Math.round(totalDays * 0.25);
+    const advanced = Math.round(totalDays * 0.2);
+    const projects = Math.round(totalDays * 0.15);
+    let review = totalDays - (fundamentals + intermediate + advanced + projects);
+
+    if (review < 0) {
+      review = 0;
+    }
+
+    return {
+      fundamentals,
+      intermediate,
+      advanced,
+      projects,
+      review
+    };
+  }
+
+  private mapMilestonesToEstimates(
+    milestones: ObjectiveMilestone[],
+    estimatedDailyHours: number
+  ): ObjectiveDurationEstimate['milestones'] {
+    if (!milestones.length) {
+      return [
+        {
+          title: 'Initial milestone',
+          description: 'Complete the first meaningful deliverable.',
+          targetDay: 1,
+          estimatedHours: Math.max(1, Math.round(estimatedDailyHours * 2)),
+          deliverables: ['Initial deliverable']
+        }
+      ];
+    }
+
+    return milestones
+      .sort((a, b) => a.targetDay - b.targetDay)
+      .map((milestone) => ({
+        title: milestone.title,
+        description: milestone.description ?? milestone.title,
+        targetDay: Math.max(milestone.targetDay, 1),
+        estimatedHours: Math.max(1, Math.round(estimatedDailyHours * 2)),
+        deliverables: [milestone.description ?? milestone.title]
+      }));
   }
 
   /**

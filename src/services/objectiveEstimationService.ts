@@ -400,20 +400,25 @@ class ObjectiveEstimationService {
   }): Promise<ObjectiveDurationEstimate> {
     const { originalEstimate, completedDays, actualPerformance, strugglingAreas = [] } = params;
 
-    // Calculate velocity (actual vs expected)
-    const expectedProgress = completedDays / originalEstimate.estimatedTotalDays;
-    const velocity = actualPerformance / expectedProgress;
+    const safeTotalDays = Math.max(originalEstimate.estimatedTotalDays, 1);
+    const expectedProgress = safeTotalDays > 0 ? completedDays / safeTotalDays : 0;
+    const normalizedActual = Math.max(0, actualPerformance);
+    const rawVelocity = expectedProgress > 0 ? normalizedActual / expectedProgress : normalizedActual;
+    const velocity = Math.min(Math.max(Number.isFinite(rawVelocity) && rawVelocity > 0 ? rawVelocity : 0.2, 0.2), 3);
 
-    // Adjust remaining days based on velocity
-    const remainingDays = originalEstimate.estimatedTotalDays - completedDays;
+    const remainingDays = Math.max(safeTotalDays - completedDays, 0);
     const adjustedRemainingDays = Math.round(remainingDays / velocity);
-    const newTotalDays = completedDays + adjustedRemainingDays;
+    const newTotalDays = Math.max(completedDays + adjustedRemainingDays, completedDays);
+
+    const baselineDailyHours = originalEstimate.estimatedDailyHours;
+    const recalibratedDailyHours = Math.max(0.5, Math.min(8, baselineDailyHours * velocity));
 
     // Adjust confidence based on performance
     let newConfidence: 'low' | 'medium' | 'high' = originalEstimate.confidence;
-    if (Math.abs(velocity - 1) > 0.3) {
+    const velocityDeviation = Math.abs(velocity - 1);
+    if (velocityDeviation > 0.35) {
       newConfidence = 'low'; // Significant deviation
-    } else if (Math.abs(velocity - 1) > 0.15) {
+    } else if (velocityDeviation > 0.2) {
       newConfidence = 'medium';
     } else {
       newConfidence = 'high'; // On track
@@ -435,8 +440,9 @@ class ObjectiveEstimationService {
     return {
       ...originalEstimate,
       estimatedTotalDays: newTotalDays,
+      estimatedDailyHours: Number(recalibratedDailyHours.toFixed(1)),
       confidence: newConfidence,
-      reasoning: `${originalEstimate.reasoning}\n\nRECALIBRATED: Based on ${completedDays} days completed with ${(actualPerformance * 100).toFixed(1)}% task completion rate (velocity: ${velocity.toFixed(2)}x). ${strugglingAreas.length > 0 ? `Struggling with: ${strugglingAreas.join(', ')}.` : ''}`,
+      reasoning: `${originalEstimate.reasoning}\n\nRECALIBRATED: Based on ${completedDays} days completed with ${(normalizedActual * 100).toFixed(1)}% task completion rate (velocity: ${velocity.toFixed(2)}x). ${strugglingAreas.length > 0 ? `Struggling with: ${strugglingAreas.join(', ')}.` : ''}`,
       milestones: adjustedMilestones
     };
   }

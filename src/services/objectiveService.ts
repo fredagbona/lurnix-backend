@@ -2,8 +2,14 @@ import { Prisma } from '@prisma/client';
 import { db } from '../prisma/prismaWrapper';
 import { AppError } from '../errors/AppError';
 import { learnerProfileService } from './learnerProfileService.js';
-import { plannerService } from './plannerService.js';
-import type { SprintPlan, SprintPlanCore, SprintPlanExpansionGoal, SprintPlanMode } from './plannerService.js';
+import { extractPreviousSprintContext, plannerService } from './plannerService.js';
+import type {
+  SprintPlan,
+  SprintPlanCore,
+  SprintPlanExpansionGoal,
+  SprintPlanMode,
+  PreviousSprintContext
+} from './plannerService.js';
 import { sprintService } from './sprintService.js';
 import { SprintUpdateInput } from '../repositories/sprintRepository.js';
 import { profileContextBuilder, ProfileContext } from './profileContextBuilder.js';
@@ -847,6 +853,24 @@ export class ObjectiveService {
         ? 1
         : params.preferLength ?? params.expansionGoal?.targetLengthDays ?? undefined;
 
+    let previousSprintContext: PreviousSprintContext | null = null;
+
+    if (!params.existingSprintId) {
+      const previousSprintRecord = await db.sprint.findFirst({
+        where: { objectiveId: params.objectiveId },
+        orderBy: { dayNumber: 'desc' }
+      });
+
+      if (previousSprintRecord) {
+        previousSprintContext = extractPreviousSprintContext({
+          dayNumber: previousSprintRecord.dayNumber,
+          plannerOutput: previousSprintRecord.plannerOutput,
+          reflection: previousSprintRecord.selfEvaluationReflection,
+          completionPercentage: previousSprintRecord.completionPercentage
+        });
+      }
+    }
+
     const plan = await plannerService.generateSprintPlan({
       objectiveId: params.objectiveId,
       objectiveTitle: objective.title,
@@ -864,7 +888,8 @@ export class ObjectiveService {
       currentPlan: params.currentPlan ?? null,
       expansionGoal: params.expansionGoal ?? null,
       allowedResources: params.allowedResources ?? undefined,
-      userLanguage: params.userLanguage ?? 'en'
+      userLanguage: params.userLanguage ?? 'en',
+      previousSprint: previousSprintContext
     });
 
     const plannerInputPayload = {
