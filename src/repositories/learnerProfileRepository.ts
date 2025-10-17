@@ -14,6 +14,9 @@ export interface LearnerProfileCreateInput {
   goals?: string[];
   rawSnapshot: Prisma.JsonValue;
   lastRefreshedAt?: Date;
+  technicalLevel?: Prisma.JsonValue | null;
+  assessmentVersion?: string | null;
+  assessmentCompletedAt?: Date | null;
 }
 
 export interface LearnerProfileUpdateInput {
@@ -26,6 +29,9 @@ export interface LearnerProfileUpdateInput {
   goals?: string[];
   rawSnapshot?: Prisma.JsonValue;
   lastRefreshedAt?: Date;
+  technicalLevel?: Prisma.JsonValue | null;
+  assessmentVersion?: string | null;
+  assessmentCompletedAt?: Date | null;
 }
 
 export class LearnerProfileRepository {
@@ -41,7 +47,10 @@ export class LearnerProfileRepository {
       blockers = [],
       goals = [],
       rawSnapshot,
-      lastRefreshedAt = new Date()
+      lastRefreshedAt = new Date(),
+      technicalLevel = null,
+      assessmentVersion = null,
+      assessmentCompletedAt = null
     } = input;
 
     const profile = await db.learnerProfile.create({
@@ -56,7 +65,10 @@ export class LearnerProfileRepository {
         blockers,
         goals,
         rawSnapshot,
-        lastRefreshedAt
+        lastRefreshedAt,
+        technicalLevel,
+        assessmentVersion,
+        assessmentCompletedAt
       }
     });
 

@@ -211,24 +211,23 @@ class SprintCompletionHandler {
     // 6. Get updated progress
     const progressUpdate = await objectiveProgressService.getProgress(sprint.objectiveId);
 
-    // 7. Check if objective is complete
+    // 7. Check if objective milestone reached (but don't auto-complete)
+    // Objectives should only be marked complete when user explicitly confirms mastery
     if (progressUpdate.completedDays >= progressUpdate.totalEstimatedDays) {
       notifications.push({
         type: 'objective_progress',
-        title: 'Objective Complete! 🎓',
-        message: `Congratulations! You've completed: ${sprint.objective.title}`,
+        title: 'Initial Goal Reached! 🎯',
+        message: `You've completed ${progressUpdate.completedDays} days of ${sprint.objective.title}. Ready to mark as complete or continue learning?`,
         data: {
           objectiveId: sprint.objectiveId,
           totalDays: progressUpdate.completedDays,
-          totalHours: progressUpdate.totalHoursSpent
+          totalHours: progressUpdate.totalHoursSpent,
+          suggestCompletion: true
         }
       });
 
-      // Mark objective as completed
-      await db.objective.update({
-        where: { id: sprint.objectiveId },
-        data: { status: 'completed' }
-      });
+      // DO NOT auto-complete - let user decide when they've truly mastered the objective
+      // User can manually mark as complete when ready
     } else {
       // Progress notification
       const milestones = [25, 50, 75];

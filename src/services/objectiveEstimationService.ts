@@ -1,7 +1,7 @@
 import Groq from 'groq-sdk';
 import { z } from 'zod';
 import { config } from '../config/environment.js';
-import type { LearnerProfile } from '@prisma/client';
+import type { LearnerProfile, Prisma } from '@prisma/client';
 
 // ============================================
 // TYPES & INTERFACES
@@ -13,6 +13,35 @@ export interface MilestoneEstimate {
   targetDay: number;
   estimatedHours: number;
   deliverables: string[];
+}
+
+function extractTechnicalLevelSummary(technicalLevel: Prisma.JsonValue | null | undefined): {
+  overall?: string;
+  score?: number;
+  flags: string[];
+} | null {
+  if (!technicalLevel || typeof technicalLevel !== 'object') {
+    return null;
+  }
+
+  try {
+    const raw = technicalLevel as Record<string, unknown>;
+    const overall = typeof raw.overall === 'string' ? raw.overall : undefined;
+    const score = typeof raw.score === 'number' ? raw.score : undefined;
+    const flagsRaw = raw.flags;
+    const flags: string[] = Array.isArray(flagsRaw)
+      ? flagsRaw.filter((value): value is string => typeof value === 'string')
+      : [];
+
+    return {
+      overall,
+      score,
+      flags
+    };
+  } catch (error) {
+    console.warn('[objectiveEstimation] Failed to parse technical level summary', error);
+    return null;
+  }
 }
 
 export interface ObjectiveDurationEstimate {
@@ -31,6 +60,18 @@ export interface ObjectiveDurationEstimate {
   milestones: MilestoneEstimate[];
 }
 
+export interface ObjectiveContextInput {
+  priorKnowledge?: string[];
+  relatedSkills?: string[];
+  focusAreas?: string[];
+  urgency?: string;
+  depthPreference?: string;
+  deadline?: string;
+  domainExperience?: string;
+  timeCommitmentHours?: number;
+  notes?: string;
+}
+
 export interface EstimateObjectiveParams {
   objectiveTitle: string;
   objectiveDescription?: string;
@@ -38,6 +79,8 @@ export interface EstimateObjectiveParams {
   requiredSkills: string[];
   learnerProfile?: LearnerProfile | null;
   userLanguage?: string;
+  context?: ObjectiveContextInput;
+  technicalLevel?: Prisma.JsonValue | null;
 }
 
 // ============================================
@@ -100,7 +143,9 @@ function buildEstimationPrompt(params: EstimateObjectiveParams): string {
     successCriteria,
     requiredSkills,
     learnerProfile,
-    userLanguage = 'en'
+    userLanguage = 'en',
+    context,
+    technicalLevel
   } = params;
 
   const languageMap: Record<string, string> = {
@@ -127,6 +172,54 @@ function buildEstimationPrompt(params: EstimateObjectiveParams): string {
 
   if (requiredSkills.length > 0) {
     sections.push(`\nRequired Skills: ${requiredSkills.join(', ')}`);
+  }
+
+  if (context) {
+    sections.push('\n=== LEARNER CONTEXT ===');
+    if (context.priorKnowledge?.length) {
+      sections.push(`Existing knowledge: ${context.priorKnowledge.join(', ')}`);
+    }
+    if (context.relatedSkills?.length) {
+      sections.push(`Related skills: ${context.relatedSkills.join(', ')}`);
+    }
+    if (context.focusAreas?.length) {
+      sections.push(`Focus areas: ${context.focusAreas.join(', ')}`);
+    }
+    if (context.domainExperience) {
+      sections.push(`Domain experience: ${context.domainExperience}`);
+    }
+    if (context.timeCommitmentHours) {
+      sections.push(`Time commitment: ${context.timeCommitmentHours} hours per week`);
+    }
+    if (context.urgency) {
+      sections.push(`Urgency: ${context.urgency}`);
+    }
+    if (context.depthPreference) {
+      sections.push(`Depth preference: ${context.depthPreference}`);
+    }
+    if (context.deadline) {
+      const deadline = new Date(context.deadline);
+      if (!Number.isNaN(deadline.getTime())) {
+        sections.push(`Target deadline: ${deadline.toISOString()}`);
+      }
+    }
+    if (context.notes) {
+      sections.push(`Additional notes: ${context.notes}`);
+    }
+  }
+
+  const technicalSummary = extractTechnicalLevelSummary(technicalLevel);
+  if (technicalSummary) {
+    sections.push('\n=== TECHNICAL ASSESSMENT ===');
+    if (technicalSummary.overall) {
+      sections.push(`Assessed level: ${technicalSummary.overall}`);
+    }
+    if (typeof technicalSummary.score === 'number') {
+      sections.push(`Proficiency score: ${technicalSummary.score}`);
+    }
+    if (technicalSummary.flags.length > 0) {
+      sections.push(`Flags: ${technicalSummary.flags.join(', ')}`);
+    }
   }
 
   if (learnerProfile) {
@@ -451,11 +544,11 @@ class ObjectiveEstimationService {
    * Generate a fallback estimate when AI is unavailable
    */
   generateFallbackEstimate(params: EstimateObjectiveParams): ObjectiveDurationEstimate {
-    const { objectiveTitle, requiredSkills, learnerProfile } = params;
+    const { objectiveTitle, requiredSkills, learnerProfile, context, technicalLevel } = params;
 
     // Simple heuristic: 1 skill = 7-14 days depending on profile
     const baseSkillDays = requiredSkills.length > 0 ? requiredSkills.length * 10 : 30;
-    
+
     // Adjust based on learner profile
     let multiplier = 1.0;
     if (learnerProfile) {
@@ -479,6 +572,24 @@ class ObjectiveEstimationService {
       }
     }
 
+    if (context?.timeCommitmentHours && context.timeCommitmentHours < 10) {
+      multiplier *= 1.15;
+    }
+
+    if (context?.urgency) {
+      const urgency = context.urgency.toLowerCase();
+      if (urgency.includes('urgent') || urgency.includes('rush') || urgency.includes('deadline')) {
+        multiplier *= 0.85; // speed up under urgency
+      }
+    }
+
+    const technicalSummary = extractTechnicalLevelSummary(technicalLevel ?? null);
+    if (technicalSummary?.overall === 'absolute_beginner') {
+      multiplier *= 1.3;
+    } else if (technicalSummary?.overall === 'advanced') {
+      multiplier *= 0.85;
+    }
+
     const estimatedTotalDays = Math.round(baseSkillDays * multiplier);
     const fundamentalsDays = Math.round(estimatedTotalDays * 0.3);
     const intermediateDays = Math.round(estimatedTotalDays * 0.25);
@@ -490,7 +601,7 @@ class ObjectiveEstimationService {
       estimatedTotalDays,
       estimatedDailyHours: learnerProfile?.hoursPerWeek ? learnerProfile.hoursPerWeek / 7 : 2,
       difficulty: estimatedTotalDays > 60 ? 'advanced' : estimatedTotalDays > 30 ? 'intermediate' : 'beginner',
-      reasoning: `Fallback estimate based on ${requiredSkills.length} required skills and learner profile. This is a conservative estimate.`,
+      reasoning: `Fallback estimate based on ${requiredSkills.length} required skills, learner profile, and captured context. This is a conservative estimate adjusted for time commitment and urgency when provided.`,
       confidence: 'low',
       breakdown: {
         fundamentals: fundamentalsDays,

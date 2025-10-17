@@ -79,6 +79,9 @@ export interface EnvironmentConfig {
   REVIEWER_LMSTUDIO_MODEL: string;
   REVIEWER_GROQ_MODEL: string;
 
+  // Feature Flags
+  FEATURE_ADAPTIVE_PLANNER: boolean;
+
   // Feature Requests Configuration
   FEATURE_REQUESTS_MAX_PER_DAY: number;
   FEATURE_REQUESTS_WINDOW_HOURS: number;
@@ -182,6 +185,9 @@ export const config: EnvironmentConfig = {
     process.env.REVIEWER_GROQ_MODEL
     || process.env.GROQ_MODEL
     || 'llama-3.1-70b',
+
+  // Feature Flags
+  FEATURE_ADAPTIVE_PLANNER: process.env.FEATURE_ADAPTIVE_PLANNER === 'true',
 
   // Feature Requests Configuration
   FEATURE_REQUESTS_MAX_PER_DAY: parseInt(process.env.FEATURE_REQUESTS_MAX_PER_DAY || '1', 10),

@@ -1,8 +1,10 @@
 import { Prisma } from '@prisma/client';
 import { db } from '../prisma/prismaWrapper';
+import { db as prisma } from '../prisma/prismaWrapper';
 import { AppError } from '../errors/AppError';
 import { learnerProfileService } from './learnerProfileService.js';
 import { extractPreviousSprintContext, plannerService } from './plannerService.js';
+import { sprintEventEmitter, SprintEvent } from './eventEmitter.js';
 import type {
   SprintPlan,
   SprintPlanCore,
@@ -22,7 +24,8 @@ import {
   Objective,
   Progress,
   Sprint,
-  SprintArtifact
+  SprintArtifact,
+  ObjectiveContext
 } from '../types/prisma';
 import {
   ObjectiveUiPayload,
@@ -38,6 +41,14 @@ import { evidenceService, SubmittedArtifactInput } from './evidenceService.js';
 import { reviewerService } from './reviewerService.js';
 import { ReviewerSummary, zReviewerSummary } from '../types/reviewer.js';
 import { objectiveEstimationService } from './objectiveEstimationService.js';
+import adaptiveLearningService from './adaptiveLearningService.js';
+import {
+  generateAdaptiveMetadata,
+  DEFAULT_ADAPTIVE_METADATA,
+  type AdaptiveMetadataSignals,
+  type AdaptivePlanMetadata
+} from './sprintAdaptationStrategy.js';
+import type { TechnicalAssessmentScore } from './technicalAssessmentService.js';
 
 export interface CreateObjectiveRequest {
   userId: string;
@@ -47,6 +58,17 @@ export interface CreateObjectiveRequest {
   successCriteria?: string[];
   requiredSkills?: string[];
   priority?: number;
+  context?: {
+    priorKnowledge?: string[];
+    relatedSkills?: string[];
+    focusAreas?: string[];
+    urgency?: string;
+    depthPreference?: string;
+    deadline?: string;
+    domainExperience?: string;
+    timeCommitmentHours?: number;
+    notes?: string;
+  };
 }
 
 export interface GenerateSprintRequest {
@@ -142,6 +164,9 @@ export class ObjectiveService {
         },
         include: {
           profileSnapshot: true,
+          contexts: {
+            orderBy: { createdAt: 'desc' }
+          },
           sprints: {
             orderBy: { createdAt: 'desc' },
             include: {
@@ -187,6 +212,9 @@ export class ObjectiveService {
         },
         include: {
           profileSnapshot: true,
+          contexts: {
+            orderBy: { createdAt: 'desc' }
+          },
           sprints: {
             orderBy: { createdAt: 'desc' },
             include: {
@@ -275,7 +303,9 @@ export class ObjectiveService {
           ...learnerProfile,
           hoursPerWeek: learnerProfile.hoursPerWeek ?? null
         } as any : undefined,
-        userLanguage: user?.language ?? 'en'
+        userLanguage: user?.language ?? 'en',
+        context: request.context,
+        technicalLevel: learnerProfile?.technicalLevel as Prisma.JsonValue | null
       });
       console.log('[objectiveService] Duration estimated', {
         objectiveTitle: request.title,
@@ -294,7 +324,9 @@ export class ObjectiveService {
           ...learnerProfile,
           hoursPerWeek: learnerProfile.hoursPerWeek ?? null
         } as any : undefined,
-        userLanguage: user?.language ?? 'en'
+        userLanguage: user?.language ?? 'en',
+        context: request.context,
+        technicalLevel: learnerProfile?.technicalLevel as Prisma.JsonValue | null
       });
     }
 
@@ -315,6 +347,24 @@ export class ObjectiveService {
       }
     });
 
+    if (request.context) {
+      await db.objectiveContext.create({
+        data: {
+          objectiveId: objective.id,
+          userId: request.userId,
+          priorKnowledge: request.context.priorKnowledge ?? [],
+          relatedSkills: request.context.relatedSkills ?? [],
+          focusAreas: request.context.focusAreas ?? [],
+          urgency: request.context.urgency ?? null,
+          depthPreference: request.context.depthPreference ?? null,
+          specificDeadline: request.context.deadline ? new Date(request.context.deadline) : null,
+          timeCommitmentHours: request.context.timeCommitmentHours ?? null,
+          domainExperience: request.context.domainExperience ?? null,
+          notes: request.context.notes ?? null
+        }
+      });
+    }
+
     // Create milestones (will be available after Prisma client regeneration)
     // if (estimate.milestones.length > 0) {
     //   await db.objectiveMilestone.createMany({
@@ -332,6 +382,9 @@ export class ObjectiveService {
       where: { id: objective.id },
       include: {
         profileSnapshot: true,
+        contexts: {
+          orderBy: { createdAt: 'desc' }
+        },
         sprints: {
           orderBy: { createdAt: 'desc' },
           include: { progresses: true, artifacts: true }
@@ -871,6 +924,20 @@ export class ObjectiveService {
       }
     }
 
+    const adaptiveMetadata = await this.buildAdaptiveMetadata({
+      userId: params.userId,
+      objectiveId: params.objectiveId,
+      learnerProfile: params.learnerProfile,
+      profileContext: params.profileContext
+    });
+
+    // Build custom instructions for personalization
+    const customInstructions = this.buildCustomInstructions({
+      learnerProfile: params.learnerProfile,
+      previousSprint: previousSprintContext,
+      objectiveTitle: objective.title
+    });
+
     const plan = await plannerService.generateSprintPlan({
       objectiveId: params.objectiveId,
       objectiveTitle: objective.title,
@@ -889,8 +956,15 @@ export class ObjectiveService {
       expansionGoal: params.expansionGoal ?? null,
       allowedResources: params.allowedResources ?? undefined,
       userLanguage: params.userLanguage ?? 'en',
-      previousSprint: previousSprintContext
+      previousSprint: previousSprintContext,
+      adaptiveMetadata,
+      customInstructions
     });
+
+    const resolvedAdaptiveMetadata = plan.adaptiveMetadata ?? adaptiveMetadata ?? null;
+    if (resolvedAdaptiveMetadata) {
+      plan.adaptiveMetadata = resolvedAdaptiveMetadata;
+    }
 
     const plannerInputPayload = {
       objectiveContext: {
@@ -910,16 +984,22 @@ export class ObjectiveService {
       mode,
       currentPlan: params.currentPlan ?? null,
       expansionGoal: params.expansionGoal ?? null,
-      existingSprintId: params.existingSprintId ?? null
+      existingSprintId: params.existingSprintId ?? null,
+      adaptiveMetadata: resolvedAdaptiveMetadata
     };
 
     const plannerInputJson = this.cloneAsJson(plannerInputPayload);
     const plannerOutputJson = JSON.parse(JSON.stringify(plan.plannerOutput ?? {})) as unknown as Prisma.JsonValue;
 
     if (params.existingSprintId) {
+      const adaptiveMetadataJson = resolvedAdaptiveMetadata
+        ? this.cloneAsJson(resolvedAdaptiveMetadata)
+        : null;
+
       const sprint = await sprintService.updateSprint(params.existingSprintId, {
         plannerInput: plannerInputJson,
         plannerOutput: plannerOutputJson,
+        adaptiveMetadata: adaptiveMetadataJson,
         lengthDays: plan.lengthDays,
         totalEstimatedHours: plan.totalEstimatedHours,
         difficulty: plan.difficulty as SprintDifficulty
@@ -935,7 +1015,8 @@ export class ObjectiveService {
         lengthDays: plan.lengthDays,
         requestedAt: requestedAt.toISOString(),
         mode,
-        expansionGoal: params.expansionGoal ?? null
+        expansionGoal: params.expansionGoal ?? null,
+        adaptiveStrategy: resolvedAdaptiveMetadata?.strategy ?? null
       });
 
       return { sprint, plan };
@@ -958,6 +1039,7 @@ export class ObjectiveService {
       profileSnapshotId: params.learnerProfile.id,
       plannerInput: plannerInputJson,
       plannerOutput: plannerOutputJson,
+      adaptiveMetadata: resolvedAdaptiveMetadata ? this.cloneAsJson(resolvedAdaptiveMetadata) : null,
       lengthDays: plan.lengthDays,
       totalEstimatedHours: plan.totalEstimatedHours,
       difficulty: plan.difficulty as SprintDifficulty,
@@ -985,7 +1067,8 @@ export class ObjectiveService {
       lengthDays: plan.lengthDays,
       requestedAt: requestedAt.toISOString(),
       mode,
-      expansionGoal: params.expansionGoal ?? null
+      expansionGoal: params.expansionGoal ?? null,
+      adaptiveStrategy: resolvedAdaptiveMetadata?.strategy ?? null
     });
 
     return { sprint, plan };
@@ -1017,11 +1100,276 @@ export class ObjectiveService {
       portfolioCards: params.plan.portfolioCards,
       adaptationNotes: params.plan.adaptationNotes,
       metadata: metadataOverride,
+      adaptiveMetadata: params.plan.adaptiveMetadata
+        ? (JSON.parse(JSON.stringify(params.plan.adaptiveMetadata)) as Record<string, unknown>)
+        : undefined,
       lengthDays: params.plan.lengthDays,
       totalEstimatedHours: params.plan.totalEstimatedHours,
       difficulty: params.plan.difficulty as SprintDifficulty
     });
   }
+
+  private async buildAdaptiveMetadata(params: {
+    userId: string;
+    objectiveId: string;
+    learnerProfile: LearnerProfile;
+    profileContext: ProfileContext;
+  }): Promise<AdaptivePlanMetadata | null> {
+    if (!config.FEATURE_ADAPTIVE_PLANNER) {
+      return null;
+    }
+
+    try {
+      const [objectiveContextRecord, performance] = await Promise.all([
+        db.objectiveContext.findFirst({
+          where: { objectiveId: params.objectiveId },
+          orderBy: { createdAt: 'desc' }
+        }),
+        adaptiveLearningService
+          .analyzePerformance({ objectiveId: params.objectiveId, userId: params.userId })
+          .catch((error) => {
+            console.warn('[objectiveService] adaptive performance analysis failed', {
+              objectiveId: params.objectiveId,
+              error
+            });
+            return null;
+          })
+      ]);
+
+      const technicalAssessment = this.extractTechnicalAssessment(
+        params.profileContext.learnerProfile?.technicalLevel ?? null
+      );
+
+      const signals: AdaptiveMetadataSignals = {
+        technicalAssessment,
+        hoursPerWeek: params.learnerProfile.hoursPerWeek ?? null,
+        objectiveContext: (objectiveContextRecord as ObjectiveContext | null) ?? null,
+        performanceTrend: performance?.trend,
+        performanceAverageScore: performance?.averageScore ?? null,
+        generatedAt: new Date()
+      };
+
+      return generateAdaptiveMetadata(signals);
+    } catch (error) {
+      console.warn('[objectiveService] adaptive metadata generation failed', {
+        objectiveId: params.objectiveId,
+        error
+      });
+      return {
+        ...DEFAULT_ADAPTIVE_METADATA,
+        computedAt: new Date().toISOString()
+      };
+    }
+  }
+
+  private extractTechnicalAssessment(value: unknown): TechnicalAssessmentScore | null {
+    if (isTechnicalAssessmentScore(value)) {
+      return value;
+    }
+    return null;
+  }
+
+  private buildCustomInstructions(params: {
+    learnerProfile: LearnerProfile;
+    previousSprint?: PreviousSprintContext | null;
+    objectiveTitle: string;
+  }): string[] {
+    const { learnerProfile, previousSprint, objectiveTitle } = params;
+    const formatList = (items?: string[]) => (items && items.length ? items.join(', ') : 'n/a');
+
+    const instructions: string[] = [
+      'ACTIONABLE TASKS: Use strong verbs (e.g., "Build", "Configure", "Deploy"). Avoid generic titles like "Introduction to...".',
+      'CONCISE TEXT: Keep descriptions and instructions to a maximum of 3 sentences.',
+      'PROJECT FOCUS: Define one concrete feature set with a measurable outcome and list the exact verification steps.',
+      'MEASURABLE TASKS: Every microTask must end with a validation step (tests, command output, screenshot, repository checkpoint) so completion can be observed.'
+    ];
+
+    // Special instructions for absolute beginners - guide progressive learning
+    const technicalLevel = (learnerProfile as any).rawSnapshot?.technicalAssessment?.score?.overall;
+    const technicalFlags = (learnerProfile as any).rawSnapshot?.technicalAssessment?.score?.flags;
+    
+    if (technicalLevel === 'absolute_beginner' && !previousSprint) {
+      // Check if environment setup is needed
+      if (technicalFlags?.needsEnvironmentSetup) {
+        instructions.push(
+          `ENVIRONMENT SETUP REQUIRED: This learner has NO development environment set up. The FIRST 2-3 tasks MUST cover: (1) Installing a code editor (VS Code), (2) Setting up terminal and Git, (3) Creating their first repository. These are prerequisites before any coding.`
+        );
+      }
+      
+      instructions.push(
+        `ABSOLUTE BEGINNER - FIRST SPRINT: This learner has ZERO coding experience. Design this sprint to focus ONLY on foundational prerequisites. Do NOT attempt to build the final objective yet.`
+      );
+      instructions.push(
+        `PROGRESSIVE LEARNING PATH: Break the objective into a multi-sprint journey. Sprint 1 should cover basics (e.g., for Node.js: learn JavaScript fundamentals like variables, functions, loops). Future sprints will build on this foundation.`
+      );
+      instructions.push(
+        `APPROPRIATE SCOPE: For an absolute beginner learning backend/Node.js, Sprint 1 should teach core JavaScript concepts using browser console or simple .js files. Do NOT create APIs, servers, or databases yet.`
+      );
+    } else if (technicalLevel === 'absolute_beginner' && previousSprint) {
+      instructions.push(
+        `ABSOLUTE BEGINNER - CONTINUATION: This learner is still building fundamentals. Design tasks that incrementally advance from Sprint ${previousSprint.dayNumber}. Ensure prerequisites are met before introducing new concepts.`
+      );
+      instructions.push(
+        `SCAFFOLDED PROGRESSION: Review what was covered in the previous sprint and design the next logical step. Avoid jumping too far ahead. Each sprint should feel achievable and build confidence.`
+      );
+    }
+
+    // Handle reflection from previous sprint
+    if (previousSprint?.reflection) {
+      const normalizedReflection = previousSprint.reflection.replace(/\s+/g, ' ').trim();
+      const truncatedReflection = normalizedReflection.length > 160
+        ? `${normalizedReflection.slice(0, 157)}...`
+        : normalizedReflection;
+      instructions.push(
+        `ADDRESS REFLECTION: The learner noted "${truncatedReflection}". Design tasks that address this feedback and incorporate their insights.`
+      );
+    }
+
+    // Prevent repeating previous deliverables
+    if (previousSprint?.deliverables?.length) {
+      const deliverableSummary = previousSprint.deliverables.slice(0, 3).join('; ');
+      instructions.push(
+        `DO NOT REPEAT: Avoid recreating prior deliverables (${deliverableSummary}). Ship a complementary feature or enhancement.`
+      );
+    }
+
+    // Align with learner goals and passions
+    if (learnerProfile.goals?.length || learnerProfile.passionTags?.length) {
+      const interests = [
+        ...(learnerProfile.goals ?? []),
+        ...(learnerProfile.passionTags ?? [])
+      ].slice(0, 5).join(', ');
+      
+      instructions.push(
+        `PROJECT THEME: Align the sprint project with these learner interests: ${interests}. Avoid generic examples like to-do lists unless they explicitly match the learner's stated goals.`
+      );
+    }
+
+    // Address gaps
+    if (learnerProfile.gaps?.length) {
+      instructions.push(
+        `ADDRESS GAPS (${formatList(learnerProfile.gaps)}): Convert each gap into a concrete micro-task with a build-or-do deliverable.`
+      );
+    }
+
+    // Leverage strengths
+    if (learnerProfile.strengths?.length) {
+      instructions.push(
+        `LEVERAGE STRENGTHS (${formatList(learnerProfile.strengths)}): Frame at least one requirement or deliverable so the learner showcases these strengths.`
+      );
+    }
+
+    // Address blockers
+    if (learnerProfile.blockers?.length) {
+      instructions.push(
+        `MITIGATE BLOCKERS (${formatList(learnerProfile.blockers)}): Design tasks that work around or directly address these blockers.`
+      );
+    }
+
+    // Emphasize hands-on practice for learners who dislike theory
+    if (learnerProfile.blockers?.some(b => b.toLowerCase().includes('théorie') || b.toLowerCase().includes('theory'))) {
+      instructions.push(
+        'HANDS-ON FOCUS: This learner dislikes excessive theory. Every concept must be immediately applied through coding exercises or mini-projects. Minimize reading, maximize doing.'
+      );
+    }
+
+    instructions.push(
+      'REFLECTION LOOP: Include a final microTask that captures learnings, blockers, and metrics (time spent, build status) to feed the next sprint.'
+    );
+
+    return instructions;
+  }
+
+  async completeObjective(params: {
+    userId: string;
+    objectiveId: string;
+    completionNotes?: string;
+  }): Promise<{
+    objectiveId: string;
+    status: string;
+    completedAt: Date;
+    totalDays: number;
+    totalHours: number;
+  }> {
+    const { userId, objectiveId, completionNotes } = params;
+
+    // Verify objective belongs to user
+    const objective = await prisma.objective.findFirst({
+      where: {
+        id: objectiveId,
+        userId
+      },
+      include: {
+        sprints: {
+          where: { completedAt: { not: null } },
+          select: {
+            totalEstimatedHours: true
+          }
+        }
+      }
+    });
+
+    if (!objective) {
+      throw new AppError('Objective not found', 404, 'OBJECTIVE_NOT_FOUND');
+    }
+
+    // Calculate totals
+    const totalDays = objective.completedDays;
+    const totalHours = objective.sprints.reduce(
+      (sum: number, sprint: { totalEstimatedHours: number | null }) => sum + (sprint.totalEstimatedHours || 0),
+      0
+    );
+
+    // Mark as completed
+    const updatedObjective = await prisma.objective.update({
+      where: { id: objectiveId },
+      data: {
+        status: 'completed',
+        completedAt: new Date(),
+        completionNotes: completionNotes || null
+      }
+    });
+
+    // Emit completion event
+    sprintEventEmitter.emitSprintEvent(SprintEvent.OBJECTIVE_COMPLETED, {
+      userId,
+      objectiveId,
+      data: {
+        totalDays,
+        totalHours,
+        completedAt: updatedObjective.completedAt
+      }
+    });
+
+    return {
+      objectiveId: updatedObjective.id,
+      status: updatedObjective.status,
+      completedAt: updatedObjective.completedAt!,
+      totalDays,
+      totalHours
+    };
+  }
 }
 
 export const objectiveService = new ObjectiveService();
+
+function isTechnicalAssessmentScore(value: unknown): value is TechnicalAssessmentScore {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.overall !== 'string') {
+    return false;
+  }
+
+  if (typeof record.score !== 'number') {
+    return false;
+  }
+
+  if (!record.flags || typeof record.flags !== 'object') {
+    return false;
+  }
+
+  return true;
+}

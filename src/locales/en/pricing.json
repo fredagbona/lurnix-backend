@@ -52,5 +52,14 @@
     "upgrade": "Upgrade now",
     "downgrade": "Change plan",
     "manage": "Manage subscription"
+  },
+  "api": {
+    "plans": {
+      "retrieved": "Subscription plans retrieved successfully"
+    },
+    "plan": {
+      "retrieved": "Plan pricing retrieved successfully"
+    },
+    "calculated": "Pricing calculated successfully"
   }
 }

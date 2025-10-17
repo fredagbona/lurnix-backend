@@ -2,6 +2,7 @@ import Groq from 'groq-sdk';
 import { createHash } from 'node:crypto';
 import { config } from '../config/environment.js';
 import { json } from 'node:stream/consumers';
+import type { AdaptivePlanMetadata } from './sprintAdaptationStrategy.js';
 
 export interface PlannerRequestPayload {
   objective: {
@@ -39,6 +40,7 @@ export interface PlannerRequestPayload {
     projectTitles?: string[];
     completionPercentage?: number | null;
   } | null;
+  adaptiveMetadata?: AdaptivePlanMetadata | null;
 }
 
 const SYSTEM_PROMPT = `You are Lurnix Planner, an expert at generating short, portfolio-first learning sprints.

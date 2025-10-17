@@ -61,6 +61,9 @@ export interface LearnerProfile {
   availability?: Prisma.JsonValue | null;
   blockers: string[];
   goals: string[];
+  technicalLevel?: Prisma.JsonValue | null;
+  assessmentVersion?: string | null;
+  assessmentCompletedAt?: Date | null;
   lastRefreshedAt: Date;
   rawSnapshot: Prisma.JsonValue;
   createdAt: Date;
@@ -96,6 +99,25 @@ export interface Objective {
   updatedAt: Date;
   roadmap?: Roadmap | null;
   profileSnapshot?: LearnerProfile | null;
+  contexts?: ObjectiveContext[];
+}
+
+export interface ObjectiveContext {
+  id: string;
+  objectiveId: string;
+  userId: string;
+  priorKnowledge?: Prisma.JsonValue | null;
+  relatedSkills?: Prisma.JsonValue | null;
+  urgency?: string | null;
+  specificDeadline?: Date | null;
+  depthPreference?: string | null;
+  focusAreas?: Prisma.JsonValue | null;
+  extractedSkills?: Prisma.JsonValue | null;
+  timeCommitmentHours?: number | null;
+  domainExperience?: string | null;
+  notes?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Sprint {
@@ -104,6 +126,7 @@ export interface Sprint {
   profileSnapshotId?: string | null;
   plannerInput: Prisma.JsonValue;
   plannerOutput: Prisma.JsonValue;
+  adaptiveMetadata?: Prisma.JsonValue | null;
   lengthDays: number;
   totalEstimatedHours: number;
   difficulty: SprintDifficulty;

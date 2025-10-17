@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import {
   Objective,
+  ObjectiveContext,
   Progress,
   Sprint,
   SprintArtifact,
@@ -18,6 +19,66 @@ export interface SprintProgressPayload {
   completedTasks: number;
   completedDays: number;
   scoreEstimate: number | null;
+}
+
+function serializeObjectiveContexts(contexts: ObjectiveContext[]): ObjectiveContextPayload[] {
+  if (!contexts.length) {
+    return [];
+  }
+
+  const sorted = [...contexts].sort((a, b) => {
+    const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+    const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+    return bTime - aTime;
+  });
+
+  return sorted.map((context) => ({
+    id: context.id,
+    priorKnowledge: jsonValueToStringArray(context.priorKnowledge),
+    relatedSkills: jsonValueToStringArray(context.relatedSkills),
+    focusAreas: jsonValueToStringArray(context.focusAreas),
+    extractedSkills: jsonValueToStringArray(context.extractedSkills),
+    urgency: context.urgency ?? null,
+    depthPreference: context.depthPreference ?? null,
+    specificDeadline: context.specificDeadline instanceof Date
+      ? context.specificDeadline.toISOString()
+      : context.specificDeadline
+        ? new Date(context.specificDeadline as unknown as string).toISOString()
+        : null,
+    timeCommitmentHours: typeof context.timeCommitmentHours === 'number' ? context.timeCommitmentHours : null,
+    domainExperience: context.domainExperience ?? null,
+    notes: context.notes ?? null,
+    createdAt: context.createdAt instanceof Date ? context.createdAt.toISOString() : new Date(context.createdAt).toISOString(),
+    updatedAt: context.updatedAt instanceof Date ? context.updatedAt.toISOString() : new Date(context.updatedAt).toISOString()
+  }));
+}
+
+function jsonValueToStringArray(value: Prisma.JsonValue | null | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string');
+  }
+
+  return [];
+}
+
+export interface ObjectiveContextPayload {
+  id: string;
+  priorKnowledge: string[];
+  relatedSkills: string[];
+  focusAreas: string[];
+  extractedSkills: string[];
+  urgency: string | null;
+  depthPreference: string | null;
+  specificDeadline: string | null;
+  timeCommitmentHours: number | null;
+  domainExperience: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SprintArtifactPayload {
@@ -72,6 +133,7 @@ export interface SprintUiPayload {
   completedAt: string | null;
   score: number | null;
   metadata: Record<string, unknown> | null;
+  adaptiveMetadata: Record<string, unknown> | null;
   evidence: {
     artifacts: SprintArtifactPayload[];
     selfEvaluation: { confidence?: number | null; reflection?: string | null } | null;
@@ -108,6 +170,8 @@ export interface ObjectiveUiPayload {
   createdAt: string;
   updatedAt: string;
   limits: ObjectiveSprintLimitPayload;
+  latestContext: ObjectiveContextPayload | null;
+  contextHistory: ObjectiveContextPayload[];
 }
 
 export interface ObjectiveWithRelations extends Objective {
@@ -118,6 +182,7 @@ export interface ObjectiveWithRelations extends Objective {
   currentDay?: number | null;
   completedDays?: number | null;
   progressPercentage?: number | null;
+  contexts?: ObjectiveContext[];
 }
 
 interface SprintPlanDetails {
@@ -129,6 +194,7 @@ interface SprintPlanDetails {
   adaptationNotes?: string | null;
   progress?: { completedTasks?: number; completedDays?: number; scoreEstimate?: number };
   metadata?: Record<string, unknown> | null;
+  adaptiveMetadata?: Record<string, unknown> | null;
 }
 
 interface SprintPlanOverride extends SprintPlanDetails {
@@ -170,6 +236,9 @@ export function serializeObjective(
   const sprintsPlanned = sprints.length;
   const percent = sprintsPlanned === 0 ? 0 : Math.round((sprintsDone / sprintsPlanned) * 100);
 
+  const contextHistory = serializeObjectiveContexts(objective.contexts ?? []);
+  const latestContext = contextHistory[0] ?? null;
+
   return {
     id: objective.id,
     title: objective.title,
@@ -199,7 +268,9 @@ export function serializeObjective(
     totalSprints: sprintsPlanned,
     createdAt: objective.createdAt.toISOString(),
     updatedAt: objective.updatedAt.toISOString(),
-    limits: options.limits
+    limits: options.limits,
+    latestContext,
+    contextHistory
   };
 }
 
@@ -263,12 +334,43 @@ export function serializeSprint(
     completedAt: sprint.completedAt ? sprint.completedAt.toISOString() : null,
     score: sprint.score ?? null,
     metadata: cloneMetadata(planDetails.metadata),
+    adaptiveMetadata: extractAdaptiveMetadata(sprint, planDetails),
     evidence: {
       artifacts: artifactPayloads,
       selfEvaluation
     },
     review
   };
+}
+
+function extractAdaptiveMetadata(
+  sprint: Sprint,
+  planDetails: SprintPlanDetails
+): Record<string, unknown> | null {
+  const fromSprint = resolveAdaptiveRecord(sprint.adaptiveMetadata);
+  if (fromSprint) {
+    return fromSprint;
+  }
+
+  const fromPlan = resolveAdaptiveRecord(planDetails.adaptiveMetadata);
+  if (fromPlan) {
+    return fromPlan;
+  }
+
+  const fromMetadata = resolveAdaptiveRecord(planDetails.metadata);
+  if (fromMetadata) {
+    const nested = (planDetails.metadata as Record<string, unknown>).adaptiveMetadata;
+    return resolveAdaptiveRecord(nested) ?? fromMetadata;
+  }
+
+  return null;
+}
+
+function resolveAdaptiveRecord(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return cloneMetadata(value as Record<string, unknown>);
+  }
+  return null;
 }
 
 function findCurrentSprint(sprints: Sprint[]): Sprint | null {
@@ -291,6 +393,7 @@ export function extractSprintPlanDetails(plannerOutput: JsonValue | null | undef
   const plan = selectPlanPayload(raw);
 
   const metadata = extractMetadata(raw, plan);
+  const adaptiveMetadata = extractPlanAdaptiveMetadata(raw, plan);
 
   return {
     title: typeof plan.title === 'string' ? plan.title : undefined,
@@ -300,7 +403,8 @@ export function extractSprintPlanDetails(plannerOutput: JsonValue | null | undef
     portfolioCards: Array.isArray(plan.portfolioCards) ? plan.portfolioCards : undefined,
     adaptationNotes: typeof plan.adaptationNotes === 'string' ? plan.adaptationNotes : undefined,
     progress: isRecord(plan.progress) ? (plan.progress as SprintPlanDetails['progress']) : undefined,
-    metadata
+    metadata,
+    adaptiveMetadata
   };
 }
 
@@ -321,6 +425,7 @@ function mergePlanDetails(
     adaptationNotes: override.adaptationNotes ?? details.adaptationNotes,
     progress: override.progress ?? details.progress,
     metadata: override.metadata ?? details.metadata,
+    adaptiveMetadata: override.adaptiveMetadata ?? details.adaptiveMetadata,
     lengthDays: override.lengthDays,
     totalEstimatedHours: override.totalEstimatedHours,
     difficulty: override.difficulty
@@ -344,6 +449,29 @@ function extractMetadata(
     return null;
   }
   return cloneMetadata(metadataSource as Record<string, unknown>);
+}
+
+function extractPlanAdaptiveMetadata(
+  raw: Record<string, unknown>,
+  plan: Record<string, unknown>
+): Record<string, unknown> | null {
+  const candidates = [raw.adaptiveMetadata, plan.adaptiveMetadata];
+
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+      return cloneMetadata(candidate as Record<string, unknown>);
+    }
+  }
+
+  const metadata = raw.metadata ?? plan.metadata;
+  if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
+    const nested = (metadata as Record<string, unknown>).adaptiveMetadata;
+    if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+      return cloneMetadata(nested as Record<string, unknown>);
+    }
+  }
+
+  return null;
 }
 
 function cloneMetadata(metadata?: Record<string, unknown> | null): Record<string, unknown> | null {

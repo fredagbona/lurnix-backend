@@ -50,9 +50,20 @@ export const initI18n = async () => {
         escapeValue: false, // React already safes from XSS
       },
       
-      // Disable debugging and logging
-      debug: false
+      // Enable debugging to see what's happening
+      debug: true
     });
+
+  // Verify pricing namespace is loaded
+  console.log('[i18n] Initialization complete');
+  console.log('[i18n] Available languages:', i18next.languages);
+  console.log('[i18n] Loaded namespaces:', i18next.options.ns);
+  
+  // Test pricing namespace
+  const testKey = 'pricing.plans.free.name';
+  const enTest = i18next.t(testKey, { lng: 'en', ns: 'pricing' });
+  const frTest = i18next.t(testKey, { lng: 'fr', ns: 'pricing' });
+  console.log('[i18n] Test translations:', { en: enTest, fr: frTest });
 
   return i18next;
 };

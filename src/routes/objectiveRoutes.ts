@@ -278,6 +278,28 @@ router.post(
 
 /**
  * @swagger
+ * /api/objectives/{objectiveId}/sprints/generation-status:
+ *   get:
+ *     summary: Get sprint generation status
+ *     description: Check if more sprints can be generated and why/why not
+ *     tags: [Objectives]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: objectiveId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Generation status retrieved successfully
+ */
+router.get('/:objectiveId/sprints/generation-status', authMiddleware, objectiveController.getSprintGenerationStatus.bind(objectiveController));
+
+/**
+ * @swagger
  * /api/objectives/{objectiveId}/sprints/{sprintId}:
  *   get:
  *     summary: Retrieve a sprint details
@@ -448,6 +470,68 @@ router.get(
   '/:objectiveId/sprints/:sprintId/review',
   authMiddleware,
   objectiveController.getSprintReview.bind(objectiveController)
+);
+
+/**
+ * @swagger
+ * /api/objectives/{objectiveId}/complete:
+ *   patch:
+ *     summary: Mark objective as completed
+ *     description: Allows user to manually mark an objective as completed when they feel they've mastered it
+ *     tags: [Objectives]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: objectiveId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               completionNotes:
+ *                 type: string
+ *                 description: Optional notes about what was learned or achieved
+ *     responses:
+ *       200:
+ *         description: Objective marked as completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     objectiveId:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       enum: [completed]
+ *                     completedAt:
+ *                       type: string
+ *                       format: date-time
+ *                     totalDays:
+ *                       type: integer
+ *                     totalHours:
+ *                       type: number
+ *       404:
+ *         description: Objective not found
+ */
+router.patch(
+  '/:objectiveId/complete',
+  authMiddleware,
+  objectiveController.completeObjective.bind(objectiveController)
 );
 
 export default router;

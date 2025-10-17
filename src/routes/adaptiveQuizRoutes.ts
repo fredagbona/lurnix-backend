@@ -12,10 +12,132 @@ const router = Router();
 
 /**
  * @swagger
+ * /api/quizzes:
+ *   get:
+ *     summary: List adaptive quizzes
+ *     description: Retrieve adaptive quizzes filtered by type, objective, or sprint. Responses honour the `Accept-Language` header (supported: `en`, `fr`).
+ *     tags: [Adaptive Quiz]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *         description: Optional quiz type filter (e.g. profile, pre_sprint)
+ *       - in: query
+ *         name: objectiveId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by objective ID
+ *       - in: query
+ *         name: sprintId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by sprint ID
+ *       - in: query
+ *         name: includeQuestions
+ *         schema:
+ *           type: boolean
+ *         description: When true, include localized question summaries and options
+ *       - in: header
+ *         name: Accept-Language
+ *         schema:
+ *           type: string
+ *           example: fr
+ *         description: Request locale for quiz metadata (defaults to `en`)
+ *     responses:
+ *       200:
+ *         description: Quizzes retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     quizzes:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           type:
+ *                             type: string
+ *                           title:
+ *                             type: string
+ *                             description: Localized quiz title
+ *                           description:
+ *                             type: string
+ *                             description: Localized quiz description
+ *                           passingScore:
+ *                             type: number
+ *                           timeLimit:
+ *                             type: number
+ *                             nullable: true
+ *                           attemptsAllowed:
+ *                             type: number
+ *                           blocksProgression:
+ *                             type: boolean
+ *                           isRequired:
+ *                             type: boolean
+ *                           objectiveId:
+ *                             type: string
+ *                             nullable: true
+ *                           sprintId:
+ *                             type: string
+ *                             nullable: true
+ *                           questions:
+ *                             type: array
+ *                             nullable: true
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 id:
+ *                                   type: string
+ *                                   format: uuid
+ *                                 type:
+ *                                   type: string
+ *                                 question:
+ *                                   type: string
+ *                                   description: Localized question prompt
+ *                                 options:
+ *                                   type: array
+ *                                   items:
+ *                                     type: object
+ *                                     properties:
+ *                                       id:
+ *                                         type: string
+ *                                       text:
+ *                                         type: string
+ *                                         description: Localized option text
+ */
+router.get(
+  '/',
+  authenticate,
+  adaptiveQuizController.listQuizzes
+);
+
+/**
+ * @swagger
  * /api/quizzes/{quizId}:
  *   get:
  *     summary: Get quiz by ID with questions
- *     description: Retrieve a quiz with all its questions for the user to take
+ *     description: Retrieve a quiz with all its questions for the user to take. Response content is localized per `Accept-Language` (supported: `en`, `fr`).
+ *     parameters:
+ *       - in: header
+ *         name: Accept-Language
+ *         schema:
+ *           type: string
+ *           example: fr
+ *         description: Request locale for quiz metadata (fallback `en`).
  *     tags: [Adaptive Quiz]
  *     security:
  *       - bearerAuth: []
@@ -49,6 +171,7 @@ const router = Router();
  *                           type: string
  *                         description:
  *                           type: string
+ *                           description: Localized quiz description
  *                         passingScore:
  *                           type: number
  *                         timeLimit:

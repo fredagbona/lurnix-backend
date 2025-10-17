@@ -138,7 +138,9 @@ export class SubscriptionController {
         throw new AppError('Authentication required', 401);
       }
 
-      const subscription = await subscriptionService.getCurrentSubscription(req.userId);
+      const language = (req as any).language || 'en';
+      const subscription = await subscriptionService.getCurrentSubscription(req.userId, language);
+      
       if (subscription) {
         res.status(200).json({
           success: true,
@@ -154,7 +156,7 @@ export class SubscriptionController {
         return;
       }
 
-      const planMeta = await planService.getPlanPricing('free', 'monthly');
+      const planMeta = await planService.getPlanPricing('free', 'monthly', language);
 
       res.status(200).json({
         success: true,

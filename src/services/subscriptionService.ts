@@ -5,6 +5,7 @@ import { AppError } from '../errors/AppError';
 import type { BillingCycle, PlanType, UserSubscriptionStatus } from '../prisma/prismaTypes';
 import { couponService } from './couponService';
 import { paddleService } from './paddleService';
+import { planService } from './planService';
 
 const BILLING_CYCLE_MONTHS: Record<BillingCycle, number> = {
   monthly: 1,
@@ -405,7 +406,7 @@ export class SubscriptionService {
     };
   }
 
-  async getCurrentSubscription(userId: string) {
+  async getCurrentSubscription(userId: string, language: string = 'en') {
     await this.ensureUserExists(userId);
 
     const activeStatuses: UserSubscriptionStatus[] = ['pending', 'active', 'paused'];
@@ -434,6 +435,25 @@ export class SubscriptionService {
 
     if (!subscription) {
       return null;
+    }
+
+    // Localize plan data
+    if (subscription.plan) {
+      const localizedPlan = await planService.getPlanPricing(
+        subscription.plan.planType,
+        subscription.plan.billingCycle,
+        language
+      );
+      
+      return {
+        ...subscription,
+        plan: {
+          ...subscription.plan,
+          name: localizedPlan.name,
+          description: localizedPlan.description,
+          features: localizedPlan.features
+        }
+      };
     }
 
     return subscription;

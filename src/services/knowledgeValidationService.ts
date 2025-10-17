@@ -1,6 +1,7 @@
 import { PrismaClient, QuizType, SkillDifficulty } from '@prisma/client';
 import quizGenerationService from './quizGenerationService.js';
 import skillTrackingService from './skillTrackingService.js';
+import { profileContextBuilder } from './profileContextBuilder.js';
 
 const prisma = new PrismaClient();
 
@@ -18,6 +19,7 @@ export interface QuizResult {
   skillScores: Record<string, number>;
   weakAreas: string[];
   recommendations: string[];
+  learnerProfileId?: string;
 }
 
 export interface ReadinessCheck {
@@ -186,11 +188,22 @@ class KnowledgeValidationService {
   }): Promise<QuizResult> {
     const { userId, quizId, answers, timeSpent } = params;
 
-    // Get quiz with questions
+    // Auto-detect user language from database
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { language: true }
+    });
+    const userLanguage = user?.language ?? 'en';
+
+    // Get quiz with questions and translations
     const quiz = await prisma.knowledgeQuiz.findUnique({
       where: { id: quizId },
       include: {
-        questions: true,
+        questions: {
+          include: {
+            translations: true
+          }
+        },
         attempts: {
           where: { userId },
           orderBy: { attemptNumber: 'desc' },
@@ -240,6 +253,63 @@ class KnowledgeValidationService {
       },
     });
 
+    const skillIds = Object.keys(gradeResult.skillScores);
+    const resolvedSkills = skillIds.length
+      ? await prisma.skill.findMany({
+          where: { id: { in: skillIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+
+    const skillNameMap = new Map(resolvedSkills.map((skill) => [skill.id, skill.name]));
+
+    const orderedSkills = skillIds
+      .map((skillId) => ({
+        id: skillId,
+        name: skillNameMap.get(skillId) ?? skillId,
+        score: gradeResult.skillScores[skillId],
+      }))
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+
+    const dominantStrengths = orderedSkills
+      .filter((entry) => typeof entry.score === 'number' && entry.score >= 70)
+      .slice(0, 5)
+      .map((entry) => entry.name);
+
+    const localizedWeakAreas = gradeResult.weakAreas.map((skillId) => skillNameMap.get(skillId) ?? skillId);
+
+    const profileAttributes = this.buildProfileAttributes({
+      quiz,
+      answers,
+      language: userLanguage
+    });
+
+    const computedProfile = {
+      quizId,
+      attemptId: attempt.id,
+      attemptNumber,
+      attemptsAllowed: quiz.attemptsAllowed,
+      quizType: quiz.type,
+      score: gradeResult.score,
+      passed: gradeResult.passed,
+      totalQuestions: gradeResult.totalQuestions,
+      correctAnswers: gradeResult.correctAnswers,
+      timeSpent,
+      strengths: dominantStrengths,
+      gaps: localizedWeakAreas,
+      challenges: localizedWeakAreas,
+      focusAreas: localizedWeakAreas,
+      recommendations: gradeResult.recommendations,
+      skillScores: orderedSkills,
+      ...profileAttributes
+    };
+
+    const learnerProfileSnapshot = await profileContextBuilder.recordSnapshotFromComputedProfile({
+      userId,
+      computedProfile,
+      quizResultId: attempt.id,
+    });
+
     return {
       attemptId: attempt.id,
       score: gradeResult.score,
@@ -250,6 +320,7 @@ class KnowledgeValidationService {
       skillScores: gradeResult.skillScores,
       weakAreas: gradeResult.weakAreas,
       recommendations: gradeResult.recommendations,
+      learnerProfileId: learnerProfileSnapshot.id,
     };
   }
 
@@ -350,6 +421,330 @@ class KnowledgeValidationService {
     };
   }
 
+  private buildProfileAttributes(params: {
+    quiz: any;
+    answers: Array<{ questionId: string; answer: any }>;
+    language: string;
+  }): Record<string, unknown> {
+    const { quiz, answers } = params;
+    const questionLookup = new Map<string, any>();
+    for (const question of quiz.questions ?? []) {
+      if (question && typeof question === 'object' && typeof question.id === 'string') {
+        questionLookup.set(question.id, question);
+      }
+    }
+    const answerLookup = new Map(answers.map((entry) => [entry.questionId, entry.answer]));
+
+    const singleSelection = (questionId: string): string | null => {
+      const rawAnswer = answerLookup.get(questionId);
+      if (rawAnswer === undefined || rawAnswer === null) {
+        return null;
+      }
+      if (typeof rawAnswer === 'string') {
+        return rawAnswer;
+      }
+      if (Array.isArray(rawAnswer)) {
+        return rawAnswer[0] ?? null;
+      }
+      if (typeof rawAnswer === 'object' && 'optionId' in rawAnswer && typeof rawAnswer.optionId === 'string') {
+        return rawAnswer.optionId;
+      }
+      return null;
+    };
+
+    const multiSelection = (questionId: string): string[] => {
+      const rawAnswer = answerLookup.get(questionId);
+      if (!rawAnswer) {
+        return [];
+      }
+      if (Array.isArray(rawAnswer)) {
+        return rawAnswer.filter((value) => typeof value === 'string');
+      }
+      if (typeof rawAnswer === 'object' && Array.isArray((rawAnswer as any).optionIds)) {
+        return (rawAnswer as any).optionIds.filter((value: unknown) => typeof value === 'string');
+      }
+      if (typeof rawAnswer === 'string') {
+        return [rawAnswer];
+      }
+      return [];
+    };
+
+    const optionLabel = (questionId: string, optionId: string | null): string | null => {
+      if (!optionId) {
+        return null;
+      }
+      const question = questionLookup.get(questionId) as any;
+      const options = Array.isArray(question?.options) ? question.options : [];
+      const match = options.find((option: any) => option.id === optionId);
+      
+      // Apply translation if available
+      if (match && params.language !== 'en') {
+        const translation = this.findQuestionTranslation(question, params.language);
+        if (translation?.options) {
+          const translatedOption = translation.options.find((opt: any) => opt.id === optionId);
+          if (translatedOption?.text) {
+            return translatedOption.text;
+          }
+        }
+      }
+      
+      return match?.text ?? optionId;
+    };
+
+    const HOURS_QUESTION_ID = '15f4a9bb-3f1f-4a4b-89a9-9b961c6e9bf0';
+    const WEEKLY_RHYTHM_QUESTION_ID = '2b2b7087-a686-4b0e-8859-9bb83250c0b4';
+    const ENERGY_PEAK_QUESTION_ID = '635758ae-84b8-4227-b336-5cd9744d01f9';
+    const CONTEXT_SWITCH_QUESTION_ID = '8099d9ce-2c2d-4adf-ae1f-b21af7d1f312';
+    const NOTE_STYLE_QUESTION_ID = 'e9d97f5f-f4f4-4928-9e30-4ce8e6fd2182';
+    const SUPPORT_CHANNELS_QUESTION_ID = '4c3de70a-6b8f-4f06-9563-9ecf794fa994';
+    const FOCUS_PREFERENCE_QUESTION_ID = '74a86960-3485-45c2-9cc2-fbff4ea002be';
+    const REVIEW_CADENCE_QUESTION_ID = '4fd14e66-f5d0-4c1f-a7f7-9d2519749031';
+    const TECH_PASSIONS_QUESTION_ID = 'c50ce6b4-5f18-4f2c-9483-4799cf5cad5c';
+    const PROJECT_ASPIRATION_QUESTION_ID = '0ea343c5-42f0-4c80-a1bb-fc74493540e7';
+    const CAREER_VISION_QUESTION_ID = '1cc3af79-0949-4a0d-808f-092534ec4977';
+    const BLOCKERS_QUESTION_ID = '1a4b3b7f-3bbf-460a-af27-f94503b9e862';
+    const TECH_PERSONA_QUESTION_ID = 'c225c5e1-d2fa-4ccd-9f2e-5e09e1988ab4';
+    const TIME_COMMITMENT_QUESTION_ID = 'd9dc6a5d-31ff-4c52-932b-9581f075c67b';
+    const MOTIVATION_SIGNAL_QUESTION_ID = '2c0bd51c-4f61-4cff-9b64-5d5c4290f5fb';
+    const LEARNING_PREFERENCE_QUESTION_ID = '70c6a603-68d7-4c0e-9f0a-91f1492d5f82';
+    const RETENTION_TECHNIQUE_QUESTION_ID = 'ae73f4ec-49ac-498f-b6da-91c7c7648c89';
+    const DEBUGGING_STRATEGY_QUESTION_ID = '26645b74-43c0-48bd-b7c3-780872e21e76';
+    const STUCK_RESPONSE_QUESTION_ID = '833dfa78-4412-46ac-8f0a-6ec323f53920';
+    const GROWTH_STRATEGY_QUESTION_ID = 'f72fdcae-310c-4acd-9f72-ba2f85e93ac7';
+    const PLANNING_SYSTEM_QUESTION_ID = 'c8e7936f-63b6-4ae9-9209-f1977570c5d1';
+
+    const hoursSelection = singleSelection(HOURS_QUESTION_ID);
+    const hoursPerWeekMap: Record<string, number> = {
+      under_5: 4,
+      '5_to_10': 8,
+      '10_to_15': 12,
+      over_15: 18,
+    };
+    const hoursPerWeek = hoursSelection ? hoursPerWeekMap[hoursSelection] ?? null : null;
+
+    const weeklyRhythmSelection = singleSelection(WEEKLY_RHYTHM_QUESTION_ID);
+    const weeklyRhythmLabel = optionLabel(WEEKLY_RHYTHM_QUESTION_ID, weeklyRhythmSelection);
+
+    const energyPeakSelection = singleSelection(ENERGY_PEAK_QUESTION_ID);
+    const energyPeakLabel = optionLabel(ENERGY_PEAK_QUESTION_ID, energyPeakSelection);
+
+    const contextSwitchSelection = singleSelection(CONTEXT_SWITCH_QUESTION_ID);
+    const contextSwitchLabel = optionLabel(CONTEXT_SWITCH_QUESTION_ID, contextSwitchSelection);
+
+    const noteStyleSelection = singleSelection(NOTE_STYLE_QUESTION_ID);
+    const noteStyleLabel = optionLabel(NOTE_STYLE_QUESTION_ID, noteStyleSelection);
+
+    const supportSelections = multiSelection(SUPPORT_CHANNELS_QUESTION_ID);
+    const supportLabels = supportSelections.map((selection) => optionLabel(SUPPORT_CHANNELS_QUESTION_ID, selection)).filter((label): label is string => Boolean(label));
+
+    const focusPreferenceSelection = singleSelection(FOCUS_PREFERENCE_QUESTION_ID);
+    const focusPreferenceLabel = optionLabel(FOCUS_PREFERENCE_QUESTION_ID, focusPreferenceSelection);
+
+    const reviewCadenceSelection = singleSelection(REVIEW_CADENCE_QUESTION_ID);
+    const reviewCadenceLabel = optionLabel(REVIEW_CADENCE_QUESTION_ID, reviewCadenceSelection);
+
+    const timeCommitmentSelection = singleSelection(TIME_COMMITMENT_QUESTION_ID);
+    const timeCommitmentLabel = optionLabel(TIME_COMMITMENT_QUESTION_ID, timeCommitmentSelection);
+
+    const passionSelections = [
+      { questionId: TECH_PASSIONS_QUESTION_ID, selection: singleSelection(TECH_PASSIONS_QUESTION_ID) },
+      { questionId: PROJECT_ASPIRATION_QUESTION_ID, selection: singleSelection(PROJECT_ASPIRATION_QUESTION_ID) },
+      { questionId: MOTIVATION_SIGNAL_QUESTION_ID, selection: singleSelection(MOTIVATION_SIGNAL_QUESTION_ID) },
+    ];
+
+    const passionTags = Array.from(
+      new Set(
+        passionSelections
+          .map(({ questionId, selection }) => optionLabel(questionId, selection))
+          .filter((label): label is string => Boolean(label))
+      )
+    );
+
+    const careerVisionSelection = singleSelection(CAREER_VISION_QUESTION_ID);
+    const careerVisionLabel = optionLabel(CAREER_VISION_QUESTION_ID, careerVisionSelection);
+    const projectAspirationLabel = optionLabel(PROJECT_ASPIRATION_QUESTION_ID, singleSelection(PROJECT_ASPIRATION_QUESTION_ID));
+    const goals = [careerVisionLabel, projectAspirationLabel].filter((label): label is string => Boolean(label));
+
+    const blockerSelection = singleSelection(BLOCKERS_QUESTION_ID);
+    const blockerLabel = optionLabel(BLOCKERS_QUESTION_ID, blockerSelection);
+    const blockers = blockerLabel ? [blockerLabel] : [];
+
+    const personaSelection = singleSelection(TECH_PERSONA_QUESTION_ID);
+    const personaLabel = optionLabel(TECH_PERSONA_QUESTION_ID, personaSelection);
+
+    const learningPreferenceSelection = singleSelection(LEARNING_PREFERENCE_QUESTION_ID);
+    const learningPreferenceLabel = optionLabel(LEARNING_PREFERENCE_QUESTION_ID, learningPreferenceSelection);
+    const learningPreferenceScores: Record<string, number> = {
+      visual: learningPreferenceSelection === 'visual_first' ? 100 : 0,
+      reading: learningPreferenceSelection === 'documentation_first' ? 100 : 0,
+      handsOn: learningPreferenceSelection === 'hands_on_first' ? 100 : 0,
+      social: learningPreferenceSelection === 'social_first' ? 100 : 0,
+    };
+
+    const retentionSelection = singleSelection(RETENTION_TECHNIQUE_QUESTION_ID);
+    const retentionLabel = optionLabel(RETENTION_TECHNIQUE_QUESTION_ID, retentionSelection);
+
+    const debuggingSelection = singleSelection(DEBUGGING_STRATEGY_QUESTION_ID);
+    const debuggingLabel = optionLabel(DEBUGGING_STRATEGY_QUESTION_ID, debuggingSelection);
+
+    const stuckResponseSelection = singleSelection(STUCK_RESPONSE_QUESTION_ID);
+    const stuckResponseLabel = optionLabel(STUCK_RESPONSE_QUESTION_ID, stuckResponseSelection);
+
+    const growthSelection = singleSelection(GROWTH_STRATEGY_QUESTION_ID);
+    const growthLabel = optionLabel(GROWTH_STRATEGY_QUESTION_ID, growthSelection);
+
+    const planningSelection = singleSelection(PLANNING_SYSTEM_QUESTION_ID);
+    const planningLabel = optionLabel(PLANNING_SYSTEM_QUESTION_ID, planningSelection);
+
+    const availabilityEntries: Record<string, unknown> = {};
+    if (hoursPerWeek !== null) {
+      availabilityEntries.hoursPerWeek = hoursPerWeek;
+    }
+    if (timeCommitmentLabel) {
+      availabilityEntries.timeCommitment = timeCommitmentLabel;
+    }
+    if (weeklyRhythmLabel) {
+      availabilityEntries.weeklyRhythm = weeklyRhythmLabel;
+    }
+    if (energyPeakLabel) {
+      availabilityEntries.energyPeak = energyPeakLabel;
+    }
+    if (focusPreferenceLabel) {
+      availabilityEntries.focusPreference = {
+        dominant: focusPreferenceSelection,
+        label: focusPreferenceLabel,
+      };
+    }
+    if (contextSwitchLabel) {
+      availabilityEntries.contextSwitch = contextSwitchLabel;
+    }
+    if (noteStyleLabel) {
+      availabilityEntries.noteStyle = noteStyleLabel;
+    }
+    if (supportLabels.length > 0) {
+      availabilityEntries.supportChannels = supportLabels;
+    }
+    if (reviewCadenceLabel) {
+      availabilityEntries.reviewCadence = reviewCadenceLabel;
+    }
+
+    const extras: Record<string, unknown> = {};
+
+    if (hoursPerWeek !== null) {
+      extras.hoursPerWeek = hoursPerWeek;
+    }
+
+    if (Object.keys(availabilityEntries).length > 0) {
+      extras.availability = availabilityEntries;
+    }
+
+    if (passionTags.length > 0) {
+      extras.passionTags = passionTags;
+    }
+
+    if (goals.length > 0) {
+      extras.goals = goals;
+    }
+
+    if (blockers.length > 0) {
+      extras.blockers = blockers;
+    }
+
+    if (personaSelection || personaLabel) {
+      extras.persona = {
+        key: personaSelection,
+        label: personaLabel,
+      };
+      extras.profileType = personaLabel ?? personaSelection;
+    }
+
+    extras.learningPreferences = {
+      dominant: learningPreferenceSelection,
+      label: learningPreferenceLabel,
+      scores: learningPreferenceScores,
+    };
+
+    if (retentionLabel) {
+      extras.retentionTechniques = {
+        dominant: retentionSelection,
+        label: retentionLabel,
+      };
+    }
+
+    if (debuggingLabel) {
+      extras.debuggingStrategy = {
+        dominant: debuggingSelection,
+        label: debuggingLabel,
+      };
+    }
+
+    if (stuckResponseLabel) {
+      extras.stuckResponse = {
+        defaultAction: stuckResponseLabel,
+      };
+    }
+
+    if (growthLabel) {
+      extras.growthStrategy = {
+        approach: growthLabel,
+      };
+    }
+
+    if (planningLabel) {
+      extras.planningSystems = {
+        preferred: planningLabel,
+      };
+    }
+
+    if (supportLabels.length > 0) {
+      extras.supportChannels = supportLabels;
+    }
+
+    if (reviewCadenceLabel) {
+      extras.reviewCadence = reviewCadenceLabel;
+    }
+
+    if (focusPreferenceLabel) {
+      extras.focusPreference = {
+        dominant: focusPreferenceSelection,
+        label: focusPreferenceLabel,
+      };
+      extras.dailyFocus = focusPreferenceLabel;
+    }
+
+    if (timeCommitmentLabel) {
+      extras.timeCommitment = timeCommitmentLabel;
+    }
+
+    if (learningPreferenceLabel) {
+      extras.style = learningPreferenceLabel;
+    }
+
+    if (hoursPerWeek !== null) {
+      extras.level = hoursPerWeek >= 15 ? 'Committed' : hoursPerWeek >= 10 ? 'Steady' : 'Flexible';
+    }
+
+    return extras;
+  }
+
+  /**
+   * Find translation for a question in the specified language
+   */
+  private findQuestionTranslation(question: any, language: string): any {
+    if (!question.translations || !Array.isArray(question.translations)) {
+      return null;
+    }
+    
+    // Try exact language match first
+    const exactMatch = question.translations.find((t: any) => t.language === language);
+    if (exactMatch) {
+      return exactMatch;
+    }
+    
+    // Fallback to English
+    return question.translations.find((t: any) => t.language === 'en') ?? null;
+  }
+
   /**
    * Grade individual answer
    */
@@ -376,24 +771,49 @@ class KnowledgeValidationService {
    * Grade multiple choice question
    */
   private gradeMultipleChoice(question: any, userAnswer: any): boolean {
-    if (!question.options || !userAnswer) return false;
+    if (!question.options) return false;
 
     const correctOption = question.options.find((opt: any) => opt.isCorrect);
-    return correctOption && userAnswer === correctOption.id;
+
+    if (!correctOption) {
+      // Survey question without a keyed correct answer; accept any provided choice
+      return typeof userAnswer === 'string' ? userAnswer.length > 0 : Boolean(userAnswer);
+    }
+
+    if (typeof userAnswer === 'string') {
+      return userAnswer === correctOption.id;
+    }
+
+    if (userAnswer && typeof userAnswer === 'object' && 'optionId' in userAnswer) {
+      return userAnswer.optionId === correctOption.id;
+    }
+
+    return false;
   }
 
   /**
    * Grade multiple select question
    */
   private gradeMultipleSelect(question: any, userAnswer: any): boolean {
-    if (!question.options || !Array.isArray(userAnswer)) return false;
+    if (!question.options) return false;
 
     const correctIds = question.options
       .filter((opt: any) => opt.isCorrect)
       .map((opt: any) => opt.id)
       .sort();
 
-    const userIds = [...userAnswer].sort();
+    const answerIds = Array.isArray(userAnswer)
+      ? [...userAnswer]
+      : userAnswer && typeof userAnswer === 'object' && 'optionIds' in userAnswer && Array.isArray(userAnswer.optionIds)
+        ? [...userAnswer.optionIds]
+        : [];
+
+    const userIds = answerIds.sort();
+
+    if (correctIds.length === 0) {
+      // No keyed correct answers; treat any response as acceptable
+      return userIds.length > 0;
+    }
 
     return JSON.stringify(correctIds) === JSON.stringify(userIds);
   }

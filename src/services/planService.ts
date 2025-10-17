@@ -3,6 +3,8 @@ import { prisma } from '../prisma/typedClient';
 import { AppError } from '../errors/AppError';
 import type { BillingCycle, PlanType } from '../prisma/prismaTypes';
 import { couponService } from './couponService';
+import { translateKey } from '../utils/translationUtils.js';
+import i18next from 'i18next';
 
 const decimalToNumber = (value: Prisma.Decimal): number => value.toNumber();
 
@@ -54,7 +56,32 @@ interface PricingCalculationResponse {
 }
 
 class PlanService {
-  async getPlans(): Promise<PlanResponse[]> {
+  private localizePlan(plan: PlanResponse, language: string): PlanResponse {
+    const planKey = plan.i18nKey;
+    
+    // Use i18next directly to get proper type handling for arrays
+    const name = i18next.t(`${planKey}.name`, { lng: language, ns: 'pricing' });
+    const description = i18next.t(`${planKey}.description`, { lng: language, ns: 'pricing' });
+    const bulletPoints = i18next.t(`${planKey}.bulletPoints`, { 
+      lng: language, 
+      ns: 'pricing',
+      returnObjects: true  // ← Important: tells i18next to return arrays as arrays
+    });
+    
+    // Only use translated values if they're not the key itself (meaning translation exists)
+    const localizedName = name !== `${planKey}.name` ? name : plan.name;
+    const localizedDescription = description !== `${planKey}.description` ? description : plan.description;
+    const localizedFeatures = Array.isArray(bulletPoints) ? bulletPoints : plan.features;
+    
+    return {
+      ...plan,
+      name: localizedName,
+      description: localizedDescription,
+      features: localizedFeatures
+    };
+  }
+
+  async getPlans(language: string = 'en'): Promise<PlanResponse[]> {
     try {
       const plans = await prisma.subscriptionPlan.findMany({
         where: {
@@ -101,10 +128,13 @@ class PlanService {
         });
       }
 
-      return Array.from(grouped.values()).map((plan) => ({
-        ...plan,
-        tiers: plan.tiers.sort((a, b) => a.commitmentMonths - b.commitmentMonths),
-      }));
+      return Array.from(grouped.values()).map((plan) => {
+        const sorted = {
+          ...plan,
+          tiers: plan.tiers.sort((a, b) => a.commitmentMonths - b.commitmentMonths),
+        };
+        return this.localizePlan(sorted, language);
+      });
     } catch (error) {
       throw new AppError(
         `Failed to load subscription plans: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -113,7 +143,7 @@ class PlanService {
     }
   }
 
-  async getPlanPricing(planType: PlanType, billingCycle?: BillingCycle): Promise<PlanResponse> {
+  async getPlanPricing(planType: PlanType, billingCycle?: BillingCycle, language: string = 'en'): Promise<PlanResponse> {
     try {
       if (billingCycle) {
         const plan = await prisma.subscriptionPlan.findUnique({
@@ -132,7 +162,7 @@ class PlanService {
         const planI18nKey = `pricing.plans.${plan.planType}`;
         const tierI18nKey = `${planI18nKey}.tiers.${plan.billingCycle}`;
 
-        return {
+        const planData = {
           planType: plan.planType,
           name: plan.name,
           description: plan.description ?? null,
@@ -153,6 +183,8 @@ class PlanService {
             },
           ],
         };
+        
+        return this.localizePlan(planData, language);
       }
 
       const plans = await prisma.subscriptionPlan.findMany({
@@ -188,7 +220,7 @@ class PlanService {
 
       const { name, description, features, limits } = plans[0];
 
-      return {
+      const planData = {
         planType,
         name,
         description: description ?? null,
@@ -197,6 +229,8 @@ class PlanService {
         i18nKey: planI18nKey,
         tiers,
       };
+      
+      return this.localizePlan(planData, language);
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
