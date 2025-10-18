@@ -29,6 +29,16 @@ export interface PlannerRequestPayload {
   currentPlan?: Record<string, unknown> | null;
   expansionGoal?: { targetLengthDays?: number | null; additionalMicroTasks?: number | null } | null;
   userLanguage?: string;
+  customInstructions?: string[];
+  previousSprint?: {
+    dayNumber: number;
+    title?: string | null;
+    summary?: string | null;
+    reflection?: string | null;
+    deliverables?: string[];
+    projectTitles?: string[];
+    completionPercentage?: number | null;
+  } | null;
 }
 
 const SYSTEM_PROMPT = `You are Lurnix Planner, an expert at generating short, portfolio-first learning sprints.
@@ -874,6 +884,9 @@ function buildPrompt(payload: PlannerRequestPayload): PromptBuildResult {
     : null;
 
   const context = payload.context ? JSON.parse(JSON.stringify(payload.context)) : null;
+  const customInstructions = Array.isArray(payload.customInstructions)
+    ? payload.customInstructions.filter((line) => typeof line === 'string' && line.trim().length > 0)
+    : [];
 
   const guidelines: string[] = [];
   if (mode === 'skeleton') {
@@ -889,6 +902,10 @@ function buildPrompt(payload: PlannerRequestPayload): PromptBuildResult {
   } else {
     guidelines.push('Preserve all existing projects and microTasks from CURRENT_PLAN. Do not modify their IDs or instructions.');
     guidelines.push('Append new microTasks and adjust metadata to satisfy the expansion goal while reflecting cumulative progress.');
+  }
+
+  if (customInstructions.length) {
+    guidelines.push(...customInstructions);
   }
 
   if (payload.allowedResources && payload.allowedResources.length) {
