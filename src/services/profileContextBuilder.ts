@@ -65,6 +65,9 @@ export interface SerializableLearnerProfile {
   availability?: Record<string, unknown> | null;
   blockers: string[];
   goals: string[];
+  technicalLevel?: Record<string, unknown> | null;
+  assessmentVersion?: string | null;
+  assessmentCompletedAt?: string | null;
   lastRefreshedAt: string;
   rawSnapshot: Record<string, unknown>;
   createdAt: string;
@@ -182,6 +185,9 @@ class ProfileContextBuilder {
       availability: this.normalizeJson(profile.availability),
       blockers: Array.isArray(profile.blockers) ? profile.blockers : [],
       goals: Array.isArray(profile.goals) ? profile.goals : [],
+      technicalLevel: this.normalizeJson(profile.technicalLevel),
+      assessmentVersion: profile.assessmentVersion ?? null,
+      assessmentCompletedAt: profile.assessmentCompletedAt?.toISOString?.() ?? null,
       lastRefreshedAt: profile.lastRefreshedAt?.toISOString?.() ?? new Date().toISOString(),
       rawSnapshot,
       createdAt: profile.createdAt.toISOString(),

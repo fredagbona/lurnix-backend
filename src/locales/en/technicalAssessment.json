@@ -1,0 +1,65 @@
+{
+  "questions": {
+    "codingExperience": {
+      "prompt": "Have you written code before?",
+      "options": {
+        "absolute_beginner": {
+          "label": "Never, I'm a complete beginner",
+          "helperText": "No prior coding experience or tooling familiarity."
+        },
+        "beginner": {
+          "label": "A little, I followed tutorials",
+          "helperText": "Some online tutorials or bootcamp exposure."
+        },
+        "intermediate": {
+          "label": "Yes, I have solid foundation",
+          "helperText": "Comfortable with core language concepts and tooling."
+        },
+        "advanced": {
+          "label": "Yes, I code regularly",
+          "helperText": "Professional or equivalent hands-on experience."
+        }
+      }
+    },
+    "toolExperience": {
+      "prompt": "Which development tools are you familiar with?",
+      "description": "Select every tool you feel confident using on your own.",
+      "options": {
+        "terminal": { "label": "Terminal / command line" },
+        "git": { "label": "Git / GitHub" },
+        "package_manager": { "label": "Package managers (npm, pip, etc.)" },
+        "devtools": { "label": "Browser developer tools" },
+        "none": { "label": "None of these" }
+      }
+    },
+    "programmingConcepts": {
+      "prompt": "Which programming concepts do you understand?",
+      "description": "Pick the concepts you can confidently explain to someone else.",
+      "options": {
+        "variables": { "label": "Variables and data types" },
+        "functions": { "label": "Functions and methods" },
+        "control_flow": { "label": "Loops and conditionals" },
+        "objects": { "label": "Objects and classes" },
+        "apis": { "label": "APIs and HTTP requests" },
+        "none": { "label": "I am not sure about these" }
+      }
+    },
+    "projectExperience": {
+      "prompt": "Have you built anything functional?",
+      "options": {
+        "0": { "label": "No, never" },
+        "1": { "label": "Yes, following a tutorial step-by-step" },
+        "2": { "label": "Yes, by adapting code I found online" },
+        "3": { "label": "Yes, from scratch using documentation" }
+      }
+    },
+    "environmentCheck": {
+      "prompt": "Environment & workflow readiness",
+      "description": "Let us know what you already have set up.",
+      "items": {
+        "hasCodeEditor": { "label": "I have a code editor installed (VS Code, etc.)" },
+        "terminalComfortable": { "label": "I am comfortable using the terminal/command line" }
+      }
+    }
+  }
+}

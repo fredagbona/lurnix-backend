@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { createObjectiveSchema, expandSprintSchema, generateSprintSchema } from '../validation/objectiveSchemas.js';
 import { submitSprintEvidenceSchema, reviewSprintSchema } from '../validation/reviewerSchemas.js';
 import { objectiveService } from '../services/objectiveService.js';
+import { sprintAutoGenerationService } from '../services/sprintAutoGenerationService.js';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { sendTranslatedResponse } from '../utils/translationUtils.js';
 
@@ -72,7 +73,8 @@ export class ObjectiveController {
       learnerProfileId: validation.data.learnerProfileId,
       successCriteria: validation.data.successCriteria,
       requiredSkills: validation.data.requiredSkills,
-      priority: validation.data.priority
+      priority: validation.data.priority,
+      context: validation.data.context
     });
 
     sendTranslatedResponse(res, 'objectives.create.success', {
@@ -323,6 +325,57 @@ export class ObjectiveController {
       statusCode: 200,
       data: result
     });
+  }
+
+  async completeObjective(req: AuthRequest, res: Response): Promise<void> {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
+
+    const { objectiveId } = req.params;
+    const { completionNotes } = req.body;
+
+    const result = await objectiveService.completeObjective({
+      userId: req.userId,
+      objectiveId,
+      completionNotes
+    });
+
+    sendTranslatedResponse(res, 'objectives.completed', {
+      statusCode: 200,
+      data: result
+    });
+  }
+
+  async getSprintGenerationStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { objectiveId } = req.params;
+      const userId = req.userId;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+          timestamp: new Date().toISOString()
+        });
+        return;
+      }
+
+      const status = await sprintAutoGenerationService.getGenerationStatus(objectiveId);
+
+      res.json({
+        success: true,
+        data: status,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 }
 

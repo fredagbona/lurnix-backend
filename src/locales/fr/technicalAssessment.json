@@ -1,0 +1,65 @@
+{
+  "questions": {
+    "codingExperience": {
+      "prompt": "As-tu déjà écrit du code ?",
+      "options": {
+        "absolute_beginner": {
+          "label": "Jamais, je suis un grand débutant",
+          "helperText": "Aucune expérience préalable du code ou des outils."
+        },
+        "beginner": {
+          "label": "Un peu, j'ai suivi quelques tutoriels",
+          "helperText": "Quelques tutoriels en ligne ou une initiation."
+        },
+        "intermediate": {
+          "label": "Oui , j'ai des bases solides",
+          "helperText": "À l'aise avec les concepts principaux et les outils."
+        },
+        "advanced": {
+          "label": "Oui , je code régulièrement",
+          "helperText": "Expérience professionnelle ou équivalente."
+        }
+      }
+    },
+    "toolExperience": {
+      "prompt": "Quels outils de développement maîtrises-tu ?",
+      "description": "Sélectionne tous les outils que tu peux utiliser de manière autonome.",
+      "options": {
+        "terminal": { "label": "Terminal / ligne de commande" },
+        "git": { "label": "Git / GitHub" },
+        "package_manager": { "label": "Gestionnaires de paquets (npm, pip, etc.)" },
+        "devtools": { "label": "Outils développeur du navigateur" },
+        "none": { "label": "Aucun de ces outils" }
+      }
+    },
+    "programmingConcepts": {
+      "prompt": "Quels concepts de programmation comprends-tu ?",
+      "description": "Choisis les concepts que tu peux expliquer à quelqu'un.",
+      "options": {
+        "variables": { "label": "Variables et types de données" },
+        "functions": { "label": "Fonctions et méthodes" },
+        "control_flow": { "label": "Boucles et conditionnels" },
+        "objects": { "label": "Objets et classes" },
+        "apis": { "label": "APIs et requêtes HTTP" },
+        "none": { "label": "Je ne suis pas sûr" }
+      }
+    },
+    "projectExperience": {
+      "prompt": "As-tu déjà construit quelque chose de fonctionnel ?",
+      "options": {
+        "0": { "label": "Non, jamais" },
+        "1": { "label": "Oui, en suivant un tutoriel étape par étape" },
+        "2": { "label": "Oui, en adaptant du code trouvé en ligne" },
+        "3": { "label": "Oui, à partir de la documentation" }
+      }
+    },
+    "environmentCheck": {
+      "prompt": "Préparation de ton environnement",
+      "description": "Dis-nous ce que tu as déjà configuré.",
+      "items": {
+        "hasCodeEditor": { "label": "J'ai installé un éditeur de code (VS Code, etc.)" },
+        "terminalComfortable": { "label": "Je suis à l'aise avec le terminal / la ligne de commande" }
+      }
+    }
+  }
+}

@@ -194,14 +194,14 @@
           "micro_bursts": "Micro-sessions courtes (20–30 min) avec des pauses fréquentes",
           "steady_blocks": "Blocs réguliers (45–60 min) à cadence constante",
           "deep_immersion": "Immersion profonde (90+ min) pour rester dans la zone",
-          "flexible_flow": "Flux flexible — je change selon mon énergie"
+          "flexible_flow": "Flux flexible, je change selon mon énergie"
         }
       },
       "context_switch_energy": {
         "title": "Comment gères-tu les changements de contexte ?",
         "description": "Certains adorent varier, d'autres perdent le fil.",
         "options": {
-          "low_switch": "Je perds mon rythme — minimisons les changements",
+          "low_switch": "Je perds mon rythme, minimisons les changements",
           "moderate_switch": "Je gère quelques contextes sans souci",
           "high_switch": "J'adore varier et pivoter rapidement"
         }
@@ -220,10 +220,10 @@
         "title": "Comment préfères-tu planifier ta semaine d'apprentissage ?",
         "description": "Ton style de planning influence la structure des sprints.",
         "options": {
-          "daily_checklist": "Checklist quotidienne — cocher des tâches chaque jour",
-          "weekly_map": "Carte hebdo — fixer des objectifs en début de semaine",
-          "kanban_flow": "Flux Kanban — faire avancer des cartes",
-          "freestyle": "Freestyle — intuitif et flexible"
+          "daily_checklist": "Checklist quotidienne, cocher des tâches chaque jour",
+          "weekly_map": "Carte hebdo, fixer des objectifs en début de semaine",
+          "kanban_flow": "Flux Kanban, faire avancer des cartes",
+          "freestyle": "Freestyle, intuitif et flexible"
         }
       },
       "review_cadence": {
@@ -284,7 +284,7 @@
           "consistent_blocks": "Blocs réguliers répartis sur la semaine",
           "short_sprints": "Courtes sessions en semaine (ex : 30 min deux fois par jour)",
           "weekend_push": "Gros focus le week-end et semaines plus légères",
-          "unpredictable_flow": "Flux imprévisible — varie selon les semaines"
+          "unpredictable_flow": "Flux imprévisible, varie selon les semaines"
         }
       }
     },

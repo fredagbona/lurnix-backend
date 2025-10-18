@@ -1,0 +1,231 @@
+{
+  "title": "Onboarding Adaptatif Brain",
+  "description": "Dis-nous comment tu aimes apprendre",
+  "questions": {
+    "70c6a603-68d7-4c0e-9f0a-91f1492d5f82": {
+      "prompt": "Quand tu découvres un nouveau framework, quelle est ta première action ?",
+      "options": {
+        "visual_first": "Je regarde un aperçu vidéo ou une démo",
+        "documentation_first": "Je lis d'abord la documentation officielle",
+        "hands_on_first": "Je clone le dépôt et j'expérimente directement",
+        "social_first": "Je demande les bonnes pratiques à l'équipe ou à la communauté"
+      }
+    },
+    "26645b74-43c0-48bd-b7c3-780872e21e76": {
+      "prompt": "Comment débogues-tu généralement un bug tenace ?",
+      "options": {
+        "analytical_debug": "J'analyse la pile et les traces jusqu'à trouver la cause",
+        "experimental_debug": "Je teste plusieurs approches jusqu'à ce que ça marche",
+        "community_debug": "Je demande de l'aide pour avoir d'autres perspectives",
+        "reflective_debug": "Je fais une pause et j'y reviens avec un esprit frais"
+      }
+    },
+    "ae73f4ec-49ac-498f-b6da-91c7c7648c89": {
+      "prompt": "Qu'est-ce qui t'aide le plus à retenir un nouveau concept ?",
+      "options": {
+        "visual_memory": "Des schémas, diagrammes ou explications visuelles",
+        "practical_memory": "Construire quelque chose ou pratiquer immédiatement",
+        "social_memory": "En parler ou l'enseigner à quelqu'un",
+        "analytical_memory": "Lire et analyser une explication détaillée"
+      }
+    },
+    "8d8e7002-78a8-4058-9898-155e53092fa5": {
+      "prompt": "Comment préfères-tu démarrer un nouveau projet ?",
+      "options": {
+        "ui_first": "Je conçois l'interface ou l'expérience d'abord",
+        "architecture_first": "Je définis l'architecture et les flux de données",
+        "mvp_first": "Je livre une version minimale puis j'itère",
+        "research_first": "Je fais des recherches avant d'écrire du code"
+      }
+    },
+    "1cc3af79-0949-4a0d-808f-092534ec4977": {
+      "prompt": "Quel est ton rêve à long terme avec le code ?",
+      "options": {
+        "impact_global": "Créer quelque chose qui a un impact mondial",
+        "freedom_lifestyle": "Obtenir la liberté de travailler où et quand tu veux",
+        "intellectual_challenge": "Résoudre des problèmes techniques fascinants",
+        "creative_expression": "Exprimer ta créativité via des produits interactifs",
+        "team_growth": "Grandir, mentorer et diriger des équipes inspirantes"
+      }
+    },
+    "1a4b3b7f-3bbf-460a-af27-f94503b9e862": {
+      "prompt": "Qu'est-ce qui casse le plus vite ta dynamique d'apprentissage ?",
+      "options": {
+        "impatient_practical": "Trop de théorie sans passage à la pratique",
+        "need_theory": "Ne pas assez expliquer le \"pourquoi\"",
+        "need_examples": "Manquer d'exemples concrets",
+        "need_time": "Pas assez de temps focalisé",
+        "need_community": "Apprendre seul sans échange"
+      }
+    },
+    "2c0bd51c-4f61-4cff-9b64-5d5c4290f5fb": {
+      "prompt": "Quand te sens-tu le plus accompli après une session ?",
+      "options": {
+        "clean_execution": "Quand tout fonctionne parfaitement",
+        "completion_focus": "Quand je termine ce que j'avais prévu",
+        "teaching_satisfaction": "Quand je peux l'expliquer à quelqu'un",
+        "problem_solving_satisfaction": "Quand je résous un bug compliqué",
+        "innovation_satisfaction": "Quand j'ai une idée originale qui marche"
+      }
+    },
+    "d9dc6a5d-31ff-4c52-932b-9581f075c67b": {
+      "prompt": "Combien de temps concentré peux-tu investir chaque semaine ?",
+      "options": {
+        "intensive_time": "20 heures ou plus – c'est ma priorité principale",
+        "balanced_time": "10 à 20 heures – un rythme régulier",
+        "constrained_time": "5 à 10 heures – surtout soirs et week-ends",
+        "irregular_time": "Ça varie beaucoup selon les semaines"
+      }
+    },
+    "c50ce6b4-5f18-4f2c-9483-4799cf5cad5c": {
+      "prompt": "Quel type de démo te ferait le plus vibrer ?",
+      "options": {
+        "ui_excitement": "Une interface ultra soignée et animée",
+        "ai_excitement": "Une IA qui génère du code ou répond en direct",
+        "data_excitement": "Des insights interactifs à partir de données",
+        "backend_excitement": "Une API ultra scalable et robuste",
+        "interactive_excitement": "Une expérience immersive et interactive",
+        "security_excitement": "Un système qui bloque des attaques en temps réel"
+      }
+    },
+    "0ea343c5-42f0-4c80-a1bb-fc74493540e7": {
+      "prompt": "Quel serait ton premier projet phare idéal ?",
+      "options": {
+        "mobile_app_dream": "Une app mobile que tes proches utilisent",
+        "website_cause_dream": "Un site pour une cause qui compte pour toi",
+        "automation_dream": "Un outil qui automatise une corvée",
+        "game_dream": "Un jeu ou une expérience interactive fun",
+        "dashboard_dream": "Un tableau de bord riche en données",
+        "opensource_dream": "Contribuer à un projet open source"
+      }
+    },
+    "c225c5e1-d2fa-4ccd-9f2e-5e09e1988ab4": {
+      "prompt": "Quelle personnalité tech te décrit le mieux aujourd'hui ?",
+      "options": {
+        "designer_dev": "Designer-Dev : d'abord l'UI et l'expérience",
+        "problem_solver": "Problem Solver : donne-moi un défi technique",
+        "experimenter": "Expérimentateur : j'adore prototyper et tester",
+        "team_builder": "Team Builder : la collaboration me booste",
+        "system_architect": "Architecte Système : je pense en composants et flux"
+      }
+    },
+    "833dfa78-4412-46ac-8f0a-6ec323f53920": {
+      "prompt": "Quand tu es bloqué, quelle est ta réaction par défaut ?",
+      "options": {
+        "knowledge_builder": "Je revois les bases ou la doc",
+        "experimenting_solver": "Je teste plusieurs pistes rapidement",
+        "social_connector": "Je contacte mentors ou pairs",
+        "reflective_pauser": "Je fais une pause pour revenir structuré"
+      }
+    },
+    "f72fdcae-310c-4acd-9f72-ba2f85e93ac7": {
+      "prompt": "Quand ta progression stagne, que fais-tu ?",
+      "options": {
+        "foundation_strengthener": "Je consolide les fondamentaux",
+        "new_challenge_seeker": "Je me lance un défi plus ambitieux",
+        "reflection_planner": "Je réfléchis, je documente et j'ajuste",
+        "coaching_candidate": "Je cherche du feedback ou du coaching"
+      }
+    },
+    "74a86960-3485-45c2-9cc2-fbff4ea002be": {
+      "prompt": "Comment préfères-tu organiser tes sessions de focus ?",
+      "options": {
+        "micro_bursts": "Courtes sessions type Pomodoro",
+        "deep_blocks": "Longs blocs de travail profond",
+        "paired_sessions": "Sessions en binôme ou coworking",
+        "flexible_flows": "Je m'adapte selon l'énergie du jour"
+      }
+    },
+    "c8e7936f-63b6-4ae9-9209-f1977570c5d1": {
+      "prompt": "Comment gardes-tu ton planning sur les rails ?",
+      "options": {
+        "daily_checklist": "Checklists quotidiennes",
+        "weekly_milestones": "Objectifs hebdomadaires",
+        "kanban_flow": "Tableau Kanban ou tâches visuelles",
+        "retrospective_planning": "Je planifie après avoir fait un retour sur la semaine"
+      }
+    },
+    "15f4a9bb-3f1f-4a4b-89a9-9b961c6e9bf0": {
+      "prompt": "Combien d'heures par semaine peux-tu consacrer à apprendre ?",
+      "options": {
+        "under_5": "Moins de 5 heures",
+        "5_to_10": "Entre 5 et 10 heures",
+        "10_to_15": "Entre 10 et 15 heures",
+        "over_15": "Plus de 15 heures"
+      }
+    },
+    "2b2b7087-a686-4b0e-8859-9bb83250c0b4": {
+      "prompt": "Quel rythme hebdomadaire te ressemble le plus ?",
+      "options": {
+        "structured_flow": "Structuré – routine régulière",
+        "unpredictable_flow": "Imprévisible – chaque semaine est différente",
+        "weekend_warrior": "Weekend warrior – gros focus le week-end",
+        "surge_then_rest": "Sprints intenses suivis de pauses"
+      }
+    },
+    "635758ae-84b8-4227-b336-5cd9744d01f9": {
+      "prompt": "Quand as-tu naturellement le plus d'énergie ?",
+      "options": {
+        "morning_sprinter": "Petit matin – je démarre fort",
+        "afternoon_builder": "Après-midi – une fois chauffé",
+        "evening_grinder": "Soir – je suis productif après le travail",
+        "night_owl": "Nuit – les heures calmes me boostent"
+      }
+    },
+    "8099d9ce-2c2d-4adf-ae1f-b21af7d1f312": {
+      "prompt": "Comment gères-tu les changements de contexte entre tâches ?",
+      "options": {
+        "high_switch": "J'adore jongler entre plusieurs sujets",
+        "moderate_switch": "Je peux alterner quelques tâches sans stress",
+        "low_switch": "Je préfère finir une chose avant l'autre",
+        "single_track": "J'ai besoin d'un focus unique sinon je me perds"
+      }
+    },
+    "e9d97f5f-f4f4-4928-9e30-4ce8e6fd2182": {
+      "prompt": "Quelle est ta méthode de prise de notes préférée ?",
+      "options": {
+        "long_form_journal": "Journal détaillé ou texte long",
+        "structured_docs": "Docs structurés avec sections",
+        "bullet_snippets": "Listes rapides ou bullet points",
+        "visual_whiteboards": "Tableaux blancs, cartes mentales ou visuels"
+      }
+    },
+    "c8680703-1599-4a30-8f48-d6d76012bb20": {
+      "prompt": "Comment rebondis-tu après un revers ?",
+      "options": {
+        "analytical_post_mortem": "Je fais un post-mortem pour tirer les leçons",
+        "quick_reset": "Je me remets rapidement en action",
+        "mentor_sync": "J'en parle avec un mentor ou un pair",
+        "rest_recover": "Je prends un temps de repos avant de revenir"
+      }
+    },
+    "2b4d812b-61a1-4074-8dfe-37f3351c66a0": {
+      "prompt": "Qu'est-ce qui te rend le plus responsable de tes objectifs ?",
+      "options": {
+        "public_share": "Partager mes progrès publiquement",
+        "mentor_checkins": "Des points réguliers avec un mentor",
+        "peer_standups": "Des stand-ups ou cercles d'entraide",
+        "private_metrics": "Mesurer moi-même mes métriques"
+      }
+    },
+    "4c3de70a-6b8f-4f06-9563-9ecf794fa994": {
+      "prompt": "Quels canaux de soutien t'attirent le plus ?",
+      "options": {
+        "mentorship": "Mentorat 1:1 ou coaching",
+        "study_buddy": "Binôme d'étude ou pair programming",
+        "asynchronous_forum": "Forum asynchrone ou communauté",
+        "office_hours": "Office hours programmées",
+        "self_reliant": "Je suis plutôt autonome"
+      }
+    },
+    "4fd14e66-f5d0-4c1f-a7f7-9d2519749031": {
+      "prompt": "Quel est ton rythme idéal de planification des sprints ?",
+      "options": {
+        "daily_sync": "Synchronisation quotidienne",
+        "twice_weekly": "Deux points planification par semaine",
+        "weekly_planning": "Planification hebdomadaire",
+        "async_updates": "Mises à jour async avec des revues ponctuelles"
+      }
+    }
+  }
+}

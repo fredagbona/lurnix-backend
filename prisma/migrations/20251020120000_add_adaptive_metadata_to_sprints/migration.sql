@@ -1,0 +1,1 @@
+-- Placeholder migration deprecated in favor of 20251020121500_add_adaptive_metadata_to_sprints.

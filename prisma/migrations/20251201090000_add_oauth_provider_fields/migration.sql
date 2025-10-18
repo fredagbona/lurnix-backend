@@ -6,6 +6,10 @@ ALTER TABLE "User"
   ADD COLUMN "avatar" TEXT,
   ALTER COLUMN "password_hash" DROP NOT NULL;
 
+
+
+-- Adaptive metadata column addition handled in later migration; placeholder for reference.
+
 -- Ensure provider identifiers remain unique when present
 CREATE UNIQUE INDEX "User_googleId_key" ON "User"("googleId");
 CREATE UNIQUE INDEX "User_githubId_key" ON "User"("githubId");

@@ -2,6 +2,7 @@ import { db } from '../src/prisma/prismaWrapper';
 import { seedSubscriptionPlans } from './seeds/subscriptionSeed';
 import { seedCoupons } from './seeds/couponSeed';
 import { seedQuizData } from './seeds/quizSeed';
+import { seedAdaptiveQuizzes } from './seeds/adaptiveQuizSeed';
 
 async function main() {
   console.log('Starting seeding...');
@@ -20,6 +21,9 @@ async function main() {
   
   // Seed quiz data using the new structured approach
   await seedQuizData();
+
+  // Seed adaptive knowledge quizzes
+  await seedAdaptiveQuizzes();
   
   // Seed subscription plans
   await seedSubscriptionPlans();

@@ -9,6 +9,7 @@ import {
 } from './plannerClient.js';
 import { ProfileContext } from './profileContextBuilder.js';
 import { config } from '../config/environment.js';
+import type { AdaptivePlanMetadata } from './sprintAdaptationStrategy.js';
 
 export type SprintPlanMode = 'skeleton' | 'expansion';
 
@@ -47,6 +48,7 @@ export interface GenerateSprintPlanInput {
   userLanguage?: string;
   customInstructions?: string[];
   previousSprint?: PreviousSprintContext | null;
+  adaptiveMetadata?: AdaptivePlanMetadata | null;
 }
 
 type EvidenceRubric = {
@@ -149,7 +151,7 @@ const sprintPlanCoreSchema = z.object({
       video: z.string().optional()
     }).optional()
   })).optional(),
-  adaptationNotes: z.string().min(5)
+  adaptationNotes: z.string().min(5).optional()
 });
 
 export type SprintPlanCore = z.infer<typeof sprintPlanCoreSchema>;
@@ -289,11 +291,11 @@ interface PlannerPlanMetadataInput {
 export interface SprintPlan extends SprintPlanCore {
   plannerOutput: Record<string, unknown>;
   metadata: PlannerPlanMetadata;
+  adaptiveMetadata?: AdaptivePlanMetadata | null;
 }
 
 class PlannerSchemaValidationError extends Error {
   readonly issues: z.ZodIssue[];
-
   constructor(issues: z.ZodIssue[]) {
     super('Planner response failed schema validation');
     this.name = 'PlannerSchemaValidationError';
@@ -340,8 +342,14 @@ class PlannerService {
         return {
           ...corePlan,
           id: planId,
-          plannerOutput: this.enrichPlannerOutput(remoteResult.plan, metadata, input.profileContext),
-          metadata
+          plannerOutput: this.enrichPlannerOutput(
+            remoteResult.plan,
+            metadata,
+            input.profileContext,
+            input.adaptiveMetadata
+          ),
+          metadata,
+          adaptiveMetadata: input.adaptiveMetadata ?? null
         };
       } catch (error) {
         lastError = error;
@@ -379,6 +387,12 @@ class PlannerService {
     planId: string
   ): SprintPlanCore {
     const sanitizedPlan = ensureProjectEvidenceRubrics(rawPlan);
+    
+    // Add fallback for missing adaptationNotes
+    if (sanitizedPlan && typeof sanitizedPlan === 'object' && !('adaptationNotes' in sanitizedPlan)) {
+      (sanitizedPlan as any).adaptationNotes = this.buildAdaptationNotes(input, input.mode ?? 'skeleton');
+    }
+    
     const parsed = sprintPlanCoreSchema.safeParse(sanitizedPlan);
     if (!parsed.success) {
       throw new PlannerSchemaValidationError(parsed.error.issues);
@@ -575,6 +589,7 @@ class PlannerService {
       previousSprint: input.previousSprint
         ? JSON.parse(JSON.stringify(input.previousSprint))
         : null,
+      adaptiveMetadata: input.adaptiveMetadata ?? null,
       context: {
         plannerVersion,
         requestedAt: requestedAt.toISOString(),
@@ -587,7 +602,8 @@ class PlannerService {
         customInstructions: input.customInstructions ?? [],
         previousSprint: input.previousSprint
           ? JSON.parse(JSON.stringify(input.previousSprint))
-          : null
+          : null,
+        adaptiveMetadata: input.adaptiveMetadata ?? null
       }
     };
   }
@@ -610,7 +626,7 @@ class PlannerService {
         ? (sanitizedCurrentPlan.projects as SprintProjectPlan[])
         : this.buildFallbackProjects(planId, projectId, input, difficulty);
 
-    const microTasks = this.buildFallbackMicroTasks({
+    let microTasks = this.buildFallbackMicroTasks({
       planId,
       projectId,
       input,
@@ -618,6 +634,18 @@ class PlannerService {
       mode,
       currentPlan: sanitizedCurrentPlan
     });
+
+    // Inject environment setup tasks for absolute beginners
+    if (input.adaptiveMetadata?.inputs?.needsEnvironmentSetup) {
+      const setupTasks = this.buildEnvironmentSetupTasks(planId, projectId);
+      microTasks = [...setupTasks, ...microTasks];
+    }
+
+    // Inject terminal intro tasks if needed
+    if (input.adaptiveMetadata?.inputs?.needsTerminalIntro && !input.adaptiveMetadata?.inputs?.needsEnvironmentSetup) {
+      const terminalTask = this.buildTerminalIntroTask(planId, projectId);
+      microTasks = [terminalTask, ...microTasks];
+    }
 
     const totalEstimatedHours = this.resolveFallbackHours(
       input,
@@ -666,7 +694,8 @@ class PlannerService {
       microTasks,
       portfolioCards,
       adaptationNotes,
-      metadata
+      metadata,
+      adaptiveMetadata: input.adaptiveMetadata ?? null
     };
 
     return {
@@ -682,7 +711,8 @@ class PlannerService {
       portfolioCards,
       adaptationNotes,
       plannerOutput,
-      metadata
+      metadata,
+      adaptiveMetadata: input.adaptiveMetadata ?? null
     };
   }
 
@@ -708,7 +738,8 @@ class PlannerService {
   private enrichPlannerOutput(
     rawPlan: unknown,
     metadata: PlannerPlanMetadata,
-    profileContext?: ProfileContext
+    profileContext?: ProfileContext,
+    adaptiveMetadata?: AdaptivePlanMetadata | null
   ): Record<string, unknown> {
     const payload = this.deepClone(rawPlan);
     payload.metadata = metadata;
@@ -719,6 +750,9 @@ class PlannerService {
     }
     if (profileContext) {
       payload.profileContext = profileContext;
+    }
+    if (adaptiveMetadata) {
+      payload.adaptiveMetadata = adaptiveMetadata;
     }
     return payload;
   }
@@ -734,6 +768,95 @@ class PlannerService {
       console.warn('[plannerService] Failed to clone planner payload, returning shallow copy');
       return {};
     }
+  }
+
+  private buildEnvironmentSetupTasks(planId: string, projectId: string): SprintMicroTaskPlan[] {
+    return [
+      {
+        id: `${planId}_setup_editor`,
+        projectId,
+        title: 'Install and configure code editor',
+        type: 'concept',
+        estimatedMinutes: 30,
+        instructions: 'Download and install VS Code (or your preferred editor). Install essential extensions: ESLint, Prettier, GitLens. Verify the editor opens and you can create a test file.',
+        acceptanceTest: {
+          type: 'checklist',
+          spec: [
+            'Code editor installed and launches successfully',
+            'At least 2 essential extensions installed',
+            'Created and saved a test file'
+          ]
+        },
+        resources: [
+          'https://code.visualstudio.com/download',
+          'https://code.visualstudio.com/docs/editor/extension-marketplace'
+        ]
+      },
+      {
+        id: `${planId}_setup_terminal`,
+        projectId,
+        title: 'Set up terminal and verify Git',
+        type: 'concept',
+        estimatedMinutes: 25,
+        instructions: 'Open your terminal (Command Prompt, PowerShell, or Terminal app). Run basic commands: `pwd`, `ls`, `cd`. Install Git if not present. Run `git --version` to verify installation. Configure Git with your name and email.',
+        acceptanceTest: {
+          type: 'checklist',
+          spec: [
+            'Terminal opens and basic commands work',
+            'Git installed: `git --version` shows version number',
+            'Git configured: `git config --global user.name` and `git config --global user.email` set'
+          ]
+        },
+        resources: [
+          'https://git-scm.com/downloads',
+          'https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup'
+        ]
+      },
+      {
+        id: `${planId}_setup_first_repo`,
+        projectId,
+        title: 'Create your first Git repository',
+        type: 'practice',
+        estimatedMinutes: 20,
+        instructions: 'Create a new folder for your project. Initialize a Git repository with `git init`. Create a README.md file. Stage and commit your first change with `git add .` and `git commit -m "Initial commit"`. Verify with `git log`.',
+        acceptanceTest: {
+          type: 'checklist',
+          spec: [
+            'New project folder created',
+            'Git repository initialized',
+            'README.md created and committed',
+            '`git log` shows at least one commit'
+          ]
+        },
+        resources: [
+          'https://git-scm.com/book/en/v2/Git-Basics-Getting-a-Git-Repository',
+          'https://docs.github.com/en/get-started/quickstart/create-a-repo'
+        ]
+      }
+    ];
+  }
+
+  private buildTerminalIntroTask(planId: string, projectId: string): SprintMicroTaskPlan {
+    return {
+      id: `${planId}_terminal_basics`,
+      projectId,
+      title: 'Terminal basics and navigation',
+      type: 'concept',
+      estimatedMinutes: 20,
+      instructions: 'Practice essential terminal commands: `pwd` (print working directory), `ls` (list files), `cd` (change directory), `mkdir` (make directory). Navigate to different folders and create a test directory structure.',
+      acceptanceTest: {
+        type: 'checklist',
+        spec: [
+          'Successfully navigated between at least 3 directories',
+          'Created a new directory using `mkdir`',
+          'Listed files in multiple directories using `ls`'
+        ]
+      },
+      resources: [
+        'https://www.codecademy.com/learn/learn-the-command-line',
+        'https://ubuntu.com/tutorials/command-line-for-beginners'
+      ]
+    };
   }
 
   private resolveFallbackLength(input: GenerateSprintPlanInput): 1 | 3 | 7 | 14 {

@@ -52,5 +52,14 @@
     "upgrade": "Passer à l'offre supérieure",
     "downgrade": "Changer de plan",
     "manage": "Gérer l'abonnement"
+  },
+  "api": {
+    "plans": {
+      "retrieved": "Plans d'abonnement récupérés avec succès"
+    },
+    "plan": {
+      "retrieved": "Tarification du plan récupérée avec succès"
+    },
+    "calculated": "Tarification calculée avec succès"
   }
 }

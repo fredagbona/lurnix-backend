@@ -14,6 +14,10 @@ type PrismaModels = {
   quizResult: any;
   quizQuestion: any;
   quizOption: any;
+  knowledgeQuiz: any;
+  knowledgeQuizQuestion: any;
+  knowledgeQuizTranslation: any;
+  knowledgeQuizQuestionTranslation: any;
   user: any;
   admin: any;
   subscriptionPlan: any;
@@ -21,6 +25,7 @@ type PrismaModels = {
   featureVote: any;
   featureStatusChange: any;
   featureModNote: any;
+  objectiveContext: any;
 };
 
 // Create a wrapper with type assertions to fix TypeScript errors

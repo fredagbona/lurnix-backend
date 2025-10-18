@@ -7,6 +7,7 @@ export interface SprintCreateInput {
   profileSnapshotId?: string | null;
   plannerInput: Prisma.JsonValue;
   plannerOutput: Prisma.JsonValue;
+  adaptiveMetadata?: Prisma.JsonValue | null;
   lengthDays: number;
   totalEstimatedHours: number;
   difficulty?: SprintDifficulty;
@@ -23,6 +24,7 @@ export interface SprintCreateInput {
 export interface SprintUpdateInput {
   plannerInput?: Prisma.JsonValue;
   plannerOutput?: Prisma.JsonValue;
+  adaptiveMetadata?: Prisma.JsonValue | null;
   status?: SprintStatus;
   startedAt?: Date | null;
   completedAt?: Date | null;
@@ -45,6 +47,7 @@ export class SprintRepository {
         profileSnapshotId: input.profileSnapshotId ?? null,
         plannerInput: input.plannerInput,
         plannerOutput: input.plannerOutput,
+        adaptiveMetadata: input.adaptiveMetadata ?? null,
         lengthDays: input.lengthDays,
         totalEstimatedHours: input.totalEstimatedHours,
         difficulty: input.difficulty ?? SprintDifficulty.beginner,

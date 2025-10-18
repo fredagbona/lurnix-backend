@@ -17,6 +17,7 @@ import featureRequestRoutes from "./featureRequestRoutes";
 import objectiveRoutes from "./objectiveRoutes";
 import progressRoutes from "./progressRoutes";
 import sprintRoutes from "./sprintRoutes";
+import technicalAssessmentRoutes from "./technicalAssessmentRoutes";
 
 const router = Router();
 
@@ -42,6 +43,7 @@ router.use(`${API_VERSION}/features`, featureRequestRoutes);
 router.use(`${API_VERSION}/objectives`, objectiveRoutes);
 router.use(`${API_VERSION}`, progressRoutes);
 router.use(`${API_VERSION}`, sprintRoutes);
+router.use(`${API_VERSION}/assessments`, technicalAssessmentRoutes);
 
 // Health check endpoint (no auth required)
 router.get("/health", (req, res) => {

@@ -5,15 +5,17 @@ import {
   planPricingQuerySchema,
   pricingCalculationSchema,
 } from '../schemas/planSchemas';
+import { sendTranslatedResponse } from '../utils/translationUtils.js';
 
 export class PlanController {
   async getPlans(req: Request, res: Response, next: NextFunction) {
     try {
-      const plans = await planService.getPlans();
+      const language = (req as any).language || 'en';
+      const plans = await planService.getPlans(language);
 
-      res.status(200).json({
-        success: true,
-        data: plans,
+      sendTranslatedResponse(res, 'pricing.api.plans.retrieved', {
+        statusCode: 200,
+        data: plans
       });
     } catch (error) {
       next(error);
@@ -24,12 +26,13 @@ export class PlanController {
     try {
       const { planType } = planTypeParamSchema.parse(req.params);
       const { billingCycle } = planPricingQuerySchema.parse(req.query);
+      const language = (req as any).language || 'en';
 
-      const plan = await planService.getPlanPricing(planType, billingCycle);
+      const plan = await planService.getPlanPricing(planType, billingCycle, language);
 
-      res.status(200).json({
-        success: true,
-        data: plan,
+      sendTranslatedResponse(res, 'pricing.api.plan.retrieved', {
+        statusCode: 200,
+        data: plan
       });
     } catch (error) {
       next(error);
@@ -42,9 +45,9 @@ export class PlanController {
 
       const result = await planService.calculatePricing(payload);
 
-      res.status(200).json({
-        success: true,
-        data: result,
+      sendTranslatedResponse(res, 'pricing.api.calculated', {
+        statusCode: 200,
+        data: result
       });
     } catch (error) {
       next(error);

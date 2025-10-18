@@ -2,11 +2,201 @@ import { Response } from 'express';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import knowledgeValidationService from '../services/knowledgeValidationService.js';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient, QuizType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+type QuizTranslationRecord = {
+  language: string;
+  title?: string | null;
+  description?: string | null;
+};
+
+type QuestionTranslationRecord = {
+  language: string;
+  question?: string | null;
+  options?: Array<{ id: string; text: string }>;
+};
+
+type QuestionOptionRecord = { id: string; text: string; isCorrect?: boolean };
+
+const resolveRequestedLanguage = (req: AuthRequest): string => {
+  const rawLanguage =
+    (typeof req.language === 'string' && req.language)
+    || (typeof (req as any).lng === 'string' && (req as any).lng)
+    || 'en';
+
+  return rawLanguage.split('-')[0]?.toLowerCase?.() ?? 'en';
+};
+
+const buildLanguagePriorityList = (language: string): string[] =>
+  language === 'en' ? ['en'] : [language, 'en'];
+
+const resolveLocalizedTranslation = <T extends { language: string }>(
+  translations: T[] | undefined,
+  language: string
+): T | undefined => {
+  if (!translations || translations.length === 0) {
+    return undefined;
+  }
+
+  return (
+    translations.find((translation) => translation.language === language)
+    || translations.find((translation) => translation.language === 'en')
+  );
+};
+
+const localizeQuestion = (question: any, language: string) => {
+  const translation = resolveLocalizedTranslation<QuestionTranslationRecord>(question.translations, language);
+  const baseOptions: QuestionOptionRecord[] = Array.isArray(question.options)
+    ? (question.options as QuestionOptionRecord[])
+    : [];
+
+  const localizedOptionText = new Map<string, string>(
+    Array.isArray(translation?.options)
+      ? translation.options.map((option) => [option.id, option.text])
+      : []
+  );
+
+  const options = baseOptions.map((option) => ({
+    ...option,
+    text: localizedOptionText.get(option.id) ?? option.text,
+  }));
+
+  return {
+    id: question.id,
+    type: question.type,
+    question: translation?.question ?? question.question,
+    options,
+    codeTemplate: question.codeTemplate,
+    expectedOutput: question.expectedOutput,
+    points: question.points,
+    sortOrder: question.sortOrder,
+  };
+};
+
+const localizeQuizRecord = (quiz: any, language: string, includeQuestions: boolean) => {
+  const translation = resolveLocalizedTranslation<QuizTranslationRecord>(quiz.translations, language);
+
+  const localizedQuiz: any = {
+    id: quiz.id,
+    type: quiz.type,
+    title: translation?.title ?? quiz.title,
+    description: translation?.description ?? quiz.description,
+    passingScore: quiz.passingScore,
+    timeLimit: quiz.timeLimit,
+    attemptsAllowed: quiz.attemptsAllowed,
+    blocksProgression: quiz.blocksProgression,
+    isRequired: quiz.isRequired,
+    objectiveId: quiz.objectiveId,
+    sprintId: quiz.sprintId,
+    createdAt: quiz.createdAt,
+    updatedAt: quiz.updatedAt,
+  };
+
+  if (includeQuestions && Array.isArray(quiz.questions)) {
+    localizedQuiz.questions = quiz.questions.map((question: any) => localizeQuestion(question, language));
+  }
+
+  return localizedQuiz;
+};
+
 export class AdaptiveQuizController {
+  /**
+   * List adaptive quizzes with optional filters
+   * GET /api/quizzes
+   */
+  listQuizzes = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Authentication required'
+        },
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
+
+    const { type, objectiveId, sprintId, includeQuestions } = req.query;
+    const requestedLanguage = resolveRequestedLanguage(req);
+    const languagesForLookup = buildLanguagePriorityList(requestedLanguage);
+    const includeQuestionsFlag = includeQuestions === 'true';
+
+    const where: Prisma.KnowledgeQuizWhereInput = {};
+
+    if (typeof type === 'string') {
+      const normalized = type.toLowerCase();
+
+      const typeAlias: Record<string, QuizType> = {
+        profile: QuizType.pre_sprint,
+        readiness: QuizType.pre_sprint,
+        validation: QuizType.post_sprint,
+        review: QuizType.review,
+        milestone: QuizType.milestone,
+      };
+
+      const matches = Object.values(QuizType).find((value) => value.toLowerCase() === normalized)
+        ?? typeAlias[normalized];
+      if (!matches) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_QUIZ_TYPE',
+            message: `Unsupported quiz type: ${type}`
+          },
+          timestamp: new Date().toISOString()
+        });
+        return;
+      }
+      where.type = matches as QuizType;
+    }
+
+    if (typeof objectiveId === 'string') {
+      where.objectiveId = objectiveId;
+    }
+
+    if (typeof sprintId === 'string') {
+      where.sprintId = sprintId;
+    }
+
+    const quizInclude: any = {
+      translations: {
+        where: { language: { in: languagesForLookup } },
+      },
+    };
+
+    if (includeQuestionsFlag) {
+      quizInclude.questions = {
+        orderBy: { sortOrder: 'asc' },
+        include: {
+          translations: {
+            where: { language: { in: languagesForLookup } },
+          },
+        },
+      };
+    }
+
+    const quizzes = await prisma.knowledgeQuiz.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: quizInclude,
+    });
+
+    const localizedQuizzes = quizzes.map((quiz) =>
+      localizeQuizRecord(quiz, requestedLanguage, includeQuestionsFlag)
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        quizzes: localizedQuizzes
+      },
+      timestamp: new Date().toISOString()
+    });
+  });
+
   /**
    * Get quiz by ID with questions
    * GET /api/quizzes/:quizId
@@ -14,22 +204,24 @@ export class AdaptiveQuizController {
   getQuiz = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
     const { quizId } = req.params;
 
+    const requestedLanguage = resolveRequestedLanguage(req);
+    const languagesForLookup = buildLanguagePriorityList(requestedLanguage);
+
     const quiz = await prisma.knowledgeQuiz.findUnique({
       where: { id: quizId },
       include: {
+        translations: {
+          where: { language: { in: languagesForLookup } },
+        },
         questions: {
           orderBy: { sortOrder: 'asc' },
-          select: {
-            id: true,
-            type: true,
-            question: true,
-            options: true,
-            codeTemplate: true,
-            points: true,
-            sortOrder: true,
+          include: {
+            translations: {
+              where: { language: { in: languagesForLookup } },
+            },
           },
         },
-      },
+      } as any,
     });
 
     if (!quiz) {
@@ -44,17 +236,19 @@ export class AdaptiveQuizController {
       return;
     }
 
+    const localizedQuiz = localizeQuizRecord(quiz, requestedLanguage, true);
+
     res.status(200).json({
       success: true,
       data: {
         quiz: {
-          id: quiz.id,
-          title: quiz.title,
-          description: quiz.description,
-          passingScore: quiz.passingScore,
-          timeLimit: quiz.timeLimit,
-          attemptsAllowed: quiz.attemptsAllowed,
-          questions: quiz.questions,
+          id: localizedQuiz.id,
+          title: localizedQuiz.title,
+          description: localizedQuiz.description,
+          passingScore: localizedQuiz.passingScore,
+          timeLimit: localizedQuiz.timeLimit,
+          attemptsAllowed: localizedQuiz.attemptsAllowed,
+          questions: localizedQuiz.questions,
         },
       },
       timestamp: new Date().toISOString(),
@@ -79,14 +273,42 @@ export class AdaptiveQuizController {
     }
 
     const { quizId } = req.params;
-    const { answers, timeSpent = 0 } = req.body;
+    const { answers, timeSpent } = req.body;
+
+    const answersAreInvalid = !Array.isArray(answers)
+      || answers.some(
+        (entry) =>
+          typeof entry?.questionId !== 'string'
+          || (
+            typeof entry?.optionId !== 'string'
+            && !Array.isArray(entry?.optionIds)
+            && entry?.answer === undefined
+          )
+      );
+
+    if (answersAreInvalid) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_REQUEST',
+          message: 'Answers must be an array of { questionId, optionId | optionIds | answer } objects'
+        },
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
 
     try {
       const result = await knowledgeValidationService.submitQuizAttempt({
         userId: req.userId,
         quizId,
-        answers,
-        timeSpent,
+        answers: answers.map((answer: any) => ({
+          questionId: answer.questionId,
+          answer: Array.isArray(answer.optionIds)
+            ? [...answer.optionIds]
+            : answer.optionId ?? answer.answer
+        })),
+        timeSpent
       });
 
       // Get remaining attempts
