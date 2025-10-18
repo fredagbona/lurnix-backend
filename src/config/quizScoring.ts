@@ -4,6 +4,9 @@ export interface QuizPersonalityDimensions {
   motivation_type: string[];
   resilience_style: string[];
   tech_affinity: string[];
+  focus_preference: string[];
+  planning_style: string[];
+  accountability_style: string[];
 }
 
 export interface QuizProfileMapping {
@@ -17,7 +20,10 @@ export const quizPersonalityDimensions: QuizPersonalityDimensions = {
   problem_approach: ['systematic', 'experimental', 'collaborative', 'independent'],
   motivation_type: ['impact_driven', 'freedom_seeking', 'intellectually_curious', 'creatively_expressive', 'socially_connected'],
   resilience_style: ['persistent_fighter', 'strategic_thinker', 'collaborative_solver', 'adaptive_learner'],
-  tech_affinity: ['frontend', 'backend', 'fullstack', 'data_science', 'ai_ml', 'mobile', 'gamedev', 'security']
+  tech_affinity: ['frontend', 'backend', 'fullstack', 'data_science', 'ai_ml', 'mobile', 'gamedev', 'security'],
+  focus_preference: ['focus_micro', 'focus_steady', 'focus_deep', 'focus_flexible'],
+  planning_style: ['planner_daily', 'planner_weekly', 'planner_kanban', 'planner_flexible'],
+  accountability_style: ['accountability_public', 'accountability_circle', 'accountability_self', 'accountability_mentor']
 };
 
 export const quizProfileMapping: Record<string, QuizProfileMapping> = {

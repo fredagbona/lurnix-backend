@@ -27,7 +27,7 @@ export interface QuizSectionContent {
   questions: QuizQuestionContent[];
 }
 
-export const QUIZ_VERSION = 2;
+export const QUIZ_VERSION = 3;
 
 const makeQuestion = (data: Omit<QuizQuestionContent, 'version' | 'isActive'> & { isActive?: boolean }): QuizQuestionContent => ({
   version: QUIZ_VERSION,
@@ -537,6 +537,337 @@ export const quizSectionsContent: QuizSectionContent[] = [
             labelKey: 'quiz.questions.learning_plateau.options.strategic_breaker',
             value: 'strategic_breaker',
             weights: { reflective: 3, balanced: 2, self_aware: 2, strategic_thinker: 2 }
+          }
+        ]
+      })
+    ]
+  },
+  {
+    key: 'cognitive_rhythm',
+    sortOrder: 5,
+    version: QUIZ_VERSION,
+    isActive: true,
+    titleKey: 'quiz.sections.cognitiveRhythm.title',
+    descriptionKey: 'quiz.sections.cognitiveRhythm.description',
+    questions: [
+      makeQuestion({
+        key: 'focus_session_preference',
+        type: 'single',
+        sortOrder: 1,
+        titleKey: 'quiz.questions.focus_session_preference.title',
+        descriptionKey: 'quiz.questions.focus_session_preference.description',
+        options: [
+          {
+            labelKey: 'quiz.questions.focus_session_preference.options.micro_bursts',
+            value: 'micro_bursts',
+            weights: { focus_micro: 3, context_switch_high: 2, adaptive: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.focus_session_preference.options.steady_blocks',
+            value: 'steady_blocks',
+            weights: { focus_steady: 3, balanced: 2, methodical: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.focus_session_preference.options.deep_immersion',
+            value: 'deep_immersion',
+            weights: { focus_deep: 3, persistent: 2, independent: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.focus_session_preference.options.flexible_flow',
+            value: 'flexible_flow',
+            weights: { focus_flexible: 3, adaptive: 2, intuitive: 1 }
+          }
+        ]
+      }),
+      makeQuestion({
+        key: 'context_switch_energy',
+        type: 'single',
+        sortOrder: 2,
+        titleKey: 'quiz.questions.context_switch_energy.title',
+        descriptionKey: 'quiz.questions.context_switch_energy.description',
+        options: [
+          {
+            labelKey: 'quiz.questions.context_switch_energy.options.low_switch',
+            value: 'low_switch',
+            weights: { context_switch_low: 3, systematic: 2, perfectionist: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.context_switch_energy.options.moderate_switch',
+            value: 'moderate_switch',
+            weights: { context_switch_medium: 3, balanced: 2, adaptive: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.context_switch_energy.options.high_switch',
+            value: 'high_switch',
+            weights: { context_switch_high: 3, practical: 2, experimental: 1 }
+          }
+        ]
+      }),
+      makeQuestion({
+        key: 'energy_peak_time',
+        type: 'single',
+        sortOrder: 3,
+        titleKey: 'quiz.questions.energy_peak_time.title',
+        descriptionKey: 'quiz.questions.energy_peak_time.description',
+        options: [
+          {
+            labelKey: 'quiz.questions.energy_peak_time.options.morning_peak',
+            value: 'morning_peak',
+            weights: { energy_morning: 3, methodical: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.energy_peak_time.options.afternoon_peak',
+            value: 'afternoon_peak',
+            weights: { energy_afternoon: 3, balanced: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.energy_peak_time.options.evening_peak',
+            value: 'evening_peak',
+            weights: { energy_evening: 3, adaptive: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.energy_peak_time.options.night_owl',
+            value: 'night_owl',
+            weights: { energy_night: 3, independent: 1 }
+          }
+        ]
+      })
+    ]
+  },
+  {
+    key: 'learning_habits',
+    sortOrder: 6,
+    version: QUIZ_VERSION,
+    isActive: true,
+    titleKey: 'quiz.sections.learningHabits.title',
+    descriptionKey: 'quiz.sections.learningHabits.description',
+    questions: [
+      makeQuestion({
+        key: 'planning_style_preference',
+        type: 'single',
+        sortOrder: 1,
+        titleKey: 'quiz.questions.planning_style_preference.title',
+        descriptionKey: 'quiz.questions.planning_style_preference.description',
+        options: [
+          {
+            labelKey: 'quiz.questions.planning_style_preference.options.daily_checklist',
+            value: 'daily_checklist',
+            weights: { planner_daily: 3, practical: 2, systematic: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.planning_style_preference.options.weekly_map',
+            value: 'weekly_map',
+            weights: { planner_weekly: 3, methodical: 2, analytical: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.planning_style_preference.options.kanban_flow',
+            value: 'kanban_flow',
+            weights: { planner_kanban: 3, adaptive: 2, experimental: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.planning_style_preference.options.freestyle',
+            value: 'freestyle',
+            weights: { planner_flexible: 3, intuitive: 2, creative: 1 }
+          }
+        ]
+      }),
+      makeQuestion({
+        key: 'review_cadence',
+        type: 'single',
+        sortOrder: 2,
+        titleKey: 'quiz.questions.review_cadence.title',
+        descriptionKey: 'quiz.questions.review_cadence.description',
+        options: [
+          {
+            labelKey: 'quiz.questions.review_cadence.options.after_every_session',
+            value: 'after_every_session',
+            weights: { review_rapid: 3, reflective: 2 }
+          },
+          {
+            labelKey: 'quiz.questions.review_cadence.options.end_of_day',
+            value: 'end_of_day',
+            weights: { review_daily: 3, methodical: 2 }
+          },
+          {
+            labelKey: 'quiz.questions.review_cadence.options.twice_per_week',
+            value: 'twice_per_week',
+            weights: { review_weekly: 3, balanced: 2 }
+          },
+          {
+            labelKey: 'quiz.questions.review_cadence.options.when_blocked',
+            value: 'when_blocked',
+            weights: { review_ad_hoc: 3, adaptive: 2 }
+          }
+        ]
+      }),
+      makeQuestion({
+        key: 'note_taking_method',
+        type: 'single',
+        sortOrder: 3,
+        titleKey: 'quiz.questions.note_taking_method.title',
+        descriptionKey: 'quiz.questions.note_taking_method.description',
+        options: [
+          {
+            labelKey: 'quiz.questions.note_taking_method.options.code_snippets',
+            value: 'code_snippets',
+            weights: { notes_snippets: 3, practical: 2 }
+          },
+          {
+            labelKey: 'quiz.questions.note_taking_method.options.diagram_sketches',
+            value: 'diagram_sketches',
+            weights: { notes_visual: 3, creative: 2 }
+          },
+          {
+            labelKey: 'quiz.questions.note_taking_method.options.long_form_journal',
+            value: 'long_form_journal',
+            weights: { notes_reflective: 3, analytical: 2 }
+          },
+          {
+            labelKey: 'quiz.questions.note_taking_method.options.quick_checklists',
+            value: 'quick_checklists',
+            weights: { notes_checklist: 3, efficient: 2 }
+          }
+        ]
+      })
+    ]
+  },
+  {
+    key: 'support_ecosystem',
+    sortOrder: 7,
+    version: QUIZ_VERSION,
+    isActive: true,
+    titleKey: 'quiz.sections.supportEcosystem.title',
+    descriptionKey: 'quiz.sections.supportEcosystem.description',
+    questions: [
+      makeQuestion({
+        key: 'support_channels',
+        type: 'multi',
+        sortOrder: 1,
+        titleKey: 'quiz.questions.support_channels.title',
+        descriptionKey: 'quiz.questions.support_channels.description',
+        options: [
+          {
+            labelKey: 'quiz.questions.support_channels.options.discord',
+            value: 'discord',
+            weights: { support_peer: 3, social: 2 }
+          },
+          {
+            labelKey: 'quiz.questions.support_channels.options.mentorship',
+            value: 'mentorship',
+            weights: { support_mentor: 3, collaborative: 2 }
+          },
+          {
+            labelKey: 'quiz.questions.support_channels.options.study_buddy',
+            value: 'study_buddy',
+            weights: { support_pair: 3, accountable: 2 }
+          },
+          {
+            labelKey: 'quiz.questions.support_channels.options.asynchronous_forum',
+            value: 'asynchronous_forum',
+            weights: { support_async: 3, independent: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.support_channels.options.self_reflection',
+            value: 'self_reflection',
+            weights: { support_self: 3, reflective: 2 }
+          }
+        ]
+      }),
+      makeQuestion({
+        key: 'accountability_style',
+        type: 'single',
+        sortOrder: 2,
+        titleKey: 'quiz.questions.accountability_style.title',
+        descriptionKey: 'quiz.questions.accountability_style.description',
+        options: [
+          {
+            labelKey: 'quiz.questions.accountability_style.options.public_share',
+            value: 'public_share',
+            weights: { accountability_public: 3, ambitious: 2 }
+          },
+          {
+            labelKey: 'quiz.questions.accountability_style.options.small_circle',
+            value: 'small_circle',
+            weights: { accountability_circle: 3, social: 2 }
+          },
+          {
+            labelKey: 'quiz.questions.accountability_style.options.self_report',
+            value: 'self_report',
+            weights: { accountability_self: 3, independent: 2 }
+          },
+          {
+            labelKey: 'quiz.questions.accountability_style.options.mentor_checkins',
+            value: 'mentor_checkins',
+            weights: { accountability_mentor: 3, collaborative: 2 }
+          }
+        ]
+      })
+    ]
+  },
+  {
+    key: 'time_commitment',
+    sortOrder: 8,
+    version: QUIZ_VERSION,
+    isActive: true,
+    titleKey: 'quiz.sections.timeCommitment.title',
+    descriptionKey: 'quiz.sections.timeCommitment.description',
+    questions: [
+      makeQuestion({
+        key: 'weekly_hours_commitment',
+        type: 'single',
+        sortOrder: 1,
+        titleKey: 'quiz.questions.weekly_hours_commitment.title',
+        descriptionKey: 'quiz.questions.weekly_hours_commitment.description',
+        weightCategory: 'hours_commitment',
+        options: [
+          {
+            labelKey: 'quiz.questions.weekly_hours_commitment.options.under_5',
+            value: 'under_5',
+            weights: { hours_under5: 5 }
+          },
+          {
+            labelKey: 'quiz.questions.weekly_hours_commitment.options.five_to_eight',
+            value: 'five_to_eight',
+            weights: { hours_8: 8 }
+          },
+          {
+            labelKey: 'quiz.questions.weekly_hours_commitment.options.nine_to_twelve',
+            value: 'nine_to_twelve',
+            weights: { hours_12: 12 }
+          },
+          {
+            labelKey: 'quiz.questions.weekly_hours_commitment.options.thirteen_plus',
+            value: 'thirteen_plus',
+            weights: { hours_16: 16 }
+          }
+        ]
+      }),
+      makeQuestion({
+        key: 'weekly_rhythm',
+        type: 'single',
+        sortOrder: 2,
+        titleKey: 'quiz.questions.weekly_rhythm.title',
+        descriptionKey: 'quiz.questions.weekly_rhythm.description',
+        options: [
+          {
+            labelKey: 'quiz.questions.weekly_rhythm.options.consistent_blocks',
+            value: 'consistent_blocks',
+            weights: { availability_consistent: 3, planner_weekly: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.weekly_rhythm.options.short_sprints',
+            value: 'short_sprints',
+            weights: { availability_sprints: 3, focus_micro: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.weekly_rhythm.options.weekend_push',
+            value: 'weekend_push',
+            weights: { availability_weekend: 3, energy_night: 1 }
+          },
+          {
+            labelKey: 'quiz.questions.weekly_rhythm.options.unpredictable_flow',
+            value: 'unpredictable_flow',
+            weights: { availability_variable: 3, adaptive: 1 }
           }
         ]
       })

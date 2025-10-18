@@ -272,7 +272,19 @@ class ProfileContextBuilder {
       strengths: this.ensureStringArray(snapshot?.strengths),
       gaps: this.ensureStringArray(snapshot?.challenges ?? snapshot?.gaps),
       passionTags: this.ensureStringArray(snapshot?.passionTags ?? snapshot?.passions),
-      availability: this.normalizeAvailability(snapshot?.availability),
+      availability: this.normalizeAvailability(
+        snapshot?.availability ?? {
+          hoursPerWeek: snapshot?.hoursPerWeek ?? this.deriveWeeklyHours(computedProfile),
+          timePerDayMinutes: snapshot?.timePerDay,
+          weeklyRhythm: snapshot?.weeklyRhythm,
+          focusPreference: snapshot?.focusPreference?.dominant ?? snapshot?.focusPreference,
+          energyPeak: snapshot?.energyPeak,
+          contextSwitch: snapshot?.contextSwitch,
+          noteStyle: snapshot?.noteTaking,
+          reviewCadence: snapshot?.reviewCadence,
+          supportChannels: snapshot?.supportChannels
+        }
+      ),
       blockers: this.ensureStringArray(snapshot?.blockers),
       goals: this.ensureStringArray(snapshot?.goals ?? (snapshot?.goal ? [snapshot.goal] : undefined))
     };
