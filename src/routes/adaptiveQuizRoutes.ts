@@ -15,7 +15,7 @@ const router = Router();
  * /api/quizzes:
  *   get:
  *     summary: List adaptive quizzes
- *     description: Retrieve adaptive quizzes filtered by type, objective, or sprint. Responses honour the `Accept-Language` header (supported: `en`, `fr`).
+ *     description: Retrieve adaptive quizzes filtered by type, objective, or sprint. Responses honour the Accept-Language header (supported en, fr).
  *     tags: [Adaptive Quiz]
  *     security:
  *       - bearerAuth: []
@@ -47,7 +47,7 @@ const router = Router();
  *         schema:
  *           type: string
  *           example: fr
- *         description: Request locale for quiz metadata (defaults to `en`)
+ *         description: Request locale for quiz metadata (defaults to en)
  *     responses:
  *       200:
  *         description: Quizzes retrieved successfully
@@ -130,14 +130,7 @@ router.get(
  * /api/quizzes/{quizId}:
  *   get:
  *     summary: Get quiz by ID with questions
- *     description: Retrieve a quiz with all its questions for the user to take. Response content is localized per `Accept-Language` (supported: `en`, `fr`).
- *     parameters:
- *       - in: header
- *         name: Accept-Language
- *         schema:
- *           type: string
- *           example: fr
- *         description: Request locale for quiz metadata (fallback `en`).
+ *     description: Retrieve a quiz with all its questions for the user to take. Response content is localized per Accept-Language header (supported en, fr).
  *     tags: [Adaptive Quiz]
  *     security:
  *       - bearerAuth: []
@@ -149,6 +142,12 @@ router.get(
  *           type: string
  *           format: uuid
  *         description: Quiz ID
+ *       - in: header
+ *         name: Accept-Language
+ *         schema:
+ *           type: string
+ *           example: fr
+ *         description: Request locale for quiz metadata (fallback en)
  *     responses:
  *       200:
  *         description: Quiz retrieved successfully
