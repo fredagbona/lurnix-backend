@@ -1,8 +1,8 @@
-import { prisma } from '../prisma/typedClient';
-import type { FeatureEntitlements, FeatureName } from '../types/features';
-import { FEATURE_NAMES } from '../types/features';
-import type { PlanType, BillingCycle } from '../prisma/prismaTypes';
-import { AppError } from '../errors/AppError';
+import { prisma } from '../../prisma/typedClient';
+import type { FeatureEntitlements, FeatureName } from '../../types/features';
+import { FEATURE_NAMES } from '../../types/features';
+import type { PlanType, BillingCycle } from '../../prisma/prismaTypes';
+import { AppError } from '../../errors/AppError';
 
 const FEATURE_LIMIT_KEYS: Partial<Record<FeatureName, string>> = {
   ai_mentor_chat: 'ai_interactions_per_month',

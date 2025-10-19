@@ -4,8 +4,8 @@ export * from './passwordResetService.js';
 export * from './infrastructure';
 // Communication services
 export * from './communication';
-export * from './featureGateService.js';
-export * from './featureRequestService.js';
+// Feature services
+export * from './features';
 export * from './learnerProfileService.js';
 export * from './sprintService.js';
 export * from './plannerService.js';

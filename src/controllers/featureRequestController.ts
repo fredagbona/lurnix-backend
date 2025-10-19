@@ -5,7 +5,7 @@ import {
   featureRequestService,
   FeatureRequestRateLimitError,
   FeatureCategoryDto,
-} from '../services/featureRequestService.js';
+} from '../services/features';
 import {
   FeatureRequestNotFoundError,
   DuplicateFeatureRequestTitleError,
