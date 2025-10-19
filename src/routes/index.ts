@@ -13,7 +13,7 @@ import couponRoutes from "./couponRoutes";
 import webhookRoutes from "./webhookRoutes";
 import aiRoutes from "./aiRoutes";
 import aiProfileRoutes from "./aiProfileRoutes";
-import featureRequestRoutes from "./featureRequestRoutes";
+import featureRequestRoutes from "../domains/features/routes/featureRequestRoutes";
 import objectiveRoutes from "./objectiveRoutes";
 import progressRoutes from "./progressRoutes";
 import sprintRoutes from "./sprintRoutes";

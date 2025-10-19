@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { featureRequestAdminController } from '../../controllers/featureRequestAdminController';
-import { authenticateAdmin, requireSupport } from '../../middlewares/adminAuthMiddleware';
-import { validateParams, validateRequest } from '../../middlewares/validation';
+import { featureRequestAdminController } from '../controllers/featureRequestAdminController';
+import { authenticateAdmin, requireSupport } from '../../../middlewares/adminAuthMiddleware';
+import { validateParams, validateRequest } from '../../../middlewares/validation';
 import {
   featureIdParamSchema,
   featureUpdateSchema,
   featureMergeSchema,
   featureModNoteSchema,
-} from '../../validation/featureRequestSchemas';
+} from '../validation/featureRequestSchemas';
 
 const router = Router();
 

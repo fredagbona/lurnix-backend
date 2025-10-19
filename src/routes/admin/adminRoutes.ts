@@ -6,7 +6,7 @@ import { validateRequest, validateQuery, validateParams, rateLimit, rateLimitCon
 import { paginationQuerySchema, userIdParamSchema } from '../../validation/routeSchemas';
 import { testEmailSchema } from '../../validation/emailSchemas';
 import adminAuthRoutes from './adminAuthRoutes';
-import featureRequestAdminRoutes from './featureRequestAdminRoutes';
+import featureRequestAdminRoutes from '../../domains/features/routes/featureRequestAdminRoutes';
 
 const router = Router();
 

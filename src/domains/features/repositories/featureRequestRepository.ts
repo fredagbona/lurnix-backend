@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { prisma } from '../prisma/client.js';
+import { prisma } from '../../../prisma/client.js';
 import type {
   CreateFeatureRequestInput,
   CreateModNoteInput,
@@ -16,7 +16,7 @@ import type {
   ToggleVoteResult,
   UpdateFeatureRequestInput,
 } from '../types/featureRequests.js';
-import type { FeatureStatus } from '../prisma/prismaTypes.js';
+import type { FeatureStatus } from '../../../prisma/prismaTypes.js';
 
 export class FeatureRequestRepositoryError extends Error {
   constructor(message: string, public readonly cause?: unknown) {

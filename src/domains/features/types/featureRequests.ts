@@ -6,7 +6,7 @@ import type {
   Admin,
   User,
 } from '@prisma/client';
-import type { FeatureCategory, FeatureStatus, Language } from '../prisma/prismaTypes.js';
+import type { FeatureCategory, FeatureStatus, Language } from '../../../prisma/prismaTypes.js';
 
 export type FeatureRequestRecord = PrismaFeatureRequest;
 export type FeatureVoteRecord = PrismaFeatureVote;

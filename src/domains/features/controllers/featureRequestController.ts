@@ -1,11 +1,11 @@
 import { Response } from 'express';
-import { asyncHandler } from '../middlewares/errorMiddleware.js';
-import { AuthRequest } from '../middlewares/authMiddleware.js';
+import { asyncHandler } from '../../../middlewares/errorMiddleware.js';
+import { AuthRequest } from '../../../middlewares/authMiddleware.js';
 import {
   featureRequestService,
   FeatureRequestRateLimitError,
   FeatureCategoryDto,
-} from '../services/features';
+} from '../services';
 import {
   FeatureRequestNotFoundError,
   DuplicateFeatureRequestTitleError,

@@ -1,11 +1,11 @@
 import { FeatureCategory, FeatureStatus } from '@prisma/client';
-import { config } from '../../config/environment.js';
+import { config } from '../../../config/environment.js';
 import {
   featureRequestRepository,
   FeatureRequestNotFoundError,
   DuplicateFeatureRequestTitleError,
   FeatureRequestRepositoryError,
-} from '../../repositories/featureRequestRepository.js';
+} from '../repositories/featureRequestRepository.js';
 import type {
   FeatureRequestRecord,
   FeatureStatusChangeWithActor,
@@ -17,7 +17,7 @@ import type {
   UpdateFeatureRequestInput,
   MergeFeatureRequestsInput,
   CreateModNoteInput,
-} from '../../types/featureRequests.js';
+} from '../types/featureRequests.js';
 
 export interface FeatureCardDto {
   id: string;

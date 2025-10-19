@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { featureRequestController } from '../controllers/featureRequestController';
-import { authenticate, optionalAuthenticate } from '../middlewares/authMiddleware';
-import { validateQuery, validateRequest, validateParams } from '../middlewares/validation';
+import { authenticate, optionalAuthenticate } from '../../../middlewares/authMiddleware';
+import { validateQuery, validateRequest, validateParams } from '../../../middlewares/validation';
 import {
   featureListQuerySchema,
   featureCreateSchema,

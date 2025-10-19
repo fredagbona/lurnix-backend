@@ -1,9 +1,9 @@
-// Feature Services - Feature flags and feature requests
-export { featureGateService } from './featureGateService';
+// Feature Services - Re-exports from new domain structure
+// This file maintains backward compatibility during migration
+export { featureRequestService, FeatureRequestRateLimitError } from '../../domains/features/services/featureRequestService';
 export { 
-  featureRequestService,
-  FeatureRequestRateLimitError,
   type FeatureCardDto,
   type FeatureDetailDto,
   type FeatureCategoryDto
-} from './featureRequestService';
+} from '../../domains/features/services/featureRequestService';
+export { featureGateService } from '../../domains/features/services/featureGateService';
