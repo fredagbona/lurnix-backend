@@ -1,7 +1,7 @@
-import { adminRepository } from '../repositories/adminRepository.js';
-import { hashPassword } from '../utils/passwordUtils.js';
-import { AdminRole } from '../types/auth';
-import { config } from '../config/environment.js';
+import { adminRepository } from '../../repositories/adminRepository.js';
+import { hashPassword } from '../../utils/passwordUtils.js';
+import { AdminRole } from '../../types/auth';
+import { config } from '../../config/environment.js';
 
 export class AdminSeedService {
   /**

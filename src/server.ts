@@ -5,7 +5,7 @@ import { config, validateEnvironment, getEnvironmentInfo, logConfiguration } fro
 import { configureMiddleware, configureErrorHandling } from './middlewares/middlewareConfig';
 import { scheduledTasksService, errorMonitoringService, healthCheckService } from './services/infrastructure';
 import { emailService } from './services/communication';
-import { adminSeedService } from './services/adminSeedService.js';
+import { adminSeedService } from './services/admin';
 import { prisma } from './prisma/client';
 import { initI18n } from './config/i18n';
 import { i18nextMiddleware, languageMiddleware } from './middlewares/languageMiddleware';

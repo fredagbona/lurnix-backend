@@ -6,6 +6,8 @@ export * from './infrastructure';
 export * from './communication';
 // Feature services
 export * from './features';
+// Admin services
+export * from './admin';
 export * from './learnerProfileService.js';
 export * from './sprintService.js';
 export * from './plannerService.js';
