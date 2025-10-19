@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 import { prisma } from '../prisma/client.js';
 import { emailService } from '../services/emailService.js';
-import { errorMonitoringService } from '../services/errorMonitoringService.js';
+import { errorMonitoringService } from '../services/infrastructure';
 import { getEnvironmentInfo } from '../config/environment.js';
 
 export class HealthController {

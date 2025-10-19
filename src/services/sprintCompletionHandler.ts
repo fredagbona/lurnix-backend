@@ -2,7 +2,7 @@ import { db } from '../prisma/prismaWrapper.js';
 import { AppError } from '../errors/AppError.js';
 import { objectiveProgressService } from './objectiveProgressService.js';
 import { sprintAutoGenerationService } from './sprintAutoGenerationService.js';
-import { sprintEventEmitter, SprintEvent } from './eventEmitter.js';
+import { sprintEventEmitter, SprintEvent } from './infrastructure/eventEmitter.js';
 import type { Sprint } from '@prisma/client';
 import type { ObjectiveProgress } from './objectiveProgressService.js';
 

@@ -1,8 +1,8 @@
 export * from './authService.js';
 export * from './passwordResetService.js';
-export * from './scheduledTasksService.js';
-export * from './errorMonitoringService.js';
 export * from './emailService.js';
+// Infrastructure services
+export * from './infrastructure';
 export * from './featureGateService.js';
 export * from './featureRequestService.js';
 export * from './learnerProfileService.js';

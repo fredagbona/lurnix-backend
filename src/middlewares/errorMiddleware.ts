@@ -12,7 +12,7 @@ import { ValidationError } from './validation.js';
 import { AppError } from '../errors/AppError.js';
 import { normalizeError } from '../errors/errorUtils.js';
 import { logError, sanitizeErrorForClient, ErrorContext } from '../errors/errorUtils.js';
-import { errorMonitoringService } from '../services/errorMonitoringService.js';
+import { errorMonitoringService } from '../services/infrastructure';
 
 // Global error handler middleware
 export function errorHandler(

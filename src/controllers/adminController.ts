@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
 import { userRepository } from '../repositories/userRepository.js';
 import { passwordResetService } from '../services/passwordResetService.js';
-import { scheduledTasksService } from '../services/scheduledTasksService.js';
-import { errorMonitoringService } from '../services/errorMonitoringService.js';
+import { scheduledTasksService, errorMonitoringService } from '../services/infrastructure';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
 import { prisma } from '../prisma/client.js';

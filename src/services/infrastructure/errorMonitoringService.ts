@@ -1,5 +1,5 @@
-import { AppError } from '../errors/AppError.js';
-import { ErrorSeverity, getErrorSeverity, ErrorContext } from '../errors/errorUtils.js';
+import { AppError } from '../../errors/AppError.js';
+import { ErrorSeverity, getErrorSeverity, ErrorContext } from '../../errors/errorUtils.js';
 
 // Error statistics
 interface ErrorStats {
