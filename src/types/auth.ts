@@ -6,7 +6,7 @@ import type { Language } from '../prisma/prismaTypes.js';
 import type {
   OAuthProvider as PassportOAuthProvider,
   OAuthVerifyCallbackPayload as PassportOAuthVerifyCallbackPayload,
-} from '../services/oauth/oauthTypes.js';
+} from '../services/auth/oauth/oauthTypes.js';
 
 export type { Language };
 export type OAuthProvider = PassportOAuthProvider;

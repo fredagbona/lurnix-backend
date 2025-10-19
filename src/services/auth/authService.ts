@@ -1,11 +1,11 @@
 import { randomUUID } from 'crypto';
-import { userRepository, DuplicateUserError, UserNotFoundError } from '../repositories/userRepository.js';
-import { hashPassword, comparePassword, generateResetToken } from '../utils/passwordUtils.js';
-import { emailService } from './communication';
-import { generateToken } from '../utils/jwt.js';
-import { toUserProfile } from '../utils/userUtils.js';
-import { generateSecureToken } from '../utils/tokenUtils.js';
-import { config } from '../config/environment.js';
+import { userRepository, DuplicateUserError, UserNotFoundError } from '../../repositories/userRepository.js';
+import { hashPassword, comparePassword, generateResetToken } from '../../utils/passwordUtils.js';
+import { emailService } from '../communication';
+import { generateToken } from '../../utils/jwt.js';
+import { toUserProfile } from '../../utils/userUtils.js';
+import { generateSecureToken } from '../../utils/tokenUtils.js';
+import { config } from '../../config/environment.js';
 import { 
   RegisterRequest, 
   RegisterResponse, 
@@ -23,8 +23,8 @@ import {
   OAuthLoginResult,
   LinkedProvidersResponse,
   UnlinkProviderRequest
-} from '../types/auth.js';
-import { NormalizedOAuthProfile } from '../services/oauth/oauthTypes.js';
+} from '../../types/auth.js';
+import { NormalizedOAuthProfile } from './oauth/oauthTypes.js';
 
 // Custom error classes for authentication service
 export class AuthServiceError extends Error {

@@ -8,7 +8,7 @@ import {
   Strategy as GitHubStrategy,
   Profile as GitHubProfile,
 } from 'passport-github2';
-import { config } from '../../config/environment.js';
+import { config } from '../../../config/environment.js';
 import { NormalizedOAuthProfile, OAuthVerifyCallbackPayload } from './oauthTypes.js';
 
 type GoogleRawProfile = GoogleProfile & {

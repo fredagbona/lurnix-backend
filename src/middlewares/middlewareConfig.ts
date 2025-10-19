@@ -10,7 +10,7 @@ import {
 } from './securityMiddleware.js';
 import { errorHandler, notFoundHandler } from './errorMiddleware.js';
 import { sanitizeInput } from './validation.js';
-import { initializePassport, passport as oauthPassport } from '../services/oauth/passport.js';
+import { initializePassport, passport as oauthPassport } from '../services/auth/oauth/passport.js';
 
 // CORS configuration - Allow all origins for development
 const corsOptions = {

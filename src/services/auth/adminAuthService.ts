@@ -1,9 +1,9 @@
-import { Admin, AdminRole, Language } from '../types/auth';
-import { adminRepository, CreateAdminData } from '../repositories/adminRepository.js';
-import { hashPassword, comparePassword } from '../utils/passwordUtils.js';
-import { generateToken } from '../utils/jwt.js';
-import { AppError } from '../errors/AppError.js';
-import { emailService } from './communication';
+import { Admin, AdminRole, Language } from '../../types/auth';
+import { adminRepository, CreateAdminData } from '../../repositories/adminRepository.js';
+import { hashPassword, comparePassword } from '../../utils/passwordUtils.js';
+import { generateToken } from '../../utils/jwt.js';
+import { AppError } from '../../errors/AppError.js';
+import { emailService } from '../communication';
 
 export interface AdminLoginRequest {
   email: string;

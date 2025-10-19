@@ -1,5 +1,5 @@
-export * from './authService.js';
-export * from './passwordResetService.js';
+// Auth services
+export * from './auth';
 // Infrastructure services
 export * from './infrastructure';
 // Communication services

@@ -1,4 +1,4 @@
-import { passwordResetService } from '../passwordResetService.js';
+import { passwordResetService } from '../auth';
 
 export class ScheduledTasksService {
   private intervals: NodeJS.Timeout[] = [];

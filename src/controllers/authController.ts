@@ -1,9 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
-import { authService, AuthServiceError, EmailNotVerifiedError } from '../services/authService.js';
+import { authService, AuthServiceError, EmailNotVerifiedError, passwordResetService, PasswordResetError } from '../services/auth';
 import i18next from 'i18next';
-import { passwordResetService, PasswordResetError } from '../services/passwordResetService.js';
-import type { OAuthVerifyCallbackPayload } from '../services/oauth/oauthTypes.js';
+import type { OAuthVerifyCallbackPayload } from '../services/auth/oauth/oauthTypes.js';
 
 import { 
   RegisterRequest, 
@@ -20,7 +19,7 @@ import {
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 import { sendTranslatedResponse } from '../utils/translationUtils.js';
 import { AppError } from '../errors/AppError.js';
-import { passport as oauthPassport } from '../services/oauth/passport.js';
+import { passport as oauthPassport } from '../services/auth/oauth/passport.js';
 import { config } from '../config/environment.js';
 
 export class AuthController {

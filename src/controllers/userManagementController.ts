@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { authService, AuthServiceError } from '../services/authService.js';
+import { authService, AuthServiceError } from '../services/auth';
 import { 
   UpdateProfileRequest, 
   ChangePasswordRequest, 

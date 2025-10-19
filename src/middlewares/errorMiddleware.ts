@@ -1,12 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import type { I18nRequest } from '../config/i18n/types.js';
-import { AuthServiceError } from '../services/authService.js';
+import { AuthServiceError, PasswordResetError } from '../services/auth';
 
 // Extended request type that includes both i18n and auth properties
 interface LocalizedAuthRequest extends I18nRequest {
   userId?: string;
 }
-import { PasswordResetError } from '../services/passwordResetService.js';
 import { UserRepositoryError } from '../repositories/userRepository.js';
 import { ValidationError } from './validation.js';
 import { AppError } from '../errors/AppError.js';

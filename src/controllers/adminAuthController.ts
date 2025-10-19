@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { adminAuthService, AdminLoginRequest, AdminRegisterRequest } from '../services/adminAuthService.js';
+import { adminAuthService, AdminLoginRequest, AdminRegisterRequest } from '../services/auth';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 import { AdminAuthRequest } from '../middlewares/adminAuthMiddleware.js';
 import { I18nRequest } from '../config/i18n/types.js';

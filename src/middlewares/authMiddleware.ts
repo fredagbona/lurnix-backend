@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import i18next from 'i18next';
 import { verifyToken, extractTokenFromHeader, TokenExpiredError, InvalidTokenError } from '../utils/jwt.js';
-import { authService } from '../services/authService.js';
+import { authService } from '../services/auth';
 import { JWTPayload } from '../types/auth.js';
 
 // Extended request interface with user information

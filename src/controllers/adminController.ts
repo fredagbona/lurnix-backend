@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { userRepository } from '../repositories/userRepository.js';
-import { passwordResetService } from '../services/passwordResetService.js';
+import { passwordResetService } from '../services/auth';
 import { scheduledTasksService, errorMonitoringService } from '../services/infrastructure';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
