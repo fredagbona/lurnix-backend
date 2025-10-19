@@ -2,7 +2,7 @@ import { Router } from "express";
 import authRoutes from "./auth/authRoutes";
 import userManagementRoutes from "./user/userManagementRoutes";
 import adminRoutes from "./admin/adminRoutes";
-import healthRoutes from "./health/healthRoutes";
+import healthRoutes from "../domains/infrastructure/health/routes/healthRoutes";
 import quizRoutes from "./quizRoutes";
 import quizAdminRoutes from "./quizAdminRoutes";
 import adaptiveQuizRoutes from "./adaptiveQuizRoutes";

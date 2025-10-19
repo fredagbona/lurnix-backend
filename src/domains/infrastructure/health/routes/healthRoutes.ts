@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { healthController } from '../../controllers/healthController';
-import { rateLimit, rateLimitConfigs } from '../../middlewares/validation';
+import { healthController } from '../controllers/healthController';
+import { rateLimit, rateLimitConfigs } from '../../../../middlewares/validation';
 
 const router = Router();
 

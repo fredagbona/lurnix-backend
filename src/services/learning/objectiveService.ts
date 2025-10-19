@@ -4,7 +4,7 @@ import { db as prisma } from '../../prisma/prismaWrapper';
 import { AppError } from '../../errors/AppError';
 import { learnerProfileService } from '../profile';
 import { extractPreviousSprintContext, plannerService } from './plannerService.js';
-import { sprintEventEmitter, SprintEvent } from '../infrastructure/eventEmitter.js';
+import { sprintEventEmitter, SprintEvent } from '../../domains/infrastructure/eventEmitter.js';
 import type {
   SprintPlan,
   SprintPlanCore,

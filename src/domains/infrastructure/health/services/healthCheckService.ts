@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
-import { emailService } from '../communication';
-import { errorMonitoringService } from './errorMonitoringService.js';
-import { config } from '../../config/environment.js';
+import { emailService } from '../../../../services/communication';
+import { errorMonitoringService } from '../../monitoring/errorMonitoringService.js';
+import { config } from '../../../../config/environment.js';
 
 // Health check status types
 export type HealthStatus = 'healthy' | 'degraded' | 'unhealthy';

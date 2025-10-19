@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import { asyncHandler } from '../middlewares/errorMiddleware.js';
-import { prisma } from '../prisma/client.js';
-import { emailService } from '../services/communication';
-import { errorMonitoringService } from '../services/infrastructure';
-import { getEnvironmentInfo } from '../config/environment.js';
+import { asyncHandler } from '../../../../middlewares/errorMiddleware.js';
+import { prisma } from '../../../../prisma/client.js';
+import { emailService } from '../../../../services/communication';
+import { errorMonitoringService } from '../../monitoring/errorMonitoringService.js';
+import { getEnvironmentInfo } from '../../../../config/environment.js';
 
 export class HealthController {
   // Basic health check
