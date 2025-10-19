@@ -1,6 +1,6 @@
 import Groq from 'groq-sdk';
 import { z } from 'zod';
-import { config } from '../config/environment.js';
+import { config } from '../../config/environment.js';
 import type { LearnerProfile, Prisma } from '@prisma/client';
 
 // ============================================

@@ -3,7 +3,7 @@ import path from 'path';
 import { Prisma } from '@prisma/client';
 import { AppError } from '../../errors/AppError';
 import { learnerProfileService } from '../profile';
-import { profileContextBuilder } from '../profileContextBuilder.js';
+import { profileContextBuilder } from '../learning/profileContextBuilder.js';
 import { technicalAssessmentConfig, TechnicalAssessmentQuestion } from '../../config/technicalAssessment.js';
 
 export type TechnicalAssessmentAnswers = {
@@ -198,7 +198,7 @@ class TechnicalAssessmentService {
       learnerProfileId: profile.id,
       includeQuizResult: false,
       includeProgress: false
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       // Non-blocking: log and continue
       console.warn('[technicalAssessment] failed to rebuild profile context', { userId, error });
     });

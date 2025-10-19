@@ -1,8 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
-import { objectiveProgressService } from '../services/objectiveProgressService.js';
+import { objectiveProgressService, sprintAutoGenerationService } from '../services/learning';
 import { learningAnalyticsService } from '../services/analytics';
-import { sprintAutoGenerationService } from '../services/sprintAutoGenerationService.js';
 import { AppError } from '../errors/AppError.js';
 
 // ============================================

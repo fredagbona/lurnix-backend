@@ -1,7 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
-import { sprintCompletionHandler } from '../services/sprintCompletionHandler.js';
-import { sprintAutoGenerationService } from '../services/sprintAutoGenerationService.js';
+import { sprintCompletionHandler, sprintAutoGenerationService } from '../services/learning';
 import { AppError } from '../errors/AppError.js';
 
 // ============================================

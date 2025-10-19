@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { LearnerProfile, SprintDifficulty } from '../types/prisma';
+import { LearnerProfile, SprintDifficulty } from '../../types/prisma';
 import {
   PlannerClientResult,
   PlannerRequestError,
@@ -8,7 +8,7 @@ import {
   requestPlannerPlan
 } from './plannerClient.js';
 import { ProfileContext } from './profileContextBuilder.js';
-import { config } from '../config/environment.js';
+import { config } from '../../config/environment.js';
 import type { AdaptivePlanMetadata } from './sprintAdaptationStrategy.js';
 
 export type SprintPlanMode = 'skeleton' | 'expansion';

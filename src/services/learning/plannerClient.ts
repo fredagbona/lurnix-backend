@@ -1,6 +1,6 @@
 import Groq from 'groq-sdk';
 import { createHash } from 'node:crypto';
-import { config } from '../config/environment.js';
+import { config } from '../../config/environment.js';
 import { json } from 'node:stream/consumers';
 import type { AdaptivePlanMetadata } from './sprintAdaptationStrategy.js';
 

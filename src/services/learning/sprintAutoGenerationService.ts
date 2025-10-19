@@ -1,8 +1,8 @@
-import { db } from '../prisma/prismaWrapper.js';
-import { AppError } from '../errors/AppError.js';
+import { db } from '../../prisma/prismaWrapper.js';
+import { AppError } from '../../errors/AppError.js';
 import { plannerService, extractPreviousSprintContext } from './plannerService.js';
 import type { GenerateSprintPlanInput, PreviousSprintContext } from './plannerService.js';
-import { learnerProfileService } from './profile';
+import { learnerProfileService } from '../profile';
 import { profileContextBuilder } from './profileContextBuilder.js';
 import type { Objective, Sprint, LearnerProfile } from '@prisma/client';
 

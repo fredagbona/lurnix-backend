@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { createObjectiveSchema, expandSprintSchema, generateSprintSchema } from '../validation/objectiveSchemas.js';
 import { submitSprintEvidenceSchema, reviewSprintSchema } from '../validation/reviewerSchemas.js';
-import { objectiveService } from '../services/objectiveService.js';
-import { sprintAutoGenerationService } from '../services/sprintAutoGenerationService.js';
+import { objectiveService, sprintAutoGenerationService } from '../services/learning';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { sendTranslatedResponse } from '../utils/translationUtils.js';
 

@@ -18,8 +18,5 @@ export * from './billing';
 export * from './assessment';
 // Analytics services
 export * from './analytics';
-export * from './sprintService.js';
-export * from './plannerService.js';
-export * from './objectiveService.js';
-export * from './evidenceService.js';
-export * from './reviewerService.js';
+// Learning services
+export * from './learning';

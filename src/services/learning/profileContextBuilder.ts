@@ -1,22 +1,22 @@
 import { Prisma } from '@prisma/client';
 import { createHash } from 'crypto';
-import { db } from '../prisma/prismaWrapper';
-import { AppError } from '../errors/AppError';
+import { db } from '../../prisma/prismaWrapper';
+import { AppError } from '../../errors/AppError';
 import {
   LearnerProfile,
   LearnerProfileSource,
   SprintDifficulty,
   SprintStatus
-} from '../types/prisma';
+} from '../../types/prisma';
 import {
   learnerProfileService,
   RecordLearnerProfileInput
-} from './profile';
+} from '../profile';
 import {
   emitProfileContextBuilt,
   emitProfileRefreshRequested,
   inferTriggerFromSource
-} from '../events/profileEvents.js';
+} from '../../events/profileEvents.js';
 
 export interface ProfileContextBuildParams {
   userId: string;

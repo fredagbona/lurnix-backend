@@ -5,8 +5,8 @@ import {
   ReviewerProjectSummary,
   ReviewerSummary,
   zReviewOutput
-} from '../types/reviewer.js';
-import { ArtifactStatus, SprintArtifact } from '../types/prisma';
+} from '../../types/reviewer.js';
+import { ArtifactStatus, SprintArtifact } from '../../types/prisma';
 
 export interface ReviewSprintParams {
   projects: Record<string, unknown>[];

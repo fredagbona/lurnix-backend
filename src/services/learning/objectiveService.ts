@@ -1,10 +1,10 @@
 import { Prisma } from '@prisma/client';
-import { db } from '../prisma/prismaWrapper';
-import { db as prisma } from '../prisma/prismaWrapper';
-import { AppError } from '../errors/AppError';
-import { learnerProfileService } from './profile';
+import { db } from '../../prisma/prismaWrapper';
+import { db as prisma } from '../../prisma/prismaWrapper';
+import { AppError } from '../../errors/AppError';
+import { learnerProfileService } from '../profile';
 import { extractPreviousSprintContext, plannerService } from './plannerService.js';
-import { sprintEventEmitter, SprintEvent } from './infrastructure/eventEmitter.js';
+import { sprintEventEmitter, SprintEvent } from '../infrastructure/eventEmitter.js';
 import type {
   SprintPlan,
   SprintPlanCore,
@@ -13,9 +13,9 @@ import type {
   PreviousSprintContext
 } from './plannerService.js';
 import { sprintService } from './sprintService.js';
-import { SprintUpdateInput } from '../repositories/sprintRepository.js';
+import { SprintUpdateInput } from '../../repositories/sprintRepository.js';
 import { profileContextBuilder, ProfileContext } from './profileContextBuilder.js';
-import { config } from '../config/environment.js';
+import { config } from '../../config/environment.js';
 import {
   ObjectiveStatus,
   LearnerProfile,
@@ -26,7 +26,7 @@ import {
   Sprint,
   SprintArtifact,
   ObjectiveContext
-} from '../types/prisma';
+} from '../../types/prisma';
 import {
   ObjectiveUiPayload,
   ObjectiveWithRelations,
@@ -34,21 +34,21 @@ import {
   extractSprintPlanDetails,
   serializeObjective,
   serializeSprint
-} from '../serializers/objectiveSerializer.js';
-import type { PlanLimitsPayload, ObjectiveSprintLimitPayload } from '../types/planLimits.js';
-import { planLimitationService, type PlanLimitsSummary } from './billing';
+} from '../../serializers/objectiveSerializer.js';
+import type { PlanLimitsPayload, ObjectiveSprintLimitPayload } from '../../types/planLimits.js';
+import { planLimitationService, type PlanLimitsSummary } from '../billing';
 import { evidenceService, SubmittedArtifactInput } from './evidenceService.js';
 import { reviewerService } from './reviewerService.js';
-import { ReviewerSummary, zReviewerSummary } from '../types/reviewer.js';
+import { ReviewerSummary, zReviewerSummary } from '../../types/reviewer.js';
 import { objectiveEstimationService } from './objectiveEstimationService.js';
-import { adaptiveLearningService } from './assessment';
+import { adaptiveLearningService } from '../assessment';
 import {
   generateAdaptiveMetadata,
   DEFAULT_ADAPTIVE_METADATA,
   type AdaptiveMetadataSignals,
   type AdaptivePlanMetadata
 } from './sprintAdaptationStrategy.js';
-import type { TechnicalAssessmentScore } from './assessment/technicalAssessmentService.js';
+import type { TechnicalAssessmentScore } from '../assessment/technicalAssessmentService.js';
 
 export interface CreateObjectiveRequest {
   userId: string;

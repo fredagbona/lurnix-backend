@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { LearnerProfileSource } from '../types/prisma';
-import type { ProfileContext } from '../services/profileContextBuilder';
+import type { ProfileContext } from '../services/learning/profileContextBuilder';
 
 export type ProfileEventTrigger = 'quiz' | 'manual' | 'review' | 'system';
 export type ProfileRefreshReason = 'snapshot-recorded' | 'snapshot-updated' | 'context-built';

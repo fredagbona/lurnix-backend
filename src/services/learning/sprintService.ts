@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
-import { sprintRepository, SprintCreateInput, SprintUpdateInput } from '../repositories/sprintRepository.js';
-import { Sprint, SprintDifficulty, SprintStatus } from '../types/prisma';
+import { sprintRepository, SprintCreateInput, SprintUpdateInput } from '../../repositories/sprintRepository.js';
+import { Sprint, SprintDifficulty, SprintStatus } from '../../types/prisma';
 
 export class SprintService {
   async createSprint(input: SprintCreateInput): Promise<Sprint> {
