@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 
 // Load environment variables based on NODE_ENV
-const env = process.env.NODE_ENV || 'production';
+const env = process.env.NODE_ENV || 'development';
 
 // Load the appropriate .env file
 if (env === 'test') {
