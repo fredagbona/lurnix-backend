@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { emailService } from '../../../../services/communication';
+import { emailService } from '../../../communication';
 import { errorMonitoringService } from '../../monitoring/errorMonitoringService.js';
 import { config } from '../../../../config/environment.js';
 

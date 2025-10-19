@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../../../../middlewares/errorMiddleware.js';
 import { prisma } from '../../../../prisma/client.js';
-import { emailService } from '../../../../services/communication';
+import { emailService } from '../../../communication';
 import { errorMonitoringService } from '../../monitoring/errorMonitoringService.js';
 import { getEnvironmentInfo } from '../../../../config/environment.js';
 

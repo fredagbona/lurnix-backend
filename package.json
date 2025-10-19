@@ -7,7 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "postbuild": "npm run copy:templates && npm run copy:locales",
-    "copy:templates": "copyfiles -u 2 \"src/services/communication/templates/**/*\" dist/services/communication",
+    "copy:templates": "copyfiles -u 2 \"src/domains/communication/templates/**/*\" dist/domains/communication",
     "copy:locales": "copyfiles -u 2 \"src/locales/**/*\" dist/locales",
     "start": "node dist/server.js",
     "db:migrate:dev": "npx prisma migrate dev",
