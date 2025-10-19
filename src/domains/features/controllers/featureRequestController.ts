@@ -88,7 +88,7 @@ export class FeatureRequestController {
         data: result,
         timestamp: new Date().toISOString(),
       });
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof FeatureRequestRateLimitError) {
         res.status(429).json({
           success: false,
@@ -127,7 +127,7 @@ export class FeatureRequestController {
         data: feature,
         timestamp: new Date().toISOString(),
       });
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof FeatureRequestNotFoundError) {
         res.status(404).json({
           success: false,
@@ -166,7 +166,7 @@ export class FeatureRequestController {
         data: result,
         timestamp: new Date().toISOString(),
       });
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof FeatureRequestNotFoundError) {
         res.status(404).json({
           success: false,

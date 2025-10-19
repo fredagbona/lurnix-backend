@@ -26,7 +26,7 @@ export class FeatureRequestAdminController {
         data: feature,
         timestamp: new Date().toISOString(),
       });
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof FeatureRequestNotFoundError) {
         res.status(404).json({
           success: false,
@@ -65,7 +65,7 @@ export class FeatureRequestAdminController {
         data: updated,
         timestamp: new Date().toISOString(),
       });
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof FeatureRequestNotFoundError) {
         res.status(404).json({
           success: false,
@@ -124,7 +124,7 @@ export class FeatureRequestAdminController {
         data: merged,
         timestamp: new Date().toISOString(),
       });
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof FeatureRequestNotFoundError) {
         res.status(404).json({
           success: false,
@@ -157,7 +157,7 @@ export class FeatureRequestAdminController {
         data: note,
         timestamp: new Date().toISOString(),
       });
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof FeatureRequestNotFoundError) {
         res.status(404).json({
           success: false,
