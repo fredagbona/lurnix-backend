@@ -16,6 +16,8 @@ export * from './profile';
 export * from './billing';
 // Assessment services
 export * from './assessment';
+// Analytics services
+export * from './analytics';
 export * from './sprintService.js';
 export * from './plannerService.js';
 export * from './objectiveService.js';
