@@ -5,7 +5,7 @@ import {
   removeCouponParamSchema,
   validateCouponSchema,
 } from '../schemas/couponSchemas';
-import { couponService } from '../services/couponService';
+import { couponService } from '../services/billing';
 import { AppError } from '../errors/AppError';
 
 export class CouponController {

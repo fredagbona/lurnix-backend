@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { planService } from '../services/planService';
+import { planService } from '../services/billing';
 import {
   planTypeParamSchema,
   planPricingQuerySchema,

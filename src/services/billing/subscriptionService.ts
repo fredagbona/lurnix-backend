@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
-import { prisma } from '../prisma/typedClient';
-import { AppError } from '../errors/AppError';
-import type { BillingCycle, PlanType, UserSubscriptionStatus } from '../prisma/prismaTypes';
+import { prisma } from '../../prisma/typedClient';
+import { AppError } from '../../errors/AppError';
+import type { BillingCycle, PlanType, UserSubscriptionStatus } from '../../prisma/prismaTypes';
 import { couponService } from './couponService';
 import { paddleService } from './paddleService';
 import { planService } from './planService';

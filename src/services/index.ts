@@ -12,9 +12,10 @@ export * from './admin';
 export * from './ai';
 // Profile services
 export * from './profile';
+// Billing services
+export * from './billing';
 export * from './sprintService.js';
 export * from './plannerService.js';
 export * from './objectiveService.js';
-export * from './planLimitationService.js';
 export * from './evidenceService.js';
 export * from './reviewerService.js';

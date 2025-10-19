@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
-import { AppError } from '../errors/AppError';
-import { prisma } from '../prisma/typedClient';
-import type { UserSubscriptionStatus } from '../prisma/prismaTypes';
+import { AppError } from '../../errors/AppError';
+import { prisma } from '../../prisma/typedClient';
+import type { UserSubscriptionStatus } from '../../prisma/prismaTypes';
 
 interface PaddleEventEnvelope<T = unknown> {
   event_type: string;

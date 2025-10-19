@@ -1,9 +1,9 @@
 import { Prisma } from '@prisma/client';
-import { prisma } from '../prisma/typedClient';
-import { AppError } from '../errors/AppError';
-import type { BillingCycle, PlanType } from '../prisma/prismaTypes';
+import { prisma } from '../../prisma/typedClient';
+import { AppError } from '../../errors/AppError';
+import type { BillingCycle, PlanType } from '../../prisma/prismaTypes';
 import { couponService } from './couponService';
-import { translateKey } from '../utils/translationUtils.js';
+import { translateKey } from '../../utils/translationUtils.js';
 import i18next from 'i18next';
 
 const decimalToNumber = (value: Prisma.Decimal): number => value.toNumber();

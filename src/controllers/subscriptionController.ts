@@ -1,6 +1,5 @@
 import { Response, NextFunction } from 'express';
-import { subscriptionService } from '../services/subscriptionService';
-import { planService } from '../services/planService';
+import { subscriptionService, planService } from '../services/billing';
 import type { AuthRequest } from '../middlewares/authMiddleware';
 import {
   createSubscriptionSchema,

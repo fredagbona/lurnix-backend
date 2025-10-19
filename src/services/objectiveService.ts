@@ -36,7 +36,7 @@ import {
   serializeSprint
 } from '../serializers/objectiveSerializer.js';
 import type { PlanLimitsPayload, ObjectiveSprintLimitPayload } from '../types/planLimits.js';
-import { planLimitationService, type PlanLimitsSummary } from './planLimitationService.js';
+import { planLimitationService, type PlanLimitsSummary } from './billing';
 import { evidenceService, SubmittedArtifactInput } from './evidenceService.js';
 import { reviewerService } from './reviewerService.js';
 import { ReviewerSummary, zReviewerSummary } from '../types/reviewer.js';
