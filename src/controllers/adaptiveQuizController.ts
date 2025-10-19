@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 import { AuthRequest } from '../middlewares/authMiddleware';
-import knowledgeValidationService from '../services/knowledgeValidationService.js';
+import { knowledgeValidationService } from '../services/assessment';
 import { Prisma, PrismaClient, QuizType } from '@prisma/client';
 
 const prisma = new PrismaClient();

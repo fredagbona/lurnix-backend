@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { quizAdminService } from '../../services/quizAdminService';
+import { quizAdminService } from '../../services/assessment';
 import { 
   createQuizQuestionSchema, 
   updateQuizQuestionSchema,

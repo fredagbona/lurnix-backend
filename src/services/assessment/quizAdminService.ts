@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
-import { prisma } from '../prisma/typedClient';
-import { AppError } from '../errors/AppError';
+import { prisma } from '../../prisma/typedClient';
+import { AppError } from '../../errors/AppError';
 
 interface QuizQuestionInput {
   key: string;

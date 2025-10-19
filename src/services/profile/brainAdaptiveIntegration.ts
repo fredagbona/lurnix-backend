@@ -1,10 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import skillExtractionService from '../skillExtractionService.js';
 import skillTrackingService from '../skillTrackingService.js';
-import adaptiveLearningService from '../adaptiveLearningService.js';
-import knowledgeValidationService from '../knowledgeValidationService.js';
+import { adaptiveLearningService, knowledgeValidationService, quizGenerationService } from '../assessment';
 import spacedRepetitionService from '../spacedRepetitionService.js';
-import quizGenerationService from '../quizGenerationService.js';
 import { translateKey } from '../../utils/translationUtils.js';
 
 const prisma = new PrismaClient();

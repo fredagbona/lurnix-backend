@@ -1,10 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { Prisma } from '@prisma/client';
-import { AppError } from '../errors/AppError';
-import { learnerProfileService } from './profile';
-import { profileContextBuilder } from './profileContextBuilder.js';
-import { technicalAssessmentConfig, TechnicalAssessmentQuestion } from '../config/technicalAssessment.js';
+import { AppError } from '../../errors/AppError';
+import { learnerProfileService } from '../profile';
+import { profileContextBuilder } from '../profileContextBuilder.js';
+import { technicalAssessmentConfig, TechnicalAssessmentQuestion } from '../../config/technicalAssessment.js';
 
 export type TechnicalAssessmentAnswers = {
   codingExperience: 'absolute_beginner' | 'beginner' | 'intermediate' | 'advanced';

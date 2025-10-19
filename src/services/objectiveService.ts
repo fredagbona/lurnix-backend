@@ -41,14 +41,14 @@ import { evidenceService, SubmittedArtifactInput } from './evidenceService.js';
 import { reviewerService } from './reviewerService.js';
 import { ReviewerSummary, zReviewerSummary } from '../types/reviewer.js';
 import { objectiveEstimationService } from './objectiveEstimationService.js';
-import adaptiveLearningService from './adaptiveLearningService.js';
+import { adaptiveLearningService } from './assessment';
 import {
   generateAdaptiveMetadata,
   DEFAULT_ADAPTIVE_METADATA,
   type AdaptiveMetadataSignals,
   type AdaptivePlanMetadata
 } from './sprintAdaptationStrategy.js';
-import type { TechnicalAssessmentScore } from './technicalAssessmentService.js';
+import type { TechnicalAssessmentScore } from './assessment/technicalAssessmentService.js';
 
 export interface CreateObjectiveRequest {
   userId: string;

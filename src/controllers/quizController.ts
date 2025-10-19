@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { quizService, QuizSubmission } from '../services/quizService';
+import { quizService, type QuizSubmission } from '../services/assessment';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 import { AuthRequest } from '../middlewares/authMiddleware';
 

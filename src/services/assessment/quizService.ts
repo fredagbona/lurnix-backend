@@ -1,13 +1,13 @@
 import i18next from 'i18next';
-import { AppError } from '../errors/AppError';
-import { db } from '../prisma/prismaWrapper';
+import { AppError } from '../../errors/AppError';
+import { db } from '../../prisma/prismaWrapper';
 import {
   quizPersonalityDimensions,
   quizProfileMapping,
   quizProfileNameKey,
   quizProfileSummaryKey
-} from '../config/quizScoring';
-import { profileContextBuilder } from './profileContextBuilder.js';
+} from '../../config/quizScoring';
+import { profileContextBuilder } from '../profileContextBuilder.js';
 
 // Define types for quiz-related data
 export interface QuizSection {
