@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
-import { aiService } from '../services/aiService.js';
+import { aiService } from '../services/ai';
 import { AppError } from '../errors/AppError.js';
 import { GenerateProfileRequest } from '../types/ai.js';
 

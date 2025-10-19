@@ -8,6 +8,8 @@ export * from './communication';
 export * from './features';
 // Admin services
 export * from './admin';
+// AI services
+export * from './ai';
 export * from './learnerProfileService.js';
 export * from './sprintService.js';
 export * from './plannerService.js';
