@@ -2,9 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import Handlebars from 'handlebars';
 import nodemailer from 'nodemailer';
-import { config } from '../config/environment';
+import { config } from '../../config/environment';
 import i18next from 'i18next';
-import { getTranslation } from '../config/i18n/index.js';
+import { getTranslation } from '../../config/i18n/index.js';
 
 const EMAIL_NAMESPACE = 'emails';
 

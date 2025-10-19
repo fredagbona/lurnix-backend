@@ -1,5 +1,5 @@
 import { adminRepository } from '../repositories/adminRepository.js';
-import { emailService } from './emailService.js';
+import { emailService } from './communication';
 import { hashPassword } from '../utils/passwordUtils.js';
 import { AppError } from '../errors/AppError.js';
 import { generateRandomToken } from '../utils/tokenUtils.js';

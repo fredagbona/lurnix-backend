@@ -2,7 +2,7 @@ import { userRepository, UserNotFoundError } from '../repositories/userRepositor
 import { generatePasswordResetToken, verifyPasswordResetToken } from '../utils/cryptoUtils.js';
 import { hashPassword } from '../utils/passwordUtils.js';
 import { ForgotPasswordRequest, ResetPasswordRequest } from '../types/auth.js';
-import { emailService } from './emailService.js';
+import { emailService } from './communication';
 
 // Custom error classes for password reset service
 export class PasswordResetError extends Error {

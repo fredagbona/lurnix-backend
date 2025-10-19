@@ -3,7 +3,7 @@ import { adminRepository, CreateAdminData } from '../repositories/adminRepositor
 import { hashPassword, comparePassword } from '../utils/passwordUtils.js';
 import { generateToken } from '../utils/jwt.js';
 import { AppError } from '../errors/AppError.js';
-import { emailService } from './emailService.js';
+import { emailService } from './communication';
 
 export interface AdminLoginRequest {
   email: string;

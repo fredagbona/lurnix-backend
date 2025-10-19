@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { userRepository, DuplicateUserError, UserNotFoundError } from '../repositories/userRepository.js';
 import { hashPassword, comparePassword, generateResetToken } from '../utils/passwordUtils.js';
-import { emailService } from './emailService.js';
+import { emailService } from './communication';
 import { generateToken } from '../utils/jwt.js';
 import { toUserProfile } from '../utils/userUtils.js';
 import { generateSecureToken } from '../utils/tokenUtils.js';

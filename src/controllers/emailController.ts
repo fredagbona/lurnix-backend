@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { emailService } from '../services/emailService.js';
+import { emailService } from '../services/communication';
 import { asyncHandler } from '../middlewares/errorMiddleware.js';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
 import { sendTranslatedResponse } from '../utils/translationUtils.js';

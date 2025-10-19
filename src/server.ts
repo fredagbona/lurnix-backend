@@ -4,7 +4,7 @@ import { setupSwagger } from './config/swagger';
 import { config, validateEnvironment, getEnvironmentInfo, logConfiguration } from './config/environment';
 import { configureMiddleware, configureErrorHandling } from './middlewares/middlewareConfig';
 import { scheduledTasksService, errorMonitoringService, healthCheckService } from './services/infrastructure';
-import { emailService } from './services/emailService.js';
+import { emailService } from './services/communication';
 import { adminSeedService } from './services/adminSeedService.js';
 import { prisma } from './prisma/client';
 import { initI18n } from './config/i18n';
