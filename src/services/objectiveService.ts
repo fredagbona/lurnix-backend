@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { db } from '../prisma/prismaWrapper';
 import { db as prisma } from '../prisma/prismaWrapper';
 import { AppError } from '../errors/AppError';
-import { learnerProfileService } from './learnerProfileService.js';
+import { learnerProfileService } from './profile';
 import { extractPreviousSprintContext, plannerService } from './plannerService.js';
 import { sprintEventEmitter, SprintEvent } from './infrastructure/eventEmitter.js';
 import type {

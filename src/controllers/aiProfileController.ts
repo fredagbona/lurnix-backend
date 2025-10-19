@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
 import { AppError } from '../errors/AppError.js';
-import { learnerProfileService } from '../services/learnerProfileService.js';
+import { learnerProfileService } from '../services/profile';
 
 export class AIProfileController {
   /**

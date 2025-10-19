@@ -10,7 +10,8 @@ export * from './features';
 export * from './admin';
 // AI services
 export * from './ai';
-export * from './learnerProfileService.js';
+// Profile services
+export * from './profile';
 export * from './sprintService.js';
 export * from './plannerService.js';
 export * from './objectiveService.js';

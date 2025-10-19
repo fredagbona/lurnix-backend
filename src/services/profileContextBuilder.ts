@@ -11,7 +11,7 @@ import {
 import {
   learnerProfileService,
   RecordLearnerProfileInput
-} from './learnerProfileService.js';
+} from './profile';
 import {
   emitProfileContextBuilt,
   emitProfileRefreshRequested,

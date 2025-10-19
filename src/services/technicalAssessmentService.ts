@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { Prisma } from '@prisma/client';
 import { AppError } from '../errors/AppError';
-import { learnerProfileService } from './learnerProfileService.js';
+import { learnerProfileService } from './profile';
 import { profileContextBuilder } from './profileContextBuilder.js';
 import { technicalAssessmentConfig, TechnicalAssessmentQuestion } from '../config/technicalAssessment.js';
 
