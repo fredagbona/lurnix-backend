@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
-import { db } from '../prisma/prismaWrapper';
-import { LearnerProfile, LearnerProfileSource } from '../types/prisma';
+import { db } from '../../../prisma/prismaWrapper';
+import { LearnerProfile, LearnerProfileSource } from '../../../types/prisma';
 
 export interface LearnerProfileCreateInput {
   userId: string;

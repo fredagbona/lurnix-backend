@@ -3,8 +3,8 @@ import {
   learnerProfileRepository,
   LearnerProfileCreateInput,
   LearnerProfileUpdateInput
-} from '../../repositories/learnerProfileRepository.js';
-import { LearnerProfile, LearnerProfileSource } from '../../types/prisma';
+} from '../repositories/learnerProfileRepository.js';
+import { LearnerProfile, LearnerProfileSource } from '../../../types/prisma';
 import {
   computeSnapshotHash,
   emitProfileRefreshRequested,
@@ -13,7 +13,7 @@ import {
   inferTriggerFromSource,
   normalizeSnapshot,
   ProfileEventTrigger
-} from '../../events/profileEvents.js';
+} from '../../../events/profileEvents.js';
 
 export interface RecordLearnerProfileInput extends LearnerProfileCreateInput {}
 
