@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
-import { prisma } from '../prisma/client.js';
-import { User, CreateUserData, UpdateUserData } from '../types/auth.js';
-import { mapPrismaUserToUser, mapPrismaUsersToUsers } from '../utils/prismaMappers.js';
+import { prisma } from '../../../prisma/client.js';
+import { User, CreateUserData, UpdateUserData } from '../../../types/auth.js';
+import { mapPrismaUserToUser, mapPrismaUsersToUsers } from '../../../utils/prismaMappers.js';
 
 // Custom error classes for repository operations
 export class UserRepositoryError extends Error {

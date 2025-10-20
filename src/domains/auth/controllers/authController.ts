@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { AuthRequest } from '../middlewares/authMiddleware.js';
-import { authService, AuthServiceError, EmailNotVerifiedError, passwordResetService, PasswordResetError } from '../services/auth';
+import { AuthRequest } from '../../../middlewares/authMiddleware.js';
+import { authService, AuthServiceError, EmailNotVerifiedError, passwordResetService, PasswordResetError } from '../services';
 import i18next from 'i18next';
-import type { OAuthVerifyCallbackPayload } from '../services/auth/oauth/oauthTypes.js';
+import type { OAuthVerifyCallbackPayload } from '../services/oauth/oauthTypes.js';
 
 import { 
   RegisterRequest, 
@@ -15,12 +15,12 @@ import {
   OAuthLoginResult,
   LinkedProvidersResponse,
   UnlinkProviderRequest
-} from '../types/auth.js';
-import { asyncHandler } from '../middlewares/errorMiddleware.js';
-import { sendTranslatedResponse } from '../utils/translationUtils.js';
-import { AppError } from '../errors/AppError.js';
-import { passport as oauthPassport } from '../services/auth/oauth/passport.js';
-import { config } from '../config/environment.js';
+} from '../../../types/auth.js';
+import { asyncHandler } from '../../../middlewares/errorMiddleware.js';
+import { sendTranslatedResponse } from '../../../utils/translationUtils.js';
+import { AppError } from '../../../errors/AppError.js';
+import { passport as oauthPassport } from '../services/oauth/passport.js';
+import { config } from '../../../config/environment.js';
 
 export class AuthController {
   private readonly supportedProviders: OAuthProvider[] = ['google', 'github'];

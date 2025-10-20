@@ -1,5 +1,6 @@
-export * from './authSchemas.js';
-export * from './emailSchemas.js';
+// authSchemas and emailSchemas moved to domains/auth/validation/
+export * from '../domains/auth/validation/authSchemas.js';
+export * from '../domains/auth/validation/emailSchemas.js';
 export * from './routeSchemas.js';
 // featureRequestSchemas moved to domains/features/validation/
 export * from '../domains/features/validation/featureRequestSchemas.js';

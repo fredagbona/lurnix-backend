@@ -3,14 +3,8 @@ import type { ParamsDictionary } from 'express-serve-static-core';
 import type { ParsedQs } from 'qs';
 import type { User as PrismaUser, Admin as PrismaAdmin } from '@prisma/client';
 import type { Language } from '../prisma/prismaTypes.js';
-import type {
-  OAuthProvider as PassportOAuthProvider,
-  OAuthVerifyCallbackPayload as PassportOAuthVerifyCallbackPayload,
-} from '../services/auth/oauth/oauthTypes.js';
-
 export type { Language };
-export type OAuthProvider = PassportOAuthProvider;
-export type OAuthVerifyCallbackPayload = PassportOAuthVerifyCallbackPayload;
+export type { OAuthProvider, OAuthVerifyCallbackPayload } from '../domains/auth/services/oauth/oauthTypes.js';
 
 // Request type extension for authenticated requests
 export interface AuthLocals extends Record<string, any> {

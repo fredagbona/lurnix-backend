@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { userRepository } from '../../../repositories/userRepository.js';
+import { userRepository } from '../../auth/repositories/userRepository.js';
 import { passwordResetService } from '../../../services/auth';
 import { scheduledTasksService, errorMonitoringService } from '../../infrastructure';
 import { asyncHandler } from '../../../middlewares/errorMiddleware.js';

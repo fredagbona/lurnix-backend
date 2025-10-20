@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
-import { emailService } from '../services/communication';
-import { asyncHandler } from '../middlewares/errorMiddleware.js';
-import { AuthRequest } from '../middlewares/authMiddleware.js';
-import { sendTranslatedResponse } from '../utils/translationUtils.js';
-import { AppError } from '../errors/AppError.js';
-import { I18nRequest } from '../config/i18n/types.js';
+import { emailService } from '../../../services/communication';
+import { asyncHandler } from '../../../middlewares/errorMiddleware.js';
+import { AuthRequest } from '../../../middlewares/authMiddleware.js';
+import { sendTranslatedResponse } from '../../../utils/translationUtils.js';
+import { AppError } from '../../../errors/AppError.js';
+import { I18nRequest } from '../../../config/i18n/types.js';
 
 export class EmailController {
   // Get email service status

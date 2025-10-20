@@ -1,4 +1,5 @@
-export * from './userRepository.js';
+// userRepository moved to domains/auth/repositories/
+export * from '../domains/auth/repositories/userRepository.js';
 // featureRequestRepository moved to domains/features/repositories/
 export * from '../domains/features/repositories/featureRequestRepository.js';
 // learnerProfileRepository moved to domains/profile/repositories/

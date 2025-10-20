@@ -1,17 +1,17 @@
 import { Router } from 'express';
-import { userManagementController } from '../../controllers/userManagementController';
-import { authenticate, optionalAuthenticate } from '../../middlewares/authMiddleware';
-import { validateRequest, validateQuery, rateLimit, rateLimitConfigs } from '../../middlewares/validation';
-import { requireAccountOwnership } from '../../middlewares/securityMiddleware';
+import { userManagementController } from '../controllers/userManagementController';
+import { authenticate, optionalAuthenticate } from '../../../middlewares/authMiddleware';
+import { validateRequest, validateQuery, rateLimit, rateLimitConfigs } from '../../../middlewares/validation';
+import { requireAccountOwnership } from '../../../middlewares/securityMiddleware';
 import { 
   updateProfileSchema, 
   changePasswordSchema, 
   deleteAccountSchema 
-} from '../../validation/authSchemas';
+} from '../validation/authSchemas';
 import { 
   emailAvailabilityQuerySchema, 
   usernameAvailabilityQuerySchema 
-} from '../../validation/routeSchemas.js';
+} from '../../../validation/routeSchemas.js';
 
 const router = Router();
 

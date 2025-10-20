@@ -1,15 +1,15 @@
 import { Request, Response } from 'express';
-import { authService, AuthServiceError } from '../services/auth';
+import { authService, AuthServiceError } from '../services';
 import { 
   UpdateProfileRequest, 
   ChangePasswordRequest, 
   DeleteAccountRequest 
-} from '../types/auth.js';
-import { asyncHandler } from '../middlewares/errorMiddleware.js';
-import { AuthRequest } from '../middlewares/authMiddleware.js';
-import { getClientIP } from '../utils/emailUtils.js';
-import { sendTranslatedResponse } from '../utils/translationUtils.js';
-import { AppError } from '../errors/AppError.js';
+} from '../../../types/auth.js';
+import { asyncHandler } from '../../../middlewares/errorMiddleware.js';
+import { AuthRequest } from '../../../middlewares/authMiddleware.js';
+import { getClientIP } from '../../../utils/emailUtils.js';
+import { sendTranslatedResponse } from '../../../utils/translationUtils.js';
+import { AppError } from '../../../errors/AppError.js';
 
 export class UserManagementController {
   // Get user profile

@@ -6,7 +6,7 @@ import { AuthServiceError, PasswordResetError } from '../services/auth';
 interface LocalizedAuthRequest extends I18nRequest {
   userId?: string;
 }
-import { UserRepositoryError } from '../repositories/userRepository.js';
+import { UserNotFoundError, UserRepositoryError } from '../domains/auth/repositories/userRepository.js';
 import { ValidationError } from './validation.js';
 import { AppError } from '../errors/AppError.js';
 import { normalizeError } from '../errors/errorUtils.js';

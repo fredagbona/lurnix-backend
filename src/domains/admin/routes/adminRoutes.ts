@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { adminController } from '../controllers/adminController';
-import { emailController } from '../../../controllers/emailController';
+import { emailController } from '../../auth/controllers/emailController';
 import { authenticateAdmin, requireManager, requireSuperAdmin } from '../../../middlewares/adminAuthMiddleware';
 import { validateRequest, validateQuery, validateParams, rateLimit, rateLimitConfigs } from '../../../middlewares/validation';
 import { paginationQuerySchema, userIdParamSchema } from '../../../validation/routeSchemas';
-import { testEmailSchema } from '../../../validation/emailSchemas';
+import { testEmailSchema } from '../../auth/validation/emailSchemas';
 import adminAuthRoutes from './adminAuthRoutes';
 import featureRequestAdminRoutes from '../../features/routes/featureRequestAdminRoutes';
 
