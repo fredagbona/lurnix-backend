@@ -1,13 +1,13 @@
 import { Request, Response } from 'express';
-import { userRepository } from '../repositories/userRepository.js';
-import { passwordResetService } from '../services/auth';
-import { scheduledTasksService, errorMonitoringService } from '../services/infrastructure';
-import { asyncHandler } from '../middlewares/errorMiddleware.js';
-import { AuthRequest } from '../middlewares/authMiddleware.js';
-import { prisma } from '../prisma/client.js';
-import { I18nRequest } from '../config/i18n/types.js';
-import { sendTranslatedResponse } from '../utils/translationUtils.js';
-import { AppError } from '../errors/AppError.js';
+import { userRepository } from '../../../repositories/userRepository.js';
+import { passwordResetService } from '../../../services/auth';
+import { scheduledTasksService, errorMonitoringService } from '../../infrastructure';
+import { asyncHandler } from '../../../middlewares/errorMiddleware.js';
+import { AuthRequest } from '../../../middlewares/authMiddleware.js';
+import { prisma } from '../../../prisma/client.js';
+import { I18nRequest } from '../../../config/i18n/types.js';
+import { sendTranslatedResponse } from '../../../utils/translationUtils.js';
+import { AppError } from '../../../errors/AppError.js';
 
 export class AdminController {
   // Simple test endpoint

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { asyncHandler } from '../middlewares/errorMiddleware.js';
-import { adminPasswordResetService } from '../services/auth';
-import { validateRequest } from '../middlewares/validation.js';
+import { asyncHandler } from '../../../middlewares/errorMiddleware.js';
+import { adminPasswordResetService } from '../../../services/auth';
+import { validateRequest } from '../../../middlewares/validation.js';
 import { forgotPasswordSchema, resetPasswordSchema } from '../validation/adminSchemas.js';
 
 export class AdminPasswordResetController {

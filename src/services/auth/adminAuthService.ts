@@ -1,5 +1,5 @@
 import { Admin, AdminRole, Language } from '../../types/auth';
-import { adminRepository, CreateAdminData } from '../../repositories/adminRepository.js';
+import { adminRepository, CreateAdminData } from '../../domains/admin/repositories/adminRepository.js';
 import { hashPassword, comparePassword } from '../../utils/passwordUtils.js';
 import { generateToken } from '../../utils/jwt.js';
 import { AppError } from '../../errors/AppError.js';

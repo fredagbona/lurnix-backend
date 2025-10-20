@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { adminAuthController } from '../../controllers/adminAuthController.js';
-import { authenticateAdmin, requireSuperAdmin } from '../../middlewares/adminAuthMiddleware.js';
-import { validateRequest, rateLimit, rateLimitConfigs } from '../../middlewares/validation.js';
-import { adminLanguageSchema, adminLoginSchema, adminRegisterSchema, changePasswordSchema } from '../../validation/adminSchemas.js';
+import { adminAuthController } from '../controllers/adminAuthController.js';
+import { authenticateAdmin, requireSuperAdmin } from '../../../middlewares/adminAuthMiddleware.js';
+import { validateRequest, rateLimit, rateLimitConfigs } from '../../../middlewares/validation.js';
+import { adminLanguageSchema, adminLoginSchema, adminRegisterSchema, changePasswordSchema } from '../validation/adminSchemas.js';
 import adminPasswordResetRoutes from './adminPasswordResetRoutes.js';
 
 const router = Router();

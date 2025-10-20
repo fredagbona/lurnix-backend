@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { adminController } from '../../controllers/adminController';
-import { emailController } from '../../controllers/emailController';
-import { authenticateAdmin, requireManager, requireSuperAdmin } from '../../middlewares/adminAuthMiddleware';
-import { validateRequest, validateQuery, validateParams, rateLimit, rateLimitConfigs } from '../../middlewares/validation';
-import { paginationQuerySchema, userIdParamSchema } from '../../validation/routeSchemas';
-import { testEmailSchema } from '../../validation/emailSchemas';
+import { adminController } from '../controllers/adminController';
+import { emailController } from '../../../controllers/emailController';
+import { authenticateAdmin, requireManager, requireSuperAdmin } from '../../../middlewares/adminAuthMiddleware';
+import { validateRequest, validateQuery, validateParams, rateLimit, rateLimitConfigs } from '../../../middlewares/validation';
+import { paginationQuerySchema, userIdParamSchema } from '../../../validation/routeSchemas';
+import { testEmailSchema } from '../../../validation/emailSchemas';
 import adminAuthRoutes from './adminAuthRoutes';
-import featureRequestAdminRoutes from '../../domains/features/routes/featureRequestAdminRoutes';
+import featureRequestAdminRoutes from '../../features/routes/featureRequestAdminRoutes';
 
 const router = Router();
 

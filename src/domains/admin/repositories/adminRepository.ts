@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { Admin, AdminRole, Language } from '../types/auth';
-import { AppError } from '../errors/AppError.js';
+import { Admin, AdminRole, Language } from '../../../types/auth';
+import { AppError } from '../../../errors/AppError.js';
 
 const prisma = new PrismaClient();
 

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import authRoutes from "./auth/authRoutes";
 import userManagementRoutes from "./user/userManagementRoutes";
-import adminRoutes from "./admin/adminRoutes";
+import adminRoutes from "../domains/admin/routes/adminRoutes";
 import healthRoutes from "../domains/infrastructure/health/routes/healthRoutes";
 import quizRoutes from "./quizRoutes";
 import quizAdminRoutes from "./quizAdminRoutes";

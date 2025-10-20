@@ -4,7 +4,7 @@ import { AdminAuthRequest } from '../../../middlewares/adminAuthMiddleware.js';
 import {
   featureRequestService,
   FeatureRequestRateLimitError,
-} from '../services';
+} from '../services/index.js';
 import {
   FeatureRequestNotFoundError,
   DuplicateFeatureRequestTitleError,

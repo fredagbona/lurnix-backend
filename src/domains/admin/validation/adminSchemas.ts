@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AdminRole } from '../types/auth.js';
+import { AdminRole } from '../../../types/auth.js';
 
 // Admin login schema
 export const adminLoginSchema = z.object({

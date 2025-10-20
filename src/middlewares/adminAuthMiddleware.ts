@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, extractTokenFromHeader, TokenExpiredError, InvalidTokenError } from '../utils/jwt.js';
-import { adminRepository } from '../repositories/adminRepository.js';
+import { adminRepository } from '../domains/admin/repositories/adminRepository.js';
 import { AdminRole } from '../types/auth';
 
 // Extended request interface with admin information
