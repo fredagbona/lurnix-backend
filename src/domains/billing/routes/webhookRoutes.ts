@@ -1,6 +1,6 @@
 import express from 'express';
-import { paddleWebhookService } from '../services/billing';
-import { paddleConfig } from '../config/paddle';
+import { paddleWebhookService } from '../services';
+import { paddleConfig } from '../../../config/paddle';
 
 const router = express.Router();
 

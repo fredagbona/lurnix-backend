@@ -1,12 +1,12 @@
 import { Response, NextFunction } from 'express';
-import type { AuthRequest } from '../middlewares/authMiddleware';
+import type { AuthRequest } from '../../../middlewares/authMiddleware';
 import {
   applyCouponSchema,
   removeCouponParamSchema,
   validateCouponSchema,
-} from '../schemas/couponSchemas';
-import { couponService } from '../services/billing';
-import { AppError } from '../errors/AppError';
+} from '../validation/couponSchemas';
+import { couponService } from '../services';
+import { AppError } from '../../../errors/AppError';
 
 export class CouponController {
   async validateCoupon(req: AuthRequest, res: Response, next: NextFunction) {

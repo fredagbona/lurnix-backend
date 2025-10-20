@@ -1,6 +1,6 @@
 import express from 'express';
 import { couponController } from '../controllers/couponController';
-import { authenticate as authMiddleware, optionalAuthenticate } from '../middlewares/authMiddleware';
+import { authenticate as authMiddleware, optionalAuthenticate } from '../../../middlewares/authMiddleware';
 
 const router = express.Router();
 

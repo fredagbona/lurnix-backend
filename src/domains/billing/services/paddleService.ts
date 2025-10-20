@@ -1,5 +1,5 @@
-import { ensurePaddleConfigured, paddleConfig } from '../../config/paddle';
-import { AppError } from '../../errors/AppError';
+import { ensurePaddleConfigured, paddleConfig } from '../../../config/paddle';
+import { AppError } from '../../../errors/AppError';
 
 type FetchFn = (input: string | URL, init?: any) => Promise<any>;
 

@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
-import { prisma } from '../../prisma/typedClient';
-import { AppError } from '../../errors/AppError';
+import { prisma } from '../../../prisma/typedClient';
+import { AppError } from '../../../errors/AppError';
 import type { BillingCycle, Coupon, SubscriptionPlan } from '@prisma/client';
 
 type TransactionClient = Prisma.TransactionClient;

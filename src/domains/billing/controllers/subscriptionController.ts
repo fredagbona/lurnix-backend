@@ -1,14 +1,14 @@
 import { Response, NextFunction } from 'express';
-import { subscriptionService, planService } from '../services/billing';
-import type { AuthRequest } from '../middlewares/authMiddleware';
+import { subscriptionService, planService } from '../services';
+import type { AuthRequest } from '../../../middlewares/authMiddleware';
 import {
   createSubscriptionSchema,
   subscriptionIdParamSchema,
   changePlanSchema,
   cancelSubscriptionSchema,
   reactivateSubscriptionSchema,
-} from '../schemas/subscriptionSchemas';
-import { AppError } from '../errors/AppError';
+} from '../validation/subscriptionSchemas';
+import { AppError } from '../../../errors/AppError';
 
 export class SubscriptionController {
   async createSubscription(req: AuthRequest, res: Response, next: NextFunction) {

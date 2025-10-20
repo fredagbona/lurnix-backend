@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { planService } from '../services/billing';
+import { planService } from '../services';
 import {
   planTypeParamSchema,
   planPricingQuerySchema,
   pricingCalculationSchema,
-} from '../schemas/planSchemas';
-import { sendTranslatedResponse } from '../utils/translationUtils.js';
+} from '../../../schemas/planSchemas';
+import { sendTranslatedResponse } from '../../../utils/translationUtils.js';
 
 export class PlanController {
   async getPlans(req: Request, res: Response, next: NextFunction) {

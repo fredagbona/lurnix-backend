@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BillingCycle, PlanType } from '../types/pricing.js';
+import { BillingCycle, PlanType } from '../domains/billing/types/pricing.js';
 
 export const planTypeParamSchema = z.object({
   planType: z.nativeEnum(PlanType),

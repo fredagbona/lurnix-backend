@@ -1,7 +1,8 @@
-// Billing Services - Subscriptions, plans, payments, and coupons
-export { subscriptionService } from './subscriptionService';
-export { planService } from './planService';
-export { planLimitationService, type PlanLimitsSummary } from './planLimitationService';
-export { couponService } from './couponService';
-export { paddleService } from './paddleService';
-export { paddleWebhookService } from './paddleWebhookService';
+// Billing Services - Re-exports from new domain structure
+// This file maintains backward compatibility during migration
+export { subscriptionService } from '../../domains/billing/services/subscriptionService';
+export { planService } from '../../domains/billing/services/planService';
+export { planLimitationService, type PlanLimitsSummary } from '../../domains/billing/services/planLimitationService';
+export { couponService } from '../../domains/billing/services/couponService';
+export { paddleService } from '../../domains/billing/services/paddleService';
+export { paddleWebhookService } from '../../domains/billing/services/paddleWebhookService';
