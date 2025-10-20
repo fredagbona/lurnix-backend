@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { asyncHandler } from '../middlewares/errorMiddleware.js';
-import { technicalAssessmentService } from '../services/assessment';
-import { AuthRequest } from '../middlewares/authMiddleware';
+import { asyncHandler } from '../../../middlewares/errorMiddleware.js';
+import { technicalAssessmentService } from '../services/index.js';
+import { AuthRequest } from '../../../middlewares/authMiddleware';
 
 class TechnicalAssessmentController {
   getQuestions = asyncHandler(async (req: Request, res: Response): Promise<void> => {

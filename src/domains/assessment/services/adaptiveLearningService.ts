@@ -1,8 +1,8 @@
 import Groq from 'groq-sdk';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
-import { config } from '../../config/environment.js';
-import { skillTrackingService } from '../analytics';
+import { config } from '../../../config/environment.js';
+import { skillTrackingService } from '../../../services/analytics';
 
 const prisma = new PrismaClient();
 const groq = new Groq({ apiKey: config.GROQ_API_KEY });

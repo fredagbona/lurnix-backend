@@ -1,8 +1,8 @@
 import express from 'express';
-import { quizAdminController } from '../controllers/admin/quizAdminController';
-import { authenticateAdmin } from '../middlewares/adminAuthMiddleware';
-import { checkAdminRole } from '../middlewares/adminAuthMiddleware';
-import { AdminRole } from '../types/auth';
+import { quizAdminController } from '../controllers/quizAdminController';
+import { authenticateAdmin } from '../../../middlewares/adminAuthMiddleware';
+import { checkAdminRole } from '../../../middlewares/adminAuthMiddleware';
+import { AdminRole } from '../../../types/auth';
 
 const router = express.Router();
 

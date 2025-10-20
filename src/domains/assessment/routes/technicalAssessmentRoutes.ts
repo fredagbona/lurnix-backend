@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { authenticate } from '../middlewares/authMiddleware';
-import { validateRequest } from '../middlewares/validation';
+import { authenticate } from '../../../middlewares/authMiddleware';
+import { validateRequest } from '../../../middlewares/validation';
 import { technicalAssessmentController } from '../controllers/technicalAssessmentController.js';
 import { technicalAssessmentSubmissionSchema } from '../validation/technicalAssessmentSchemas.js';
 

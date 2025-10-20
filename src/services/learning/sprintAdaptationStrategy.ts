@@ -1,5 +1,5 @@
 import type { ObjectiveContext } from '../../types/prisma';
-import type { TechnicalAssessmentScore } from '../assessment/technicalAssessmentService.js';
+import type { TechnicalAssessmentScore } from '../../domains/assessment/services/technicalAssessmentService.js';
 
 export type AdaptiveStrategy =
   | 'absolute_beginner'

@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { adaptiveQuizController } from '../controllers/adaptiveQuizController.js';
-import { authenticate } from '../middlewares/authMiddleware.js';
-import { validateRequest } from '../middlewares/validation.js';
+import { authenticate } from '../../../middlewares/authMiddleware.js';
+import { validateRequest } from '../../../middlewares/validation.js';
 import { 
   submitQuizAnswersSchema, 
   quizIdParamSchema, 
   sprintIdParamSchema 
-} from '../schemas/adaptiveQuizSchemas.js';
+} from '../validation/adaptiveQuizSchemas.js';
 
 const router = Router();
 

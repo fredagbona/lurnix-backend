@@ -3,9 +3,9 @@ import authRoutes from "./auth/authRoutes";
 import userManagementRoutes from "./user/userManagementRoutes";
 import adminRoutes from "../domains/admin/routes/adminRoutes";
 import healthRoutes from "../domains/infrastructure/health/routes/healthRoutes";
-import quizRoutes from "./quizRoutes";
-import quizAdminRoutes from "./quizAdminRoutes";
-import adaptiveQuizRoutes from "./adaptiveQuizRoutes";
+import quizRoutes from "../domains/assessment/routes/quizRoutes";
+import quizAdminRoutes from "../domains/assessment/routes/quizAdminRoutes";
+import adaptiveQuizRoutes from "../domains/assessment/routes/adaptiveQuizRoutes";
 import subscriptionRoutes from "./subscriptionRoutes";
 import planRoutes from "./planRoutes";
 import pricingRoutes from "./pricingRoutes";
@@ -17,7 +17,7 @@ import featureRequestRoutes from "../domains/features/routes/featureRequestRoute
 import objectiveRoutes from "./objectiveRoutes";
 import progressRoutes from "./progressRoutes";
 import sprintRoutes from "./sprintRoutes";
-import technicalAssessmentRoutes from "./technicalAssessmentRoutes";
+import technicalAssessmentRoutes from "../domains/assessment/routes/technicalAssessmentRoutes";
 
 const router = Router();
 

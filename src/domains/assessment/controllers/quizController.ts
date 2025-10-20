@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { quizService, type QuizSubmission } from '../services/assessment';
-import { asyncHandler } from '../middlewares/errorMiddleware.js';
-import { AuthRequest } from '../middlewares/authMiddleware';
+import { quizService, type QuizSubmission } from '../services/index.js';
+import { asyncHandler } from '../../../middlewares/errorMiddleware.js';
+import { AuthRequest } from '../../../middlewares/authMiddleware';
 
 export class QuizController {
   // Get active quiz questions

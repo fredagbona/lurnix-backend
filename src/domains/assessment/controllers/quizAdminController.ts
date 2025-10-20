@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { quizAdminService } from '../../services/assessment';
+import { quizAdminService } from '../services/index.js';
 import { 
   createQuizQuestionSchema, 
   updateQuizQuestionSchema,
@@ -10,8 +10,8 @@ import {
   getQuizQuestionByIdSchema,
   deleteQuizQuestionSchema,
   deleteQuizOptionSchema
-} from '../../validations/quizAdminSchema';
-import { AppError } from '../../errors/AppError';
+} from '../validation/quizAdminSchema';
+import { AppError } from '../../../errors/AppError';
 
 export class QuizAdminController {
   // Create a new quiz question

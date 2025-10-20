@@ -1,7 +1,7 @@
 import { PrismaClient, QuizType, SkillDifficulty } from '@prisma/client';
 import quizGenerationService from './quizGenerationService.js';
-import { skillTrackingService } from '../analytics';
-import { profileContextBuilder } from '../learning/profileContextBuilder.js';
+import { skillTrackingService } from '../../../services/analytics';
+import { profileContextBuilder } from '../../../services/learning/profileContextBuilder.js';
 
 const prisma = new PrismaClient();
 

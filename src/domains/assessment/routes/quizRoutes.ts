@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { quizController } from '../controllers/quizController';
-import { authenticate } from '../middlewares/authMiddleware';
-import { validateRequest } from '../middlewares/validation';
+import { authenticate } from '../../../middlewares/authMiddleware';
+import { validateRequest } from '../../../middlewares/validation';
 import { 
   quizSubmissionSchema, 
   createQuizQuestionSchema, 
@@ -9,8 +9,8 @@ import {
   createQuizSectionSchema,
   updateQuizSectionSchema
 } from '../validation/quizSchemas';
-import { checkAdminRole, authenticateAdmin } from '../middlewares/adminAuthMiddleware';
-import { AdminRole } from '../types/auth';
+import { checkAdminRole, authenticateAdmin } from '../../../middlewares/adminAuthMiddleware';
+import { AdminRole } from '../../../types/auth';
 
 const router = Router();
 
