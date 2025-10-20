@@ -7,7 +7,7 @@ import {
   quizProfileNameKey,
   quizProfileSummaryKey
 } from '../../../config/quizScoring';
-import { profileContextBuilder } from '../../../services/learning/profileContextBuilder.js';
+import { profileContextBuilder } from '../../learning/services/profileContextBuilder.js';
 
 // Define types for quiz-related data
 export interface QuizSection {

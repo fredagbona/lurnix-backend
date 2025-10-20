@@ -1,6 +1,6 @@
 import Groq from 'groq-sdk';
-import { config } from '../../config/environment.js';
-import { ReviewInput } from '../../types/reviewer.js';
+import { config } from '../../../config/environment.js';
+import { ReviewInput } from '../../../types/reviewer.js';
 
 const SYSTEM_PROMPT = `You are **Lurnix Reviewer**, an objective evaluator of learning evidence.
 Your job: assess whether the sprint's **deliverables** meet the rubric and acceptance criteria,

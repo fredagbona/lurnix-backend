@@ -3,7 +3,7 @@ import path from 'path';
 import { Prisma } from '@prisma/client';
 import { AppError } from '../../../errors/AppError';
 import { learnerProfileService } from '../../../services/profile';
-import { profileContextBuilder } from '../../../services/learning/profileContextBuilder.js';
+import { profileContextBuilder } from '../../learning/services/profileContextBuilder.js';
 import { technicalAssessmentConfig, TechnicalAssessmentQuestion } from '../../../config/technicalAssessment.js';
 
 export type TechnicalAssessmentAnswers = {

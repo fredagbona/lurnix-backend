@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ArtifactStatus, ArtifactType } from '../types/prisma.js';
+import { ArtifactStatus, ArtifactType } from '@prisma/client';
 
 const artifactStatusEnum = z.nativeEnum(ArtifactStatus);
 const artifactTypeEnum = z.nativeEnum(ArtifactType);

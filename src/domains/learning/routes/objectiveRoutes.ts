@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticate as authMiddleware } from '../middlewares/authMiddleware.js';
+import { authenticate as authMiddleware } from '../../../middlewares/authMiddleware.js';
 import { objectiveController } from '../controllers/objectiveController.js';
 
 const router = express.Router();

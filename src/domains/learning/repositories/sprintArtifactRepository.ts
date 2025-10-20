@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
-import { db } from '../prisma/prismaWrapper';
-import { ArtifactStatus, ArtifactType, SprintArtifact } from '../types/prisma';
+import { db } from '../../../prisma/prismaWrapper';
+import { ArtifactStatus, ArtifactType, SprintArtifact } from '@prisma/client';
 
 export interface SprintArtifactUpsertInput {
   sprintId: string;

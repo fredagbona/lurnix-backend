@@ -10,7 +10,7 @@ import {
   ArtifactStatus,
   ArtifactType,
   LearnerProfile
-} from '../types/prisma';
+} from '@prisma/client';
 import type { ObjectiveSprintLimitPayload } from '../types/planLimits.js';
 
 type JsonValue = Prisma.JsonValue;
@@ -174,14 +174,14 @@ export interface ObjectiveUiPayload {
   contextHistory: ObjectiveContextPayload[];
 }
 
-export interface ObjectiveWithRelations extends Objective {
+export interface ObjectiveWithRelations extends Omit<Objective, 'estimatedTotalDays' | 'estimatedDailyHours' | 'currentDay' | 'completedDays' | 'progressPercentage'> {
   sprints: (Sprint & { progresses?: Progress[]; artifacts?: SprintArtifact[] })[];
   profileSnapshot?: LearnerProfile | null;
-  estimatedTotalDays?: number | null;
-  estimatedDailyHours?: number | null;
-  currentDay?: number | null;
-  completedDays?: number | null;
-  progressPercentage?: number | null;
+  estimatedTotalDays: number | null;
+  estimatedDailyHours: number | null;
+  currentDay: number;
+  completedDays: number;
+  progressPercentage: number;
   contexts?: ObjectiveContext[];
 }
 

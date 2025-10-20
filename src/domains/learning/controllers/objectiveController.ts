@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { createObjectiveSchema, expandSprintSchema, generateSprintSchema } from '../validation/objectiveSchemas.js';
 import { submitSprintEvidenceSchema, reviewSprintSchema } from '../validation/reviewerSchemas.js';
-import { objectiveService, sprintAutoGenerationService } from '../services/learning';
-import { AuthRequest } from '../middlewares/authMiddleware';
-import { sendTranslatedResponse } from '../utils/translationUtils.js';
+import { objectiveService, sprintAutoGenerationService } from '../services';
+import { AuthRequest } from '../../../middlewares/authMiddleware';
+import { sendTranslatedResponse } from '../../../utils/translationUtils.js';
 
 export class ObjectiveController {
   async listObjectives(req: AuthRequest, res: Response): Promise<void> {

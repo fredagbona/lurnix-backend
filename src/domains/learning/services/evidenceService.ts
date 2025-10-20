@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
-import { sprintArtifactRepository, SprintArtifactUpsertInput } from '../../repositories/sprintArtifactRepository.js';
-import { ArtifactStatus, ArtifactType, SprintArtifact } from '../../types/prisma';
+import { sprintArtifactRepository, SprintArtifactUpsertInput } from '../repositories/sprintArtifactRepository.js';
+import { ArtifactStatus, ArtifactType, SprintArtifact } from '@prisma/client';
 
 export interface SubmittedArtifactInput {
   artifactId: string;

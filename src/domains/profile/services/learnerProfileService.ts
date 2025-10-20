@@ -4,7 +4,7 @@ import {
   LearnerProfileCreateInput,
   LearnerProfileUpdateInput
 } from '../repositories/learnerProfileRepository.js';
-import { LearnerProfile, LearnerProfileSource } from '../../../types/prisma';
+import { LearnerProfile, LearnerProfileSource } from '@prisma/client';
 import {
   computeSnapshotHash,
   emitProfileRefreshRequested,

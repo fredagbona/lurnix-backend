@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { sprintController } from '../controllers/sprintController.js';
-import { authenticate } from '../middlewares/authMiddleware.js';
+import { authenticate } from '../../../middlewares/authMiddleware.js';
 
 const router = Router();
 

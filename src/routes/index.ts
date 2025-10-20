@@ -14,9 +14,9 @@ import webhookRoutes from "../domains/billing/routes/webhookRoutes";
 import aiRoutes from "./aiRoutes";
 import aiProfileRoutes from "./aiProfileRoutes";
 import featureRequestRoutes from "../domains/features/routes/featureRequestRoutes";
-import objectiveRoutes from "./objectiveRoutes";
-import progressRoutes from "./progressRoutes";
-import sprintRoutes from "./sprintRoutes";
+import objectiveRoutes from "../domains/learning/routes/objectiveRoutes";
+import progressRoutes from "../domains/learning/routes/progressRoutes";
+import sprintRoutes from "../domains/learning/routes/sprintRoutes";
 import technicalAssessmentRoutes from "../domains/assessment/routes/technicalAssessmentRoutes";
 
 const router = Router();

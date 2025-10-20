@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
-import { db } from '../prisma/prismaWrapper';
-import { Sprint, SprintDifficulty, SprintStatus } from '../types/prisma';
+import { db } from '../../../prisma/prismaWrapper';
+import { Sprint, SprintDifficulty, SprintStatus } from '@prisma/client';
 
 export interface SprintCreateInput {
   objectiveId: string;

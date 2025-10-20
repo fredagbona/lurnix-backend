@@ -1,8 +1,8 @@
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../middlewares/authMiddleware.js';
-import { objectiveProgressService, sprintAutoGenerationService } from '../services/learning';
-import { learningAnalyticsService } from '../services/analytics';
-import { AppError } from '../errors/AppError.js';
+import { AuthRequest } from '../../../middlewares/authMiddleware.js';
+import { objectiveProgressService, sprintAutoGenerationService } from '../services';
+import { learningAnalyticsService } from '../../analytics/services';
+import { AppError } from '../../../errors/AppError.js';
 
 // ============================================
 // PROGRESS CONTROLLER

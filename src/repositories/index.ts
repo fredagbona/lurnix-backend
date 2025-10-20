@@ -4,4 +4,6 @@ export * from '../domains/auth/repositories/userRepository.js';
 export * from '../domains/features/repositories/featureRequestRepository.js';
 // learnerProfileRepository moved to domains/profile/repositories/
 export * from '../domains/profile/repositories/learnerProfileRepository.js';
-export * from './sprintRepository.js';
+// sprintRepository and sprintArtifactRepository moved to domains/learning/repositories/
+export * from '../domains/learning/repositories/sprintRepository.js';
+export * from '../domains/learning/repositories/sprintArtifactRepository.js';
