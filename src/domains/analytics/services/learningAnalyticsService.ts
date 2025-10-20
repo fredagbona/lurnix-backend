@@ -1,5 +1,5 @@
-import { db } from '../../prisma/prismaWrapper.js';
-import { AppError } from '../../errors/AppError.js';
+import { db } from '../../../prisma/prismaWrapper.js';
+import { AppError } from '../../../errors/AppError.js';
 
 // ============================================
 // TYPES & INTERFACES
