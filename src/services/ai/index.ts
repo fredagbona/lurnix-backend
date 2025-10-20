@@ -1,2 +1,4 @@
 // AI Services - AI-powered features and integrations
-export { aiService } from './aiService';
+// AI Services - Re-exports from new domain structure
+// This file maintains backward compatibility during migration
+export { aiService } from '../../domains/ai/services/aiService';

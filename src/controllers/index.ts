@@ -8,3 +8,7 @@ export { adminController } from '../domains/admin/controllers/adminController';
 export { emailController } from '../domains/auth/controllers/emailController';
 // healthController moved to domains/infrastructure/health/controllers/
 export { healthController } from '../domains/infrastructure/health/controllers/healthController';
+// aiController moved to domains/ai/controllers/
+export { aiController } from '../domains/ai/controllers/aiController';
+// aiProfileController moved to domains/ai/controllers/
+export { aiProfileController } from '../domains/ai/controllers/aiProfileController';

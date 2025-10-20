@@ -1,5 +1,5 @@
-import { GenerateProfileRequest, GenerateProfileResponse } from '../../types/ai.js';
-import { AppError } from '../../errors/AppError.js';
+import { GenerateProfileRequest, GenerateProfileResponse } from '../types/ai.js';
+import { AppError } from '../../../errors/AppError.js';
 
 class AIService {
   private raiseUnavailable(): never {
